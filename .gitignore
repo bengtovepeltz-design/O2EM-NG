@@ -1,0 +1,77 @@
+# O2EM-NG - Git ignore rules
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+ipch/
+
+# Build output
+Debug/
+Release/
+x64/
+x86/
+ARM/
+ARM64/
+out/
+build/
+
+# Compiler and linker output
+*.obj
+*.o
+*.pch
+*.pdb
+*.idb
+*.ilk
+*.exp
+*.lib
+*.iobj
+*.ipdb
+*.tlog
+*.lastbuildstate
+*.log
+
+# Generated binaries / runtime copies
+*.exe
+*.dll
+
+# Keep source-controlled config if desired
+# o2em-ng.cfg is intentionally NOT ignored
+
+# Copyrighted BIOS ROMs - never commit
+BIOS/*.bin
+BIOS/*.rom
+BIOS/*.zip
+BIOS/*.7z
+
+# Game ROMs - never commit
+ROMS/*.bin
+ROMS/*.rom
+ROMS/*.zip
+ROMS/*.7z
+
+# Box art content - keep the folder README, ignore artwork
+BOXART/*.png
+BOXART/*.jpg
+BOXART/*.jpeg
+BOXART/*.webp
+BOXART/*.bmp
+
+# Optional local manuals/content
+MANUALS/*
+!MANUALS/readme.txt
+!MANUALS/README.txt
+!MANUALS/README.md
+
+# Temporary/editor files
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*~
+Thumbs.db
+Desktop.ini
+.DS_Store

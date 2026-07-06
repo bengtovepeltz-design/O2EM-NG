@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="O2EM-NG.vcxproj" Id="c201f408-fc45-46de-8591-82be2cd6c1e7" />
+</Solution>

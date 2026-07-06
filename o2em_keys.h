@@ -1,0 +1,50 @@
+#pragma once
+
+#define KEY_A       1
+#define KEY_B       2
+#define KEY_C       3
+#define KEY_D       4
+#define KEY_E       5
+#define KEY_F       6
+#define KEY_G       7
+#define KEY_H       8
+#define KEY_I       9
+#define KEY_J       10
+#define KEY_K       11
+#define KEY_L       12
+#define KEY_M       13
+#define KEY_N       14
+#define KEY_O       15
+#define KEY_P       16
+#define KEY_Q       17
+#define KEY_R       18
+#define KEY_S       19
+#define KEY_T       20
+#define KEY_U       21
+#define KEY_V       22
+#define KEY_W       23
+#define KEY_X       24
+#define KEY_Y       25
+#define KEY_Z       26
+
+#define KEY_0       27
+#define KEY_1       28
+#define KEY_2       29
+#define KEY_3       30
+#define KEY_4       31
+#define KEY_5       32
+#define KEY_6       33
+#define KEY_7       34
+#define KEY_8       35
+#define KEY_9       36
+
+#define KEY_SPACE   37
+#define KEY_ENTER   38
+#define KEY_STOP    39
+#define KEY_SLASH   40
+#define KEY_PLUS_PAD 41
+#define KEY_MINUS   42
+#define KEY_ASTERISK 43
+#define KEY_SLASH_PAD 44
+#define KEY_EQUALS  45
+#define KEY_DEL     46
