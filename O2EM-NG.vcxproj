@@ -129,16 +129,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Libraries\SDL3\include;d:\Librarys\SDL3-3.4.10\included:\Librarys\SDL3-3.4.10\include\SDL3\</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\include\SDL3\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64</AdditionalLibraryDirectories>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
