@@ -1,5 +1,6 @@
 #include "input_sdl.h"
 #include "input_manager.h"
+#include "vdc_stub.h"
 #include <SDL3/SDL.h>
 
 static JoyState keyboardP1;
@@ -16,6 +17,8 @@ static SDL_JoystickID gamepadIds[2] = { 0, 0 };
 
 static const Sint16 AXIS_DEADZONE = 12000;
 
+static bool controllerPortsSwapped = false;
+
 static JoyState CombineState(const JoyState& keyboard, const JoyState& buttons, const JoyState& axes)
 {
     JoyState result{};
@@ -31,8 +34,19 @@ static JoyState CombineState(const JoyState& keyboard, const JoyState& buttons, 
 
 static void PushStates()
 {
-    InputManager_SetPlayer1State(CombineState(keyboardP1, buttonP1, axisP1));
-    InputManager_SetPlayer2State(CombineState(keyboardP2, buttonP2, axisP2));
+    JoyState gamepadP1 = CombineState(JoyState{}, buttonP1, axisP1);
+    JoyState gamepadP2 = CombineState(JoyState{}, buttonP2, axisP2);
+
+    if (controllerPortsSwapped)
+    {
+        InputManager_SetPlayer1State(CombineState(keyboardP1, gamepadP2, JoyState{}));
+        InputManager_SetPlayer2State(CombineState(keyboardP2, gamepadP1, JoyState{}));
+    }
+    else
+    {
+        InputManager_SetPlayer1State(CombineState(keyboardP1, gamepadP1, JoyState{}));
+        InputManager_SetPlayer2State(CombineState(keyboardP2, gamepadP2, JoyState{}));
+    }
 }
 
 static void OpenGamepad(SDL_JoystickID id)
@@ -154,6 +168,19 @@ static void HandleGamepadButton(const SDL_Event& event, bool pressed)
 
     case SDL_GAMEPAD_BUTTON_SOUTH:
         joy->fire = pressed;
+        break;
+
+    case SDL_GAMEPAD_BUTTON_NORTH:
+        if (pressed)
+        {
+            controllerPortsSwapped = !controllerPortsSwapped;
+            const char* message = controllerPortsSwapped
+                ? "CONTROLLER PORTS SWAPPED"
+                : "CONTROLLER PORTS NORMAL";
+
+            SDL_Log("%s", message);
+            VDCStub_ShowMessage(message);
+        }
         break;
 
     default:

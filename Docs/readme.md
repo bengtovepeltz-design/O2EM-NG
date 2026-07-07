@@ -2,67 +2,47 @@
 
 ## Philips Videopac G7000 / Magnavox Odyssey² Emulator
 
-O2EM-NG is a modern SDL3-based continuation of the original O2EM
-emulator.
+O2EM-NG is a modern SDL3-based continuation of the original O2EM emulator.
 
-The project preserves the original O2EM emulation core while
-modernizing the platform around it with SDL3 video, audio, input,
-controller support, an integrated ROM browser, persistent settings,
-and a controller-friendly frontend.
+The goal of the project is to preserve the original O2EM emulation core while modernizing the platform around it with SDL3 video, audio, input, controller support, an integrated frontend, and a simpler living-room experience.
 
-O2EM-NG is currently in active development and has reached its first
-practical Beta milestone.
+O2EM-NG is currently available as a public Beta for Windows x64.
 
+Current version:
+
+**v0.22.1-beta**
 
 ## Current Features
 
-- SDL3 video and event system
-- SDL3 audio
-- Integrated ROM browser
-- Integrated game launcher
+- SDL3 video, audio, and event system
+- Integrated ROM browser and launcher
+- Integrated Settings screen
+- Persistent configuration through `o2em-ng.cfg`
+- Fullscreen or windowed startup
+- Region selection: Auto, PAL, and NTSC
+- Original O2EM CRC-based compatibility behavior preserved in Auto mode
+- PAL 50 FPS and NTSC 60 FPS video modes
 - Keyboard support
 - Xbox-compatible controller support
 - Two simultaneous physical controllers
-- Two-player gameplay
-- D-pad support
-- Analog stick support
-- In-game reset
-- Controller shortcut for returning to the ROM browser
-- Integrated Settings screen
-- Persistent configuration
-- Fullscreen or windowed startup
-- Auto / PAL / NTSC region selection
-- JPG and PNG box art file support
+- Controller navigation in the ROM browser and Settings screen
+- In-game controller shortcuts
+- In-game controller port switching
+- Brief on-screen controller routing notifications
+- JPG and PNG box art support
 - Original O2EM CPU and VDC emulation core
+- Working SDL3 game audio
 - Playable commercial Videopac / Odyssey² games
+- Two-player gameplay with physical controllers
 - Windows x64 Release build
-
 
 ## Current Status
 
-O2EM-NG has reached its first practical Beta milestone.
+O2EM-NG has reached its first public Beta stage.
 
-The emulator has progressed from SDL3 migration and early frontend
-development into a complete playable application.
+The emulator is playable and has been tested with a growing collection of Philips Videopac G7000 and Magnavox Odyssey² games.
 
-The Windows x64 Release build has been successfully tested with:
-
-- BIOS loading
-- ROM discovery
-- Game launching
-- Video output
-- Sound output
-- Keyboard input
-- Controller input
-- Gameplay
-- Return to ROM browser
-- Settings loading and saving
-- Fullscreen startup
-- Windowed startup
-
-Most tested games are playable.
-
-Confirmed working games include:
+Confirmed playable games include:
 
 - Gunfighter
 - Atlantis
@@ -79,14 +59,17 @@ Confirmed working games include:
 - Frogger
 - Golf
 
-Additional games have also passed manual gameplay testing.
+Additional titles have also been tested successfully.
 
-Two-player gameplay has been successfully tested using two physical
-controllers simultaneously.
+Two-player gameplay has been successfully tested using two physical controllers simultaneously.
 
-The main known compatibility issue is currently Four in 1 Row, which
-boots to a grey screen and remains under investigation.
+Gunfighter multiplayer has been confirmed working with video, sound, and controller input.
 
+Bowling-Basketball has been tested successfully with the new controller port switching feature using a single physical controller.
+
+The main known compatibility issue is currently Four in 1 Row, which remains under investigation.
+
+Development is now focused on community testing, compatibility improvements, controller usability, NTSC-region feedback, and careful expansion of the emulator without breaking the current working game base.
 
 ## Settings
 
@@ -96,35 +79,21 @@ Current settings include:
 
 - Startup display mode: Fullscreen / Windowed
 - Region mode: Auto / PAL / NTSC
-- Scanlines setting stored in configuration for future renderer
-  integration
+- Scanlines setting stored in configuration for future renderer integration
 
 Settings are saved in:
 
 `o2em-ng.cfg`
 
-
 ### Region Modes
 
-**Auto**
+**Auto** preserves the original O2EM CRC-based compatibility behavior and is the recommended default for Beta testing.
 
-Preserves the original O2EM CRC-based compatibility behavior.
+**PAL** explicitly selects the PAL 50 FPS video mode.
 
-Auto is the recommended default for Beta testing.
+**NTSC** explicitly selects the NTSC 60 FPS video mode.
 
-
-**PAL**
-
-Explicitly selects the PAL 50 FPS video mode.
-
-
-**NTSC**
-
-Explicitly selects the NTSC 60 FPS video mode.
-
-External feedback from testers familiar with real Magnavox Odyssey²
-NTSC behavior is especially welcome.
-
+External feedback from testers familiar with real Odyssey² NTSC behavior is especially welcome.
 
 ## Controls
 
@@ -143,7 +112,6 @@ Controller:
 - A: Select or launch
 - B: Return from Settings or exit the frontend
 
-
 ### In Game
 
 Keyboard:
@@ -157,47 +125,42 @@ Controller:
 - A: Fire
 - Xbox B: Reset the emulated machine
 - Xbox Back/View: Return to ROM browser
+- Xbox Y: Switch controller ports
 
+## Controller Port Switching
 
-### Important Controller Behavior
+The original Philips Videopac G7000 / Magnavox Odyssey² hardware does not use one universal joystick port for every single-player game.
 
-O2EM-NG currently follows the original Philips Videopac G7000 /
-Magnavox Odyssey² controller behavior closely.
+Depending on the game, the active player may use joystick port 1 or joystick port 2.
 
-The original system does not have a universal convention where every
-single-player game always uses the same joystick port.
+O2EM-NG preserves this original behavior.
 
-Depending on the game, a single-player game may use either Controller 1
-or Controller 2.
+Starting with v0.22.1-beta, users can press:
 
-Because of this, you may need to use the other controller when changing
-games. If a game starts normally but does not respond to one controller,
-try the other controller.
+**Xbox Y**
 
-For the current Beta version:
+during gameplay to switch physical controller routing between the two emulated joystick ports.
 
-- Two-player games require two connected physical controllers.
-- Single-player games may use either Controller 1 or Controller 2,
-  depending on the game.
-- If a game starts but does not respond to one controller, try the
-  other controller.
-- Different games may require changing which physical controller is
-  used for single-player gameplay.
+The emulator briefly displays:
 
-This behavior reflects the way original G7000 software selected
-joystick inputs.
+`CONTROLLER PORTS SWAPPED`
 
-O2EM-NG currently preserves this behavior rather than forcing every
-single-player game onto one standardized controller port.
+or:
 
-This also matches the project developer's experience with the original
-Philips Videopac G7000 hardware.
+`CONTROLLER PORTS NORMAL`
 
+This means a user with one physical controller can play single-player games regardless of which original joystick port the game expects.
+
+For multiplayer games, two physical controllers remain fully supported.
+
+The feature has been tested successfully with:
+
+- Bowling-Basketball in single-player mode
+- Gunfighter in two-player multiplayer mode
 
 ## Required Files
 
-O2EM-NG does not include BIOS files, commercial game ROMs, copyrighted
-box artwork, or commercial game manuals.
+O2EM-NG does not include BIOS files, commercial game ROMs, copyrighted box artwork, or commercial game manuals.
 
 Users must provide compatible files themselves.
 
@@ -208,3 +171,4 @@ BIOS/
 ROMS/
 BOXART/
 MANUALS/
+DOCS/

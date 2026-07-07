@@ -33,6 +33,18 @@ static SDL_Window* gWindow = nullptr;
 static SDL_Renderer* gRenderer = nullptr;
 static SDL_Texture* gTexture = nullptr;
 
+static char gOverlayMessage[64] = { 0 };
+static Uint64 gOverlayUntil = 0;
+
+void VDCStub_ShowMessage(const char* message)
+{
+    if (!message)
+        return;
+
+    SDL_snprintf(gOverlayMessage, sizeof(gOverlayMessage), "%s", message);
+    gOverlayUntil = SDL_GetTicks() + 1800;
+}
+
 static Byte vscreen[BMPW * BMPH] = { 0 };
 static Byte col[BMPW * BMPH] = { 0 };
 static uint32_t pixels[BMPW * BMPH] = { 0 };
@@ -525,6 +537,28 @@ void finish_display(void)
         &src,
         &dst
     );
+
+    if (gOverlayMessage[0] != '\0' && SDL_GetTicks() < gOverlayUntil)
+    {
+        float textX = dst.x + 12.0f;
+        float textY = dst.y + dst.h - 28.0f;
+
+        SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 190);
+        SDL_FRect background{
+            textX - 6.0f,
+            textY - 6.0f,
+            static_cast<float>(SDL_strlen(gOverlayMessage) * 8 + 12),
+            20.0f
+        };
+        SDL_RenderFillRect(gRenderer, &background);
+
+        SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
+        SDL_RenderDebugText(gRenderer, textX, textY, gOverlayMessage);
+    }
+    else if (gOverlayMessage[0] != '\0')
+    {
+        gOverlayMessage[0] = '\0';
+    }
 
     SDL_RenderPresent(gRenderer);
 }
