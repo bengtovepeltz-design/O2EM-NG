@@ -19,6 +19,9 @@ Use the BIOS filename that matches the console you want to emulate.
 
 3. Copy your game ROMs into the **ROMS** folder.
 
+I suggest that you name your Rom (Game) files after the real Videopac games, doing that makes it easier for my data base to identify the game. Something like this:
+vp_01.bin (Race/Spin-out/Cryptogram) And your boxart to something similar: 01.jpg, manuals: 01_manual.pdf and so on, That connects the game with boxart (cover art) and manuals etc.
+
 ## Optional
 
 Use the **Import Center** to add:
