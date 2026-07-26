@@ -1,0 +1,210 @@
+bios = internal ROM of the microprocessor
+br   = Brazilian game
+im   = Imagic
+jo   = Jopac
+mod  = modified game (by me)
+new  = new game
+ntsc = NTSC version for American consoles (made by me)
+o2   = Odyssey2 game, only the Odyssey2 games that are different
+       from the Videopac version are present
+pal  = PAL version for European consoles (made by me)
+pb   = Parker Brothers
+pr   = prototype game, never released
+vp   = Videopac
+
+..._pl = Plus (+) version, extra background graphics on a G7400 (or Odyssey3)
+..._12 or ..._16 = 12k or 16k game, cartridge has extra chips
+..._F  = french version
+...alt = alternate version
+...hack = modified by someone else
+...fix = bug fixed
+
+GAME LIST: 4 BIOS files, 190 games.
+
+bios_c52.bin			french version of G7000
+bios_g7400.bin			Videopac+ (european Odyssey3)
+bios_jopac.bin			french version of G7400
+bios_O2rom.bin			same as G7000 BIOS
+
+br_55.bin                    Neutron star , brazilian
+br_58.bin                    Air battle , brazilian
+br_clay-pigeon.bin
+br_comando-noturno.bin
+br_frogger.bin               NTSC version of Frogger
+br_popeye.bin
+br_super-cobra.bin
+
+csv1.bin                     German traffic game part1
+csv2.bin                     German traffic game part2
+
+im_atlantis.bin
+im_demon-attack.bin
+
+jo_basket-bowling_pl.bin     Plus version
+jo_billard_pl.bin            Plus version
+jo_chez-maxime.bin
+jo_demon-attack_pl.bin       Plus version
+jo_exojet_pl.bin
+jo_flipper_pl.bin            Plus version of Thunderball
+jo_le-tresor-englouti_pl.bin
+jo_moto-crash_pl.bin         Works only on Jopac and G7400
+jo_syracuse.bin
+
+mod_01pl.bin                 first line of plus graphics is now visible on a G7400
+mod_05_g7400.bin             works also on a G7400
+mod_06pl.bin                 Plus graphics corrections
+mod_11pl.bin                 dark blue enemies are visible again on a G7400
+mod_19_g7400.bin             "Select game" screen works also on a G7400
+mod_20pl.bin                 Stone sling+ with Voice sounds and scoring from Smithereens
+mod_24pl.bin                 Plus graphics corrections
+mod_30fix.bin                Voice won't hum anymore
+mod_31_g7400.bin             works also on a G7400, doesn't need extra chip anymore
+mod_40_g7400.bin             works also on a G7400, doesn't need extra chip anymore
+mod_43pl.bin                 Plus graphics corrections
+mod_55pl.bin                 8k version with plus graphics
+mod_demon-attack_pl.bin      Plus graphics corrections
+mod_moto-crash_g7000.bin     works on a G7000
+
+new_amok.bin                 written by John Dondzila
+new_amok_alt.bin             written by John Dondzila
+new_helicopter_buzzword.bin  assembled by me
+new_jg-munchkin.bin          modified by VPaC
+new_kc-pacman.bin            modified by Rob Kudla
+new_ktaa.bin                 written by Soeren Gust
+new_ktaa-demo1.bin           written by Soeren Gust
+new_ktaa-demo2.bin           written by Soeren Gust
+new_planet-lander.bin        written by Ted (Foolery) Szczypiorski
+new_pong.bin                 written by Rene van den Enden
+new_pong_all.bin             Pong with extra features
+
+ntsc_57.bin                  NTSC version of Blobbers
+ntsc_chez-maxime.bin
+ntsc_exojet_pl.bin           works on NTSC and PAL and also has Plus graphics corrections
+ntsc_moto-crash.bin
+ntsc_shark-hunter.bin
+
+o2_06.bin                    Computer Intro
+o2_07.bin                    Matchmaker/Buzzword/Logix
+o2_10.bin                    Computer Golf
+o2_11.bin                    Cosmic Conflict
+o2_14.bin                    Invaders from Hyperspace
+o2_16.bin                    Showdown in 2100 A.D.
+o2_19.bin                    Out of this World/Helicopter Rescue
+o2_21.bin                    Dynasty
+o2_30.bin                    UFO
+o2_33.bin                    Keyboard Creations
+o2_35.bin                    K.C.Munchkin
+o2_38.bin                    Sid the Spellbinder (needs special set of Voice sounds)
+o2_39.bin                    Nimble Numbers Ned
+o2_40.bin                    Type & Tell
+o2_41.bin                    Smithereens
+o2_43.bin                    P.T.Barnum's Acrobats
+o2_45.bin                    Attack of the Timelord
+o2_46.bin                    Turtles
+o2_47.bin                    Killes Bees
+o2_48.bin                    Powerlords
+o2_48alt.bin                 Powerlords (alternate version)
+
+pal_acrobats.bin
+pal_flashpoint.bin           G7400 version of the Odyssey3 prototype game
+pal_nimble-numbers-ned.bin
+pal_type-and-tell.bin
+
+pb_frogger.bin
+pb_popeye.bin
+pb_q-bert.bin
+pb_super-cobra.bin
+
+pr_clay-pigeon_pl.bin		Clay pigeon with Plus background gfx
+pr_interpol.bin			GST prototype
+pr_jake.bin				GST prototype
+pr_mission-impossible.bin	Brazilian proto Mission Impossible / Programmed Trip
+pr_pinball.bin			written by Ralph Bear
+pr_playtag.bin			a.k.a. Catch, Plantage
+pr_robot-city.bin			GT prototype
+pr_shark-hunter.bin		GST prototype
+pr_tutankham.bin			Parker prototype
+
+vp_01.bin        Race/Spin-out/Cryptogram
+vp_01hack.bin    Race/Spin-out/Cryptogram  (color hack)
+vp_01pl.bin      Race/Spin-out/Cryptogram +
+vp_02.bin        Pairs/Space Rendezvous/Logic
+vp_03.bin        American Football
+vp_04.bin        Air-Sea War/Battle
+vp_05.bin        Blackjack
+vp_06.bin        Tenpin Bowling/Basketball
+vp_06pl.bin      Tenpin Bowling/Basketball + (unreleased)
+vp_07.bin        Mathematician/Echo
+vp_08.bin        Baseball
+vp_09.bin        Computer Programmer
+vp_10.bin        Golf
+vp_11.bin        Cosmic Conflict
+vp_11alt.bin     Cosmic Conflict (alternate version)
+vp_11pl.bin      Cosmic Conflict +
+vp_12.bin        Take the Money and Run
+vp_13.bin        Playschool Maths
+vp_14.bin        Gunfighter
+vp_15.bin        Samurai
+vp_16.bin        Depth Charge/Marksman
+vp_17.bin        Chinese Logic
+vp_18.bin        Laser War
+vp_19.bin        Catch the Ball/Noughts and Crosses
+vp_20.bin        Stone Sling
+vp_20pl.bin      Stone Sling +
+vp_21.bin        Secret of the Pharaohs
+vp_22.bin        Space Monster
+vp_22hack.bin    Space Monster (color hack)
+vp_23.bin        Las Vegas Gambling
+vp_24.bin        Flipper Game
+vp_24pl.bin      Flipper Game + (unreleased)
+vp_25.bin        Skiing
+vp_26.bin        Basket Game
+vp_27.bin        Electronic Table Football
+vp_28.bin        Electronic Volleyball
+vp_29.bin        Dam Buster
+vp_30.bin        Battlefield
+vp_31.bin        Musician
+vp_32.bin        A Labyrinth Game/Supermind
+vp_33.bin        Jumping Acrobats
+vp_33alt.bin     Jumping Acrobats (alternate version)
+vp_34.bin        Satellite Attack
+vp_34pl.bin      Satellite Attack +
+vp_35.bin        Electronic Billiards
+vp_35pl.bin      Electronic Billiards + (unreleased)
+vp_36.bin        Electronic Soccer/Electronic Ice Hockey
+vp_37.bin        Monkeyshines
+vp_38.bin        Munchkin
+vp_39.bin        Freedom Fighters
+vp_39pl.bin      Freedom Fighters +
+vp_40.bin        4-in-1 Row
+vp_41.bin        Conquest of the World
+vp_42.bin        Quest for the Rings
+vp_43.bin        Pick Axe Pete
+vp_43pl.bin      Pick Axe Pete +
+vp_44.bin        Crazy Chase
+vp_45.bin        Morse
+vp_46.bin        The Great Wall Street Fortune Hunt
+vp_47.bin        The Mousing Cat
+vp_48.bin        Backgammon
+vp_49.bin        Turtles
+vp_50.bin        Super Bee
+vp_51pl.bin      Terrahawks +
+vp_52pl.bin      Killer Bees +
+vp_53.bin        Nightmare (phantom house, unreleased)
+vp_53pl.bin      Nightmare +
+vp_54.bin        Loony Balloon (no plus graphics, unreleased)
+vp_54pl.bin      Loony Balloon +
+vp_55.bin        Neutron Star (Black hole, unreleased)
+vp_55_12.bin     Neutron Star +
+vp_55_12fix.bin  Neutron Star + (bug fixed)
+vp_56pl.bin      Norseman +  (works only on G7400 and Jopac)
+vp_57.bin        Blobbers
+vp_58.bin        Air Battle  (no plus graphics, unreleased)
+vp_58_12.bin     Air Battle +
+vp_59_16.bin     Helicopter Rescue +  (works only on G7400 and Jopac)
+vp_60_16.bin     Trans American Rally + (works only on G7400 and Jopac)
+vp_a.bin         Newscaster
+vp_C7010.bin     Chess (not complete, game has extra microprocessor module)
+vp_v.bin         Kinder im Verkehr (german traffic game)
+
+21 french versions of Videopac games

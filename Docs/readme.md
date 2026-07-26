@@ -10,26 +10,35 @@ O2EM-NG is currently available as a public Beta for Windows x64.
 
 Current version:
 
-**v0.22.1-beta**
+**v0.30.0-beta**
 
 ## Current Features
 
 - SDL3 video, audio, and event system
-- Integrated ROM browser and launcher
+- Integrated Game Library and launcher
+- Integrated Import Center
+- SQLite-backed game database
+- BIOS management
+- ROM import
+- JPG and PNG cover-art import
+- PDF manual import and external manual opening
+- Screenshot import
+- Game Information display
+- Favorites support
+- Live media refresh
 - Integrated Settings screen
 - Persistent configuration through `o2em-ng.cfg`
 - Fullscreen or windowed startup
 - Region selection: Auto, PAL, and NTSC
 - Original O2EM CRC-based compatibility behavior preserved in Auto mode
 - PAL 50 FPS and NTSC 60 FPS video modes
-- Keyboard support
+- Keyboard and mouse support in the frontend
 - Xbox-compatible controller support
 - Two simultaneous physical controllers
-- Controller navigation in the ROM browser and Settings screen
+- Controller navigation in the frontend and Settings screen
 - In-game controller shortcuts
 - In-game controller port switching
 - Brief on-screen controller routing notifications
-- JPG and PNG box art support
 - Original O2EM CPU and VDC emulation core
 - Working SDL3 game audio
 - Playable commercial Videopac / Odyssey² games
@@ -38,7 +47,7 @@ Current version:
 
 ## Current Status
 
-O2EM-NG has reached its first public Beta stage.
+O2EM-NG has reached Beta 3 of its public Windows x64 release.
 
 The emulator is playable and has been tested with a growing collection of Philips Videopac G7000 and Magnavox Odyssey² games.
 
@@ -69,11 +78,11 @@ Bowling-Basketball has been tested successfully with the new controller port swi
 
 The main known compatibility issue is currently Four in 1 Row, which remains under investigation.
 
-Development is now focused on community testing, compatibility improvements, controller usability, NTSC-region feedback, and careful expansion of the emulator without breaking the current working game base.
+Beta 3 focuses on the new Game Library, Import Center, game database, media handling, and continued community testing without breaking the current working game base.
 
 ## Settings
 
-The Settings screen is available directly from the ROM browser.
+The Settings screen is available directly from the frontend.
 
 Current settings include:
 
@@ -97,7 +106,7 @@ External feedback from testers familiar with real Odyssey² NTSC behavior is esp
 
 ## Controls
 
-### ROM Browser and Settings
+### Frontend and Settings
 
 Keyboard:
 
@@ -116,7 +125,7 @@ Controller:
 
 Keyboard:
 
-- Esc: Return to ROM browser
+- Esc: Return to the frontend
 - F5: Reset the emulated machine
 
 Controller:
@@ -124,7 +133,7 @@ Controller:
 - D-pad / left stick: Joystick movement
 - A: Fire
 - Xbox B: Reset the emulated machine
-- Xbox Back/View: Return to ROM browser
+- Xbox Back/View: Return to the frontend
 - Xbox Y: Switch controller ports
 
 ## Controller Port Switching
@@ -171,4 +180,6 @@ BIOS/
 ROMS/
 BOXART/
 MANUALS/
+SCREENSHOTS/
+GAMEDATA/
 DOCS/

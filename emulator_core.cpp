@@ -205,7 +205,7 @@ static bool LoadCart(const std::string& file)
     return true;
 }
 
-bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode)
+bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, const std::string& biosFile, bool scanlines)
 {
     app_data.bank = 0;
     app_data.limit = 0;
@@ -227,7 +227,7 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode)
     app_data.debug = 0;
     app_data.wsize = 2;
     app_data.fullscreen = 0;
-    app_data.scanlines = 0;
+    app_data.scanlines = scanlines ? 1 : 0;
     app_data.svolume = 100;
     app_data.vvolume = 100;
     app_data.filter = 0;
@@ -237,7 +237,7 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode)
     app_data.breakpoint = 65535;
 
     std::string baseFolder = SDL_GetBasePath();
-    std::string biosPath = baseFolder + "BIOS\\o2rom.bin";
+    std::string biosPath = baseFolder + "BIOS\\" + biosFile;
 
     unsigned long biosCrc = 0;
 
@@ -251,6 +251,10 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode)
 
         return false;
     }
+
+    printf("O2EM-NG: BIOS loaded: %s  CRC=%08lX\n",
+        biosPath.c_str(),
+        biosCrc);
 
     if (!LoadCart(romPath))
     {

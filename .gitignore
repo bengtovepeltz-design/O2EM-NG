@@ -75,3 +75,18 @@ MANUALS/*
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# --------------------------------------------------------------------
+# Beta 3 additions
+# --------------------------------------------------------------------
+
+# SQLite database
+GAMEDATA/*.db
+GAMEDATA/*.db-wal
+GAMEDATA/*.db-shm
+
+# Screenshots
+SCREENSHOTS/*
+!SCREENSHOTS/readme.txt
+!SCREENSHOTS/README.txt
+!SCREENSHOTS/README.md

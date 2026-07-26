@@ -104,6 +104,10 @@ O2EMSettings LoadSettings(const std::string& filename)
         {
             settings.region_mode = RegionModeFromString(value);
         }
+        else if (key == "bios_file")
+        {
+            settings.bios_file = value;
+        }
         else if (key == "scanlines")
         {
             settings.scanlines = ParseBool(value, settings.scanlines);
@@ -125,5 +129,6 @@ void SaveSettings(const std::string& filename, const O2EMSettings& settings)
 
     file << "start_fullscreen = " << (settings.start_fullscreen ? "true" : "false") << "\n";
     file << "region_mode = " << RegionModeToString(settings.region_mode) << "\n";
+    file << "bios_file = " << settings.bios_file << "\n";
     file << "scanlines = " << (settings.scanlines ? "true" : "false") << "\n";
 }

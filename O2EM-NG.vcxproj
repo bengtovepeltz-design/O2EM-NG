@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<?xml version='1.0' encoding='utf-8'?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -111,17 +111,23 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);ALLEGRO_WINDOWS;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
+copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
+if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
+copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -132,18 +138,24 @@
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+    <PostBuildEvent>
+      <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
+copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
+if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
+copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="audio_sdl.cpp" />
@@ -152,6 +164,12 @@
     <ClCompile Include="cset.cpp" />
     <ClCompile Include="debug_stub.cpp" />
     <ClCompile Include="emulator_core.cpp" />
+    <ClCompile Include="frontend_boxart.cpp" />
+    <ClCompile Include="src\frontend\frontend_screenshot.cpp" />
+    <ClCompile Include="frontend_layout.cpp" />
+    <ClCompile Include="frontend_panels.cpp" />
+    <ClCompile Include="frontend_statusbar.cpp" />
+    <ClCompile Include="frontend_tabs.cpp" />
     <ClCompile Include="input_manager.cpp" />
     <ClCompile Include="input_sdl.cpp" />
     <ClCompile Include="keyboard_sdl.cpp" />
@@ -162,13 +180,28 @@
     <ClCompile Include="port_stub.cpp" />
     <ClCompile Include="rom_browser.cpp" />
     <ClCompile Include="settings.cpp" />
+    <ClCompile Include="src\frontend\frontend_app.cpp" />
+    <ClCompile Include="src\frontend\metadata_text_editor.cpp" />
+    <ClCompile Include="src\database\library_view.cpp" />
+    <ClCompile Include="src\database\rom_classifier.cpp" />
+    <ClCompile Include="src\media\media_resolver.cpp" />
+    <ClCompile Include="src\media\manual_preview.cpp" />
+    <ClCompile Include="src\media\asset_manager.cpp" />
+    <ClCompile Include="src\import\import_manager.cpp" />
+    <ClCompile Include="src\library\game_info.cpp" />
+    <ClCompile Include="src\library\game_library.cpp" />
+    <ClCompile Include="theme_win95.cpp" />
     <ClCompile Include="timefunc_sdl.cpp" />
     <ClCompile Include="timing_sdl.cpp" />
+    <ClCompile Include="ui_font.cpp" />
     <ClCompile Include="vdc_stub.cpp" />
     <ClCompile Include="videopac_font.cpp" />
     <ClCompile Include="vmachine.cpp" />
     <ClCompile Include="voice_stub.cpp" />
     <ClCompile Include="vpp_stub.cpp" />
+    <ClCompile Include="src\metadata\metadata_engine.cpp" />
+    <ClCompile Include="src\database\game_database.cpp" />
+    <ClCompile Include="src\collection\collection_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\o2em\vdc.h" />
@@ -177,6 +210,12 @@
     <ClInclude Include="crc32.h" />
     <ClInclude Include="cset.h" />
     <ClInclude Include="emulator_core.h" />
+    <ClInclude Include="frontend_boxart.h" />
+    <ClInclude Include="src\frontend\frontend_screenshot.h" />
+    <ClInclude Include="frontend_layout.h" />
+    <ClInclude Include="frontend_panels.h" />
+    <ClInclude Include="frontend_statusbar.h" />
+    <ClInclude Include="frontend_tabs.h" />
     <ClInclude Include="input_manager.h" />
     <ClInclude Include="input_sdl.h" />
     <ClInclude Include="keyboard_sdl.h" />
@@ -186,14 +225,40 @@
     <ClInclude Include="o2em_keys.h" />
     <ClInclude Include="rom_browser.h" />
     <ClInclude Include="settings.h" />
+    <ClInclude Include="src\frontend\frontend_app.h" />
+    <ClInclude Include="src\frontend\metadata_text_editor.h" />
+    <ClInclude Include="src\database\library_view.h" />
+    <ClInclude Include="src\database\rom_classifier.h" />
+    <ClInclude Include="src\media\media_resolver.h" />
+    <ClInclude Include="src\media\manual_preview.h" />
+    <ClInclude Include="src\media\asset_manager.h" />
+    <ClInclude Include="src\import\import_manager.h" />
+    <ClInclude Include="src\library\game_info.h" />
+    <ClInclude Include="src\library\game_library.h" />
+    <ClInclude Include="theme_win95.h" />
     <ClInclude Include="timefunc_sdl.h" />
     <ClInclude Include="timing_sdl.h" />
     <ClInclude Include="types.h" />
+    <ClInclude Include="ui_font.h" />
     <ClInclude Include="vdc_stub.h" />
     <ClInclude Include="videopac_font.h" />
     <ClInclude Include="vmachine.h" />
+    <ClInclude Include="src\metadata\metadata_engine.h" />
+    <ClInclude Include="src\database\game_database.h" />
+    <ClInclude Include="src\collection\collection_manager.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="tools\get_pdfium.ps1" />
+    <None Include="third_party\pdfium\README.txt" />
+    <None Include="GAMEDATA\Gamelist.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>GAMEDATA\Gamelist.txt</TargetPath>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="assets\O2EM-NG_Header.png" />
+  </ItemGroup>
 </Project>

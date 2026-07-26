@@ -538,6 +538,17 @@ void finish_display(void)
         &dst
     );
 
+    if (app_data.scanlines)
+    {
+        SDL_SetRenderDrawBlendMode(gRenderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 70);
+
+        for (float y = dst.y; y < dst.y + dst.h; y += 2.0f)
+        {
+            SDL_RenderLine(gRenderer, dst.x, y, dst.x + dst.w, y);
+        }
+    }
+
     if (gOverlayMessage[0] != '\0' && SDL_GetTicks() < gOverlayUntil)
     {
         float textX = dst.x + 12.0f;

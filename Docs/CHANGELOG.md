@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.30.0-beta "Beta 3"
+
+### Added
+
+- Integrated Game Library.
+- Integrated Import Center.
+- SQLite-backed game database stored in `GAMEDATA/o2em-ng.db`.
+- BIOS management.
+- ROM import through the frontend.
+- Cover-art import.
+- PDF manual import.
+- Screenshot import.
+- Game Information display.
+- Favorites support.
+- Manual opening from Game Information.
+- Live media refresh after imported media is added.
+- Mouse support in the frontend.
+
+### Improved
+
+- The frontend has developed from the original ROM browser into a more complete library-based interface.
+- Games and related media can be added from inside O2EM-NG instead of being managed only through File Explorer.
+- Game records and media are organized through the integrated database and project folder structure.
+- Box art and game information are available directly from the library.
+- Existing SDL3 video, audio, input, controller, region, and emulator-core behavior remains preserved.
+- Controller and mouse operation in the frontend have been improved.
+- The Windows 95 / Philips-era visual direction has been retained for the frontend.
+
+### Testing
+
+- SQLite database creation and WAL mode confirmed working.
+- Game Library and launcher flow tested successfully.
+- Import Center flow tested with the project data folders.
+- Favorites and mouse control tested successfully.
+- Game Information and manual-opening workflow integrated.
+- Existing emulator behavior retained after the frontend and database additions.
+- Windows x64 release package tested outside the development folder.
+- Release package tested on a clean Windows PC before publication.
+
+### Release
+
+- Version updated to `v0.30.0-beta`.
+- Beta 3 Windows x64 distribution prepared for GitHub and community testing.
+- BIOS files, commercial ROMs, copyrighted box artwork, screenshots, and commercial manuals remain excluded from the release.
+- Existing project documentation and release history are preserved and continued for Beta 3.
+
+### Notes
+
+Beta 3 is the largest frontend expansion since the first public Beta.
+
+The emulator core remains based on the original O2EM work, while the surrounding Windows and SDL3 platform now provides an integrated library, database, import workflow, media handling, and game-information system.
+
+---
+
+
 ## 0.22.1-beta "Living Room Beta Update 1"
 
 ### Added

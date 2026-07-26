@@ -5,8 +5,8 @@
 | Item | Value |
 |------|-------|
 | Project | O2EM-NG |
-| Current Version | v0.22.1-beta |
-| Release Name | Living Room Beta Update 1 |
+| Current Version | v0.30.0-beta |
+| Release Name | Beta 3 |
 | Started | 2026 |
 | Author | Bengt-Ove Peltz |
 | IDE | Visual Studio 2026 |
@@ -56,7 +56,7 @@ The main project principle is:
 
 # Current Version
 
-## v0.22.1-beta
+## v0.30.0-beta
 
 Release name:
 
@@ -1560,6 +1560,18 @@ Major features:
 - Windows x64 Release build
 - Public source repository
 - Public release ZIP
+
+---
+
+## v0.30.0-beta
+
+Release Name: **Beta 3**
+
+Beta 3 expands O2EM-NG from the original ROM-browser frontend into a more complete game-library environment.
+
+The release adds the integrated Game Library, Import Center, SQLite-backed game database, BIOS management, media import, favorites, game information, manual access, and live media refresh while preserving the existing SDL3 emulator core, controller support, region handling, and living-room workflow.
+
+The Windows x64 release package was tested outside the development environment and on a clean Windows PC before publication.
 
 ---
 
