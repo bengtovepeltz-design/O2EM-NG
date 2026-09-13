@@ -1,0 +1,86 @@
+{
+  "version": "0.31.0-beta",
+  "files": [
+    {
+      "source": "assets/O2EM-NG_Icon.png",
+      "destination": "assets/O2EM-NG_Icon.png"
+    },
+    {
+      "source": "Gamedata/o2em-ng.db",
+      "destination": "GAMEDATA/o2em-ng.db"
+    },
+    {
+      "source": "D:/Librarys/SDL3-3.4.10/lib/x64/SDL3.dll",
+      "destination": "SDL3.dll"
+    },
+    {
+      "source": "D:/Librarys/SDL3-3.4.10/lib/x64/SDL3_ttf.dll",
+      "destination": "SDL3_ttf.dll"
+    },
+    {
+      "source": "D:/Librarys/SDL3_image-3.4.4/lib/x64/SDL3_image.dll",
+      "destination": "SDL3_image.dll"
+    },
+    {
+      "source": "third_party/pdfium/pdfium.dll",
+      "destination": "pdfium.dll"
+    },
+    {
+      "source": "third_party/pdfium/LICENSE.pdfium.txt",
+      "destination": "Docs/Licenses/LICENSE.pdfium.txt"
+    },
+    {
+      "source": "D:/Librarys/SDL3-3.4.10/LICENSE.txt",
+      "destination": "Docs/Licenses/LICENSE.SDL3.txt"
+    },
+    {
+      "source": "D:/Librarys/SDL3_image-3.4.4/LICENSE.txt",
+      "destination": "Docs/Licenses/LICENSE.SDL3_image.txt"
+    },
+    {
+      "source": "assets/O2EM-NG_Header.png",
+      "destination": "assets/O2EM-NG_Header.png"
+    },
+    {
+      "source": "Gamedata/Gamelist.txt",
+      "destination": "GAMEDATA/Gamelist.txt"
+    },
+    {
+      "source": "Docs/COPYRIGHTS.txt",
+      "destination": "Docs/COPYRIGHTS.txt"
+    },
+    {
+      "source": "Docs/Project.md",
+      "destination": "Docs/Project.md"
+    },
+    {
+      "source": "Docs/CHANGELOG.md",
+      "destination": "Docs/CHANGELOG.md"
+    },
+    {
+      "source": "Docs/Beta_4_v0.31.0_Quick start guide.md",
+      "destination": "Docs/Beta_4_v0.31.0_Quick start guide.md"
+    },
+    {
+      "source": "Docs/readme.md",
+      "destination": "Docs/readme.md"
+    },
+    {
+      "source": "Docs/Release packaging.md",
+      "destination": "Docs/Release packaging.md"
+    }
+  ],
+  "runtimeDlls": [
+    "msvcp140.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll"
+  ],
+  "emptyFolders": [
+    "BIOS/C7010",
+    "ROMS",
+    "MANUALS",
+    "BOXART",
+    "SCREENSHOTS",
+    "CARTRIDGES"
+  ]
+}

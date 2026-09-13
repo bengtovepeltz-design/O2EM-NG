@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.31.0-beta "Beta 4" - Unreleased
+
+Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
+
+### Added
+
+- Embedded application/window icon based on the O2EM-NG emblem.
+- Automatic Release folder/ZIP with SDL, PDFium, C++ runtime DLLs and game catalogue.
+- Beta 4 installer sourced from that package; existing user databases are preserved.
+
+- C7010 Chess module support with separate NSC800/Z80-compatible execution,
+  8 KiB firmware, 2 KiB RAM, communication latches and interleaved CPU execution.
+- Separate C7010 firmware status in Settings; firmware is supplied by the user.
+- A Beta 4 quick start guide with chess setup and community testing instructions.
+
+### Fixed
+
+- Per-user installation allows imports and settings saves without administrator rights.
+- Import source folders are remembered separately from automatic destination folders.
+- Distribution includes the populated 222-record catalogue, with personal favorites and play history reset.
+
+- Cartridge write routing that interfered with C7010/VDC communication.
+- Lost enabled timer interrupts when the 8048 was already servicing an interrupt.
+- NSC800 relative-jump target calculation that produced wrong board coordinates,
+  including E2-E4 visually emptying G2.
+- C7010 lower-board clipping and flickering characters during row updates.
+
+### Changed
+
+- Detailed C7010 diagnostics default to off in Debug and Release; important error
+  messages remain. `O2EM_C7010_TRACE=1` enables developer tracing when rebuilding.
+
+### Validation and limitations
+
+- Several moves and computer replies tested locally; pieces remained visible and
+  0030AC was reported free of flicker, with appearance compared to real hardware.
+- All 128 firmware coordinate conversions passed, including with optimization.
+- 0030AD Release x64 built without errors or warnings. Final Release gameplay,
+  packaged/clean-PC testing and a fresh ordinary-game regression pass remain pending.
+- Full games and special chess moves are not yet verified. Final testing on both
+  G7000 and G7400 is requested; thinking-time accuracy is still under investigation.
+- An isolated 0030AB application hang was reported; a later rebuilt test ran.
+- Local package/installer preparation is included; no GitHub release has been published.
+
+---
+
+
 ## 0.30.0-beta "Beta 3"
 
 ### Added

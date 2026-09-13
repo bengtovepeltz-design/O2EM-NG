@@ -43,7 +43,11 @@ namespace
             gGameKey.clear();
         }
 
-        const std::string newKey = game ? game->romPath.string() : std::string();
+        // Include the resolved artwork path in the cache key. A cover can be
+        // added/removed while the ROM path stays unchanged.
+        const std::string newKey = game
+            ? game->romPath.string() + "|" + game->boxArt.string()
+            : std::string();
         if (newKey == gGameKey)
             return;
 

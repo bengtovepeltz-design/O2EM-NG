@@ -1,3 +1,5 @@
+> Archived Beta 3 guide. For the upcoming beta, see the [Beta 4 guide](Beta_4_v0.31.0_Quick%20start%20guide.md).
+
 # O2EM-NG Quick Start Guide
 
 Welcome to **O2EM-NG**!

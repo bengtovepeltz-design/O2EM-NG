@@ -33,6 +33,7 @@
 #include "timefunc_sdl.h"
 #include <SDL3/SDL.h>
 #include "input_manager.h"
+#include "c7010.h"
 
 static Byte x_latch, y_latch;
 static int romlatch = 0;
@@ -114,6 +115,9 @@ void run(void)
         }
 
         cpu_exec();
+
+        // 0030S: frame-level diagnostics; CPU execution is interleaved in cpu_exec.
+        C7010_RunDiagnosticStep();
     }
 
     close_audio();
@@ -188,6 +192,7 @@ void handle_evbl(void)
 
     last_line = 0;
     master_clk -= evblclk;
+    audio_generate_frame(fps, evblclk / 22);
     frame++;
     if (!app_data.debug) {
         finish_display();
@@ -358,6 +363,7 @@ void write_p1(Byte d)
     }
 
     p1 = d;
+    C7010_WriteP1(d);
 
     if (app_data.bank == 2) {
         int selected_bank;
@@ -380,6 +386,14 @@ void write_p1(Byte d)
 Byte read_P2(void)
 {
     int i, si, so, km;
+    // 0030P: arm only on a real ENTER press observed while row 5 is
+    // selected.  Re-arm after physical key release so a held key cannot
+    // generate hundreds of trace windows.
+    static bool c7010EnterArmed = true;
+    const bool c7010EnterDown =
+        O2EMKeyboard_IsKeyPressed(KEY_ENTER) || key2[KEY_ENTER];
+    if (!c7010EnterDown)
+        c7010EnterArmed = true;
 
     if (!(p1 & 0x04)) {
         si = (p2 & 7);
@@ -402,6 +416,13 @@ Byte read_P2(void)
         if (so != 0xff) {
             p2 = p2 & 0x0F;
             p2 = p2 | (so << 5);
+
+            if (O2EM_C7010_TRACE && C7010_IsEnabled() && si == 5 && c7010EnterDown && c7010EnterArmed) {
+                c7010EnterArmed = false;
+                printf("O2EM-NG: C7010 0030P keyboard matrix ENTER row=%d bit=7 P1=%02X P2=%02X\n",
+                    si, (unsigned int)p1, (unsigned int)p2);
+                CPU_ArmC7010EnterTrace(p2);
+            }
         }
         else {
             p2 = p2 | 0xF0;
@@ -416,6 +437,15 @@ Byte read_P2(void)
 
 Byte ext_read(ADDRESS adr)
 {
+    // Patch 0030K: observe the real 8048 MOVX read before C7010/VDC routing.
+    // 0xFF is the pre-routing/open-bus value; returned data is still logged by
+    // the C7010 latch trace when the module actually claims the access.
+    C7010_Trace8048ExternalAccess(false, adr, 0xFF);
+
+    Byte c7010Value = 0xFF;
+    if (C7010_ExternalRead(adr, c7010Value))
+        return c7010Value;
+
     Byte d;
     Byte si;
     Byte m;
@@ -476,6 +506,27 @@ Byte ext_read(ADDRESS adr)
                 return y_latch;
             }
         default:
+            // O2EM 1.20 / Videopac+ VDC compatibility.
+            // Some VDC addresses are write-only/unused and do not read back
+            // the value stored in our software mirror.
+            if (adr == 0xA3 || adr == 0xA6 ||
+                (adr >= 0xA7 && adr <= 0xA9) ||
+                (adr >= 0xAB && adr <= 0xBF) ||
+                (adr >= 0xC9 && adr <= 0xCF) ||
+                (adr >= 0xD9 && adr <= 0xDF) ||
+                (adr >= 0xEA && adr <= 0xFF))
+                return static_cast<Byte>(adr);
+
+            // When foreground objects are enabled (A0 bit 5), reads from
+            // object RAM 00-7F return hardware-like values rather than the
+            // software mirror.
+            if ((VDCwrite[0xA0] & 0x20) && adr < 0x80)
+                return (adr & 0x02) ? 0x00 : 0xFF;
+
+            // With the grid enabled, reads in the grid register area return 0.
+            if ((VDCwrite[0xA0] & 0x08) && adr >= 0xC0 && adr <= 0xE9)
+                return 0x00;
+
             return VDCwrite[adr];
         }
     } else if (!(p1 & 0x10)) {
@@ -541,10 +592,31 @@ Byte in_bus(void)
 
 void ext_write(Byte dat, ADDRESS adr)
 {
+    // Patch 0030K: observe the real 8048 MOVX write before C7010/VDC routing.
+    C7010_Trace8048ExternalAccess(true, adr, dat);
+
+    // 0030R: cartridge and VDC may both observe the same write.
+    const bool c7010Handled = C7010_ExternalWrite(adr, dat);
+    if (c7010Handled && (p1 & 0x08))
+        return;
+
     int i;
 
     if (!(p1 & 0x08)) {
         /* Handle VDC Write */
+
+        // Original O2EM/VDC behaviour:
+        // while foreground-object display is enabled (A0 bit 5), writes to
+        // object RAM 00-7F are ignored by the hardware.
+        C7010_TraceVdcWrite(adr, dat, (VDCwrite[0xA0] & 0x20) && adr <= 0x7F, master_clk);
+        if ((VDCwrite[0xA0] & 0x20) && adr <= 0x7F)
+            return;
+
+        // Writing grid registers C0-EF while the grid is enabled does not
+        // store the CPU byte reliably. O2EM models the observed bus garbage
+        // with the current CPU clock value.
+        if ((VDCwrite[0xA0] & 0x08) && adr >= 0xC0 && adr <= 0xEF)
+            dat = static_cast<Byte>(clk & 0xFF);
         if (adr == 0xA0) {
             if ((VDCwrite[0xA0] & 0x02) && !(dat & 0x02)) {
                 y_latch = master_clk / 22;
@@ -561,8 +633,13 @@ void ext_write(Byte dat, ADDRESS adr)
             for (i = l; i < MAXLINES; i++)
                 ColorVector[i] = (dat & 0x7f) | (p1 & 0x80);
         } else if (adr == 0xAA) {
+            audio_vdc_control_write(VDCwrite[0xAA], dat, master_clk / 22);
             for (i = master_clk / 22; i < MAXLINES; i++)
                 AudioVector[i] = dat;
+        } else if (adr >= 0xA7 && adr <= 0xA9) {
+            // Feed writes into the persistent 24-bit Intel 8244 sound
+            // register. VDCwrite still retains the CPU-visible bytes.
+            audio_vdc_write(adr, dat);
         } else if ((adr >= 0x40) && (adr <= 0x7f) && ((adr & 2) == 0)) {
             /* simulate quad: all 4 sub quad position registers
              * are mapped to the same internal register */
@@ -580,6 +657,7 @@ void ext_write(Byte dat, ADDRESS adr)
 
         if (adr < 0x80) {
             /* Handle ext RAM Write */
+            C7010_TraceBoardWrite(adr, extRAM[adr], dat);
             extRAM[adr] = dat;
 
         } else {

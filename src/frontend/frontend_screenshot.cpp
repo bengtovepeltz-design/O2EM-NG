@@ -66,7 +66,9 @@ namespace
     std::string GameKey(const GameInfo* game)
     {
         if (!game) return {};
-        return std::to_string(game->videopacNumber) + "|" + game->title;
+        // Filename/Catalog ID are stable identities for Plus, prototype and
+        // alphanumeric entries. videopacNumber+title can collide or stay at 0.
+        return game->filename + "|" + game->catalogId + "|" + game->title;
     }
 
     void SynchronizeGame(const GameInfo* game)

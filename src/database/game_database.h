@@ -44,7 +44,9 @@ public:
     // Saves user-owned metadata fields. These columns are deliberately kept
     // separate from imported data so Gamelist refreshes never overwrite edits.
     bool SaveUserMetadata(const GameInfo& game) const;
+    bool RenameRomFilename(const std::string& oldFilename, const std::string& newFilename) const;
     bool ClearUserMetadata(const std::string& romFilename) const;
+    bool DeleteGameRecord(const std::string& romFilename) const;
 
     bool InitializeProjectPages() const;
     std::vector<ProjectPage> LoadProjectPages() const;

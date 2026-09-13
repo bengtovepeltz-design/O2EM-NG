@@ -1,5 +1,81 @@
 # O2EM-NG Project Notes
 
+## Current status - 13 September 2026
+
+| Item | Status |
+| --- | --- |
+| Next version | v0.31.0-beta |
+| Release name | Beta 4 |
+| Release state | In preparation; not yet published |
+| Latest published version | v0.30.0-beta (Beta 3), 26 July 2026 |
+| Development baseline | 0030AD, retaining the user-tested 0030AC fixes |
+| Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
+| Author | Bengt-Ove Peltz |
+
+Beta 4 continues the Game Library, Import Center, BIOS management, SQLite database,
+media, favorites and controller features introduced in earlier releases. Its main
+new milestone is playable C7010 Chess in local testing, with stable board rendering.
+
+## C7010 Chess
+
+- Dedicated NSC800/Z80-compatible execution module with 8 KiB firmware and 2 KiB RAM.
+- Communication latches and interleaved execution connect the module to the 8048.
+- Cartridge/VDC write routing and pending timer interrupt handling were corrected.
+- A relative-jump error caused incorrect display coordinates: E2-E4 could visually
+  empty G2. The JR displacement is now fetched before calculating the target PC.
+- The C7010 raster conversion and renderer-only character snapshot prevent the
+  lower-board clipping and flicker seen in earlier test builds.
+- Detailed C7010 diagnostics are off by default in Debug and Release. Firmware
+  errors and unsupported-instruction reports remain available. Developers can
+  rebuild with `O2EM_C7010_TRACE=1` for detailed diagnostics.
+
+The graphics snapshot is a compatibility implementation, not proof of exact
+hardware timing. NSC800 execution still uses an approximate instruction budget.
+
+## Verified so far
+
+- The developer played several moves with computer replies; pieces moved and
+  remained visible. The 0030AC test was reported stable with no remaining flicker.
+- Appearance was compared with a photograph of real C7010 hardware.
+- Real firmware coordinate conversion passed for all 64 squares in both board
+  orientations (128 cases), including an optimized test build.
+- The 0030AD Release x64 build completed without build errors or warnings.
+- Earlier fault reproduction covered both G7000 and G7400. Final Beta 4 gameplay
+  should still be checked on both console configurations.
+
+## Remaining beta validation
+
+- Play a short game with the final Release executable before packaging.
+- Test the packaged build outside the development directory and on a clean PC.
+- Test longer games, captures, check/checkmate, castling, en passant and promotion.
+- Test white/black selection, levels, reset, and return to the library.
+- Recheck ordinary games after the shared 8048 pending-interrupt correction.
+- Compare computer thinking time separately; speed tuning is deferred.
+- One 0030AB launch hung and Windows recorded AppHangB1. A subsequent rebuilt test
+  ran successfully; the cause of that isolated hang has not been established.
+
+This is a community-testing milestone, not a claim of complete chess or hardware
+compatibility. Use the [Beta 4 quick start guide](Beta_4_v0.31.0_Quick%20start%20guide.md)
+for setup and useful bug-report details.
+
+## Release preparation
+
+Documentation now targets v0.31.0-beta. Release packaging now creates a versioned folder and ZIP, including the game catalogue
+and runtime DLLs. The installer reads the same package/version, and the new icon is
+integrated. GitHub tag/release creation, publication and clean-PC testing remain.
+Do not publish the development folder: BIOS, C7010 firmware, commercial ROMs,
+manuals and copyrighted artwork are not part of the beta distribution.
+
+## Historical project notes
+
+The material below is preserved from earlier development. References to "current",
+planned work, old BIOS filenames or completed release tests in this archive apply
+to those earlier versions, not to Beta 4. The status above takes precedence.
+
+---
+
+# Archived project notes through Beta 3
+
 ## Project Information
 
 | Item | Value |

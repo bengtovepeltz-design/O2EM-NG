@@ -14,6 +14,7 @@
 #include "keyboard.h"
 #include <cstdint>
 #include "audio.h"
+#include "c7010.h"
 
 static long FileSize(FILE* stream)
 {
@@ -44,16 +45,35 @@ static bool LoadBios(const std::string& biosPath, unsigned long& biosCrc)
 
     biosCrc = crc32_buf(rom_table[0], 1024);
 
-    if (biosCrc == 0x8016A315)
+    switch (biosCrc)
     {
+    case 0x8016A315:
         app_data.vpp = 0;
         app_data.bios = ROM_O2;
-    }
-    else
-    {
+        std::printf("O2EM-NG: BIOS type: Odyssey2 / Videopac G7000\n");
+        break;
+    case 0xE20A9F41:
+        app_data.vpp = 1;
+        app_data.bios = ROM_G7400;
+        std::printf("O2EM-NG: BIOS type: Videopac+ G7400 (VPP enabled)\n");
+        break;
+    case 0xA318E8D6:
+        app_data.vpp = 0;
+        app_data.bios = ROM_C52;
+        std::printf("O2EM-NG: BIOS type: French Videopac G7000 / C52\n");
+        break;
+    case 0x11647CA5:
+        app_data.vpp = 1;
+        app_data.bios = ROM_JOPAC;
+        std::printf("O2EM-NG: BIOS type: Jopac Videopac+ (VPP enabled)\n");
+        break;
+    default:
         app_data.vpp = 0;
         app_data.bios = ROM_UNKNOWN;
+        std::printf("O2EM-NG: BIOS type: unknown (VPP disabled)\n");
+        break;
     }
+    std::fflush(stdout);
 
     return true;
 }
@@ -66,6 +86,10 @@ static bool LoadCart(const std::string& file)
         return false;
 
     app_data.crc = crc32_file(file.c_str());
+
+    // C7010 is a normal 2 KiB Videopac cartridge plus an external
+    // NSC800/Z80-compatible chess module.
+    C7010_ConfigureForCartridge(app_data.crc);
 
     long size = FileSize(fn);
 
@@ -236,8 +260,16 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, co
     app_data.default_highscore = 0;
     app_data.breakpoint = 65535;
 
-    std::string baseFolder = SDL_GetBasePath();
-    std::string biosPath = baseFolder + "BIOS\\" + biosFile;
+    const char* sdlBasePath = SDL_GetBasePath();
+    const std::filesystem::path baseFolder = sdlBasePath ? sdlBasePath : "";
+    const std::filesystem::path biosFsPath = baseFolder / "BIOS" / biosFile;
+    const std::string biosPath = biosFsPath.string();
+
+    std::printf("O2EM-NG: BIOS requested: %s\n", biosFile.c_str());
+    std::printf("O2EM-NG: BIOS resolved path: %s\n", biosPath.c_str());
+    std::printf("O2EM-NG: BIOS file exists: %s\n",
+        std::filesystem::is_regular_file(biosFsPath) ? "YES" : "NO");
+    std::fflush(stdout);
 
     unsigned long biosCrc = 0;
 
@@ -252,9 +284,12 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, co
         return false;
     }
 
-    printf("O2EM-NG: BIOS loaded: %s  CRC=%08lX\n",
+    printf("O2EM-NG: BIOS loaded OK: %s  CRC=%08lX  core_type=%d  vpp=%d\n",
         biosPath.c_str(),
-        biosCrc);
+        biosCrc,
+        app_data.bios,
+        app_data.vpp);
+    std::fflush(stdout);
 
     if (!LoadCart(romPath))
     {
@@ -265,6 +300,14 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, co
             nullptr);
 
         return false;
+    }
+
+    if (C7010_IsEnabled())
+    {
+        namespace fs = std::filesystem;
+        const fs::path firmwarePath = fs::path("BIOS") / "C7010" / "c7010_z80.bin";
+        C7010_LoadFirmware(firmwarePath.string().c_str());
+        C7010_Reset();
     }
 
     key_done = 0;

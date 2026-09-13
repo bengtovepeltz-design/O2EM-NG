@@ -62,6 +62,71 @@ namespace
         return lines;
     }
 
+
+    std::string DisplayCatalogId(const GameInfo* game)
+    {
+        if (!game) return {};
+        if (!game->catalogId.empty()) return game->catalogId;
+        if (game->videopacNumber > 0)
+        {
+            char buffer[16]{};
+            std::snprintf(buffer, sizeof(buffer), "%02d", game->videopacNumber);
+            return buffer;
+        }
+        return {};
+    }
+
+
+    std::string TrimCatalogId(std::string value)
+    {
+        const auto first = std::find_if_not(value.begin(), value.end(),
+            [](unsigned char c) { return std::isspace(c) != 0; });
+        const auto last = std::find_if_not(value.rbegin(), value.rend(),
+            [](unsigned char c) { return std::isspace(c) != 0; }).base();
+        if (first >= last) return {};
+        return std::string(first, last);
+    }
+
+    bool IsSafeCatalogId(const std::string& id)
+    {
+        if (id.empty()) return false;
+        for (unsigned char c : id)
+        {
+            if (!(std::isalnum(c) || c == '+' || c == '-' || c == '_'))
+                return false;
+        }
+        return true;
+    }
+
+    std::string CanonicalRomFilenameForCatalogId(const std::string& rawId)
+    {
+        const std::string id = TrimCatalogId(rawId);
+        if (!IsSafeCatalogId(id)) return {};
+
+        std::size_t digitCount = 0;
+        while (digitCount < id.size() &&
+            std::isdigit(static_cast<unsigned char>(id[digitCount])))
+            ++digitCount;
+
+        if (digitCount > 0)
+        {
+            const std::string suffix = id.substr(digitCount);
+            if (suffix.empty() || suffix == "+")
+            {
+                const int number = std::stoi(id.substr(0, digitCount));
+                if (number >= 1 && number <= 99)
+                {
+                    char buffer[32]{};
+                    std::snprintf(buffer, sizeof(buffer), "vp_%02d%s.bin",
+                        number, suffix.c_str());
+                    return buffer;
+                }
+            }
+        }
+
+        return "vp_" + id + ".bin";
+    }
+
     void DrawSunkenFrame(SDL_Renderer* renderer, const SDL_FRect& rect)
     {
         Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
@@ -127,36 +192,19 @@ bool FrontendApp::Initialize()
         std::printf("O2EM-NG: windowed startup enabled from settings.\n");
 
     const std::vector<RomEntry> allRoms = LoadRoms(baseFolder + "ROMS");
-    const std::vector<RomEntry> officialRoms =
-        BuildLibraryView(allRoms, LibraryView::Official);
-    library_.SetGames(officialRoms);
+    // Patch 0024: the library is universal. Official catalogue entries are
+    // added by the database below, but every installed .bin/.rom is visible.
+    library_.SetGames(allRoms);
 
     // Resolve local assets and optional per-game metadata first. The database
     // is loaded last so user-owned edits always take precedence.
     assetManager_.SetBasePath(baseFolder);
     importManager_.SetBasePath(baseFolder);
     RefreshInstalledBiosFiles();
-    assetManager_.Populate(library_);
 
-    std::size_t manualCount = 0;
-    for (const GameInfo& game : library_.Games())
-    {
-        if (!game.manual.empty())
-            ++manualCount;
-
-        std::printf(
-            "O2EM-NG: media ID %02d | ROM: %s | Manual: %s\n",
-            game.videopacNumber,
-            game.filename.c_str(),
-            game.manual.empty()
-                ? "NOT FOUND"
-                : game.manual.filename().string().c_str());
-    }
-    std::printf(
-        "O2EM-NG: resolved manuals for %zu of %zu games from Manuals by ID.\n",
-        manualCount,
-        library_.Count());
-
+    // Patch 0030C Phase 4B: metadata/database identity must be loaded before
+    // media is resolved. User Catalog IDs such as 54+, C7010 or Tutankham+
+    // are required to find imported covers/manuals/screenshots reliably.
     metadataEngine_.SetBasePath(baseFolder);
     const std::size_t metadataCount = metadataEngine_.Populate(library_);
     std::printf(
@@ -198,6 +246,29 @@ bool FrontendApp::Initialize()
     std::printf(
         "O2EM-NG: catalog fallbacks completed for %zu of %zu games.\n",
         fallbackCount, library_.Count());
+
+    // Resolve media last, after the database has restored user Catalog IDs.
+    // This prevents media from disappearing on startup and then suddenly
+    // reappearing after importing another screenshot/cover.
+    assetManager_.Populate(library_);
+
+    std::size_t manualCount = 0;
+    for (const GameInfo& game : library_.Games())
+    {
+        if (!game.manual.empty())
+            ++manualCount;
+
+        std::printf(
+            "O2EM-NG: media key %s | ROM: %s | Cover: %s | Manual: %s | Screenshots: %zu\n",
+            game.catalogId.empty() ? "(fallback)" : game.catalogId.c_str(),
+            game.filename.c_str(),
+            game.boxArt.empty() ? "NOT FOUND" : game.boxArt.filename().string().c_str(),
+            game.manual.empty() ? "NOT FOUND" : game.manual.filename().string().c_str(),
+            game.screenshots.size());
+    }
+    std::printf(
+        "O2EM-NG: resolved manuals for %zu of %zu games after database identity load.\n",
+        manualCount, library_.Count());
 
     collections_.Attach(&library_);
 
@@ -437,6 +508,8 @@ void FrontendApp::ActivateSelection()
     // FrontendLayout_DrawHeader() will reload it on the first frontend redraw.
     FrontendLayout_Shutdown();
 
+    std::printf("O2EM-NG: Launch request using BIOS: %s\n", settings_.bios_file.c_str());
+    std::fflush(stdout);
     LaunchRom(window_, *game, settings_.region_mode, settings_.bios_file, settings_.scanlines);
 
     const std::time_t launchedAt = std::time(nullptr);
@@ -533,6 +606,9 @@ void FrontendApp::ActivateSettingsSelection()
                 settings_.bios_file = installedBiosFiles_.front();
             else
                 settings_.bios_file = *current;
+
+            std::printf("O2EM-NG: BIOS selected in frontend: %s\n", settings_.bios_file.c_str());
+            std::fflush(stdout);
         }
         break;
 
@@ -643,6 +719,13 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
         if (event.key == SDLK_RETURN) { EditCurrentMetadataField(); return; }
     }
 
+    if (event.key == SDLK_ESCAPE && openDropdown_ != -1)
+    {
+        openDropdown_ = -1;
+        redraw_ = true;
+        return;
+    }
+
     switch (event.key)
     {
     case SDLK_ESCAPE: GoBack(); break;
@@ -749,7 +832,13 @@ void FrontendApp::HandleGamepadButtonDown(
         break;
 
     case SDL_GAMEPAD_BUTTON_EAST:
-        GoBack();
+        if (openDropdown_ != -1)
+        {
+            openDropdown_ = -1;
+            redraw_ = true;
+        }
+        else
+            GoBack();
         break;
 
     // Xbox Y / north is intentionally not handled in the frontend.
@@ -1001,41 +1090,18 @@ bool FrontendApp::TrySelectLibraryRowAt(float x, float y, bool activate)
 
 bool FrontendApp::TrySelectSettingsRowAt(float x, float y, bool activate)
 {
-    if (activeTab_ != FrontendTab::Settings)
-        return false;
-
-    int windowWidth = 0;
-    int windowHeight = 0;
-    SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
-    const FrontendPanelLayout panels = FrontendPanels_Calculate(windowWidth, windowHeight);
-    const SDL_FRect& content = panels.rightContent;
-
-    const float innerX = content.x + 18.0f;
-    const float innerY = content.y + 18.0f;
-    const float innerW = content.w - 36.0f;
-    const float rowY[SettingsItemCount] = {
-        innerY + 75.0f,
-        innerY + 135.0f,
-        innerY + 195.0f,
-        innerY + 255.0f
-    };
-
-    if (x < innerX || x >= innerX + innerW)
-        return false;
-
-    for (int index = 0; index < SettingsItemCount; ++index)
-    {
-        // Match the complete highlighted row, not only the rendered text.
-        if (y >= rowY[index] - 12.0f && y < rowY[index] + 30.0f)
-        {
-            settingsSelected_ = index;
-            redraw_ = true;
-            if (activate)
-                ActivateSettingsSelection();
-            return true;
-        }
-    }
-
+    if (activeTab_ != FrontendTab::Settings) return false;
+    int ww=0, wh=0; SDL_GetWindowSize(window_,&ww,&wh); const auto panels=FrontendPanels_Calculate(ww,wh);
+    const float innerX=panels.rightContent.x+18.0f, innerY=panels.rightContent.y+18.0f;
+    const float controlX=innerX+34.0f, comboW=(std::min)(430.0f,panels.rightContent.w-126.0f);
+    auto inside=[x,y](const SDL_FRect&r){return x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h;};
+    if(openDropdown_==1){ SDL_FRect p{controlX,innerY+179.0f,comboW,90.0f}; if(inside(p)){int i=(int)((y-p.y)/30.0f); settings_.region_mode=i==0?RegionMode::Auto:(i==1?RegionMode::PAL:RegionMode::NTSC); SaveSettings(settingsPath_,settings_); openDropdown_=-1; redraw_=true; return true;} openDropdown_=-1; redraw_=true; return true; }
+    else if(openDropdown_==3){ RefreshInstalledBiosFiles(); SDL_FRect p{controlX,innerY+308.0f,comboW,30.0f*(float)installedBiosFiles_.size()}; if(inside(p)&&!installedBiosFiles_.empty()){int i=(int)((y-p.y)/30.0f); if(i>=0&&i<(int)installedBiosFiles_.size()) settings_.bios_file=installedBiosFiles_[i]; SaveSettings(settingsPath_,settings_); openDropdown_=-1; redraw_=true; return true;} openDropdown_=-1; redraw_=true; return true; }
+    SDL_FRect full{controlX,innerY+72.0f,420.0f,28.0f}; SDL_FRect region{controlX,innerY+126.0f,comboW,58.0f}; SDL_FRect scan{controlX,innerY+201.0f,250.0f,30.0f}; SDL_FRect bios{controlX,innerY+255.0f,comboW,58.0f};
+    if(inside(full)){settingsSelected_=0; ActivateSettingsSelection(); return true;}
+    if(inside(region)){settingsSelected_=1; openDropdown_=1; redraw_=true; return true;}
+    if(inside(scan)){settingsSelected_=2; ActivateSettingsSelection(); return true;}
+    if(inside(bios)){settingsSelected_=3; openDropdown_=3; redraw_=true; return true;}
     return false;
 }
 
@@ -1129,9 +1195,8 @@ void FrontendApp::DrawLibraryList(const SDL_FRect& content)
         else Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
 
         const GameInfo* game = collections_.Get(static_cast<std::size_t>(index));
-        const int number = game && game->videopacNumber > 0 ? game->videopacNumber : index + 1;
-        char prefix[16]{};
-        std::snprintf(prefix, sizeof(prefix), "%02d  ", number);
+        const std::string catalogId = DisplayCatalogId(game);
+        std::string prefix = catalogId.empty() ? "    " : catalogId + "  ";
         std::string line;
         if (activeTab_ == FrontendTab::Extras)
         {
@@ -1228,9 +1293,10 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         fitText(game->title, infoInner.w - 30.0f, 1.30f));
     y += 36.0f;
 
-    const std::string number = game->videopacNumber > 0
-        ? "Videopac No.: " + std::to_string(game->videopacNumber)
-        : "Videopac No.: -";
+    const std::string catalogId = DisplayCatalogId(game);
+    const std::string number = catalogId.empty()
+        ? "Videopac No.: -"
+        : "Videopac No.: " + catalogId;
     const std::string rows[] = {
         number,
         "Publisher: " + valueOrDash(game->publisher),
@@ -1301,6 +1367,42 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     DrawText(renderer_, checkBox.x + 25.0f, checkY - 1.0f, 0.86f, "Scanlines");
 
+    // Drop-down lists are drawn last so they sit above the normal Quick Settings controls.
+    if (openDropdown_ == 3)
+    {
+        RefreshInstalledBiosFiles();
+        const float itemH = 25.0f;
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 51.0f, quickInner.w - 20.0f,
+            itemH * static_cast<float>(installedBiosFiles_.size())};
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
+        DrawSunkenFrame(renderer_, popup);
+        for (int i = 0; i < static_cast<int>(installedBiosFiles_.size()); ++i)
+        {
+            const bool selected = installedBiosFiles_[i] == settings_.bios_file;
+            SDL_FRect row{popup.x + 2.0f, popup.y + 2.0f + i * itemH, popup.w - 4.0f, itemH};
+            Win95Theme::SetRenderColor(renderer_, selected ? Win95Theme::SelectedItem : Win95Theme::Window);
+            SDL_RenderFillRect(renderer_, &row);
+            Win95Theme::SetRenderColor(renderer_, selected ? Win95Theme::SelectedItemText : Win95Theme::WindowText);
+            DrawText(renderer_, popup.x + 6.0f, popup.y + 3.0f + i * itemH, 0.82f, installedBiosFiles_[i]);
+        }
+    }
+    else if (openDropdown_ == 1)
+    {
+        const char* items[] = {"AUTO", "PAL", "NTSC"}; const float itemH = 25.0f;
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 104.0f, quickInner.w - 20.0f, itemH * 3.0f};
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
+        DrawSunkenFrame(renderer_, popup);
+        const int selectedRegion = settings_.region_mode == RegionMode::Auto ? 0 : (settings_.region_mode == RegionMode::PAL ? 1 : 2);
+        for (int i = 0; i < 3; ++i)
+        {
+            SDL_FRect row{popup.x + 2.0f, popup.y + 2.0f + i * itemH, popup.w - 4.0f, itemH};
+            Win95Theme::SetRenderColor(renderer_, i == selectedRegion ? Win95Theme::SelectedItem : Win95Theme::Window);
+            SDL_RenderFillRect(renderer_, &row);
+            Win95Theme::SetRenderColor(renderer_, i == selectedRegion ? Win95Theme::SelectedItemText : Win95Theme::WindowText);
+            DrawText(renderer_, popup.x + 6.0f, popup.y + 3.0f + i * itemH, 0.82f, items[i]);
+        }
+    }
+
     // Favorites are read from the live library state and sorted alphabetically.
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     DrawText(renderer_, favoritesFrame.x + 10.0f, favoritesFrame.y + 7.0f, 1.05f, "FAVORITES");
@@ -1333,9 +1435,8 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         {
             Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
         }
-        std::string favLine = favorite.videopacNumber > 0
-            ? (favorite.videopacNumber < 10 ? "0" : "") + std::to_string(favorite.videopacNumber)
-            : "--";
+        const std::string favoriteCatalogId = DisplayCatalogId(&favorite);
+        std::string favLine = favoriteCatalogId.empty() ? "--" : favoriteCatalogId;
         favLine += "  " + favorite.title;
         DrawText(renderer_, favInner.x + 12.0f, favY, 0.84f,
             fitText(favLine, favInner.w - 24.0f, 0.84f));
@@ -1621,19 +1722,41 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
                y >= rect.y && y < rect.y + rect.h;
     };
 
-    if (contains(biosHit))
+    // If a Quick Settings dropdown is already open, resolve the selected item first.
+    if (openDropdown_ == 3)
     {
-        settingsSelected_ = 3;
-        ActivateSettingsSelection();
+        RefreshInstalledBiosFiles();
+        const float itemH = 25.0f;
+        const SDL_FRect popup{inner.x + 10.0f, inner.y + 51.0f,
+            inner.w - 20.0f, itemH * static_cast<float>(installedBiosFiles_.size())};
+        if (contains(popup) && !installedBiosFiles_.empty())
+        {
+            const int item = static_cast<int>((y - popup.y) / itemH);
+            if (item >= 0 && item < static_cast<int>(installedBiosFiles_.size()))
+                settings_.bios_file = installedBiosFiles_[item];
+            SaveSettings(settingsPath_, settings_); openDropdown_ = -1; redraw_ = true; return true;
+        }
+        openDropdown_ = -1;
+        redraw_ = true;
+        return true;
+    }
+    else if (openDropdown_ == 1)
+    {
+        const float itemH = 25.0f;
+        const SDL_FRect popup{inner.x + 10.0f, inner.y + 104.0f, inner.w - 20.0f, itemH * 3.0f};
+        if (contains(popup))
+        {
+            const int item = static_cast<int>((y - popup.y) / itemH);
+            settings_.region_mode = item == 0 ? RegionMode::Auto : (item == 1 ? RegionMode::PAL : RegionMode::NTSC);
+            SaveSettings(settingsPath_, settings_); openDropdown_ = -1; redraw_ = true; return true;
+        }
+        openDropdown_ = -1;
+        redraw_ = true;
         return true;
     }
 
-    if (contains(regionHit))
-    {
-        settingsSelected_ = 1;
-        ActivateSettingsSelection();
-        return true;
-    }
+    if (contains(biosHit)) { settingsSelected_ = 3; openDropdown_ = 3; redraw_ = true; return true; }
+    if (contains(regionHit)) { settingsSelected_ = 1; openDropdown_ = 1; redraw_ = true; return true; }
 
     if (contains(scanlinesHit))
     {
@@ -1746,20 +1869,21 @@ std::string* FrontendApp::CurrentMetadataField()
 {
     switch (metadataSelected_)
     {
-    case 0: return &metadataWorkingCopy_.title;
-    case 1: return &metadataWorkingCopy_.year;
-    case 2: return &metadataWorkingCopy_.publisher;
-    case 3: return &metadataWorkingCopy_.developer;
-    case 4: return &metadataWorkingCopy_.genre;
-    case 5: return &metadataWorkingCopy_.players;
-    case 6: return &metadataWorkingCopy_.controls;
-    case 7: return &metadataWorkingCopy_.voiceModule;
-    case 8: return &metadataWorkingCopy_.videopacPlus;
-    case 9: return &metadataWorkingCopy_.rating;
-    case 10: return &metadataWorkingCopy_.shortDescription;
-    case 11: return &metadataWorkingCopy_.description;
-    case 12: return &metadataWorkingCopy_.trivia;
-    case 13: return &metadataManualPath_;
+    case 0: return &metadataWorkingCopy_.catalogId;
+    case 1: return &metadataWorkingCopy_.title;
+    case 2: return &metadataWorkingCopy_.year;
+    case 3: return &metadataWorkingCopy_.publisher;
+    case 4: return &metadataWorkingCopy_.developer;
+    case 5: return &metadataWorkingCopy_.genre;
+    case 6: return &metadataWorkingCopy_.players;
+    case 7: return &metadataWorkingCopy_.controls;
+    case 8: return &metadataWorkingCopy_.voiceModule;
+    case 9: return &metadataWorkingCopy_.videopacPlus;
+    case 10: return &metadataWorkingCopy_.rating;
+    case 11: return &metadataWorkingCopy_.shortDescription;
+    case 12: return &metadataWorkingCopy_.description;
+    case 13: return &metadataWorkingCopy_.trivia;
+    case 14: return &metadataManualPath_;
     default: return nullptr;
     }
 }
@@ -1767,7 +1891,7 @@ std::string* FrontendApp::CurrentMetadataField()
 const char* FrontendApp::CurrentMetadataLabel() const
 {
     static const char* labels[MetadataFieldCount] = {
-        "Title", "Year", "Publisher", "Developer", "Genre", "Players",
+        "Catalog ID", "Title", "Year", "Publisher", "Developer", "Genre", "Players",
         "Controls", "Voice Module", "Videopac+", "Rating", "Short Description",
         "Game Description", "Trivia / History", "Manual Path"
     };
@@ -1801,6 +1925,9 @@ void FrontendApp::SaveMetadataEdit()
     if (!game) return;
     if (metadataTextInput_) SDL_StopTextInput(window_);
     metadataTextInput_ = false;
+
+    metadataWorkingCopy_.catalogId = TrimCatalogId(metadataWorkingCopy_.catalogId);
+
     if (!metadataManualPath_.empty())
     {
         std::filesystem::path path(metadataManualPath_);
@@ -1809,19 +1936,112 @@ void FrontendApp::SaveMetadataEdit()
     else
         metadataWorkingCopy_.manual.clear();
 
-    if (gameDatabase_.SaveUserMetadata(metadataWorkingCopy_))
+    const std::string oldFilename = game->filename;
+    const std::filesystem::path oldRomPath = game->romPath;
+    const std::string canonicalFilename =
+        CanonicalRomFilenameForCatalogId(metadataWorkingCopy_.catalogId);
+
+    if (!gameDatabase_.SaveUserMetadata(metadataWorkingCopy_))
     {
-        *game = metadataWorkingCopy_;
-        collections_.Rebuild();
-        metadataEditMode_ = false;
-        std::printf("O2EM-NG: metadata saved for %s.\n", game->filename.c_str());
+        std::printf("O2EM-NG: failed to save metadata for %s.\n", oldFilename.c_str());
+        redraw_ = true;
+        return;
     }
+
+    bool renamed = false;
+    std::filesystem::path newRomPath = oldRomPath;
+
+    if (!canonicalFilename.empty() &&
+        !oldRomPath.empty() &&
+        _stricmp(oldFilename.c_str(), canonicalFilename.c_str()) != 0)
+    {
+        newRomPath = oldRomPath.parent_path() / canonicalFilename;
+
+        std::error_code error;
+        const bool destinationExists = std::filesystem::exists(newRomPath, error) && !error;
+        if (destinationExists)
+        {
+            char message[1024]{};
+            std::snprintf(message, sizeof(message),
+                "The Catalog ID was saved, but the ROM was not renamed.\n\n"
+                "Destination already exists:\n%s\n\n"
+                "O2EM-NG will never overwrite an existing ROM.",
+                newRomPath.string().c_str());
+
+            HWND owner = static_cast<HWND>(SDL_GetPointerProperty(
+                SDL_GetWindowProperties(window_),
+                SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+            MessageBoxA(owner, message, "O2EM-NG - ROM rename conflict",
+                MB_OK | MB_ICONWARNING);
+            std::printf("O2EM-NG: ROM rename skipped; destination already exists: %s\n",
+                newRomPath.string().c_str());
+        }
+        else
+        {
+            error.clear();
+            std::filesystem::rename(oldRomPath, newRomPath, error);
+            if (!error)
+            {
+                if (gameDatabase_.RenameRomFilename(oldFilename, canonicalFilename))
+                {
+                    renamed = true;
+                    metadataWorkingCopy_.filename = canonicalFilename;
+                    metadataWorkingCopy_.romPath = newRomPath;
+                    metadataWorkingCopy_.rom.name = canonicalFilename;
+                    metadataWorkingCopy_.rom.path = newRomPath.string();
+                    metadataWorkingCopy_.rom.info = ClassifyRom(newRomPath);
+
+                    std::printf("O2EM-NG: ROM renamed: %s -> %s\n",
+                        oldFilename.c_str(), canonicalFilename.c_str());
+                }
+                else
+                {
+                    std::error_code rollbackError;
+                    std::filesystem::rename(newRomPath, oldRomPath, rollbackError);
+
+                    HWND owner = static_cast<HWND>(SDL_GetPointerProperty(
+                        SDL_GetWindowProperties(window_),
+                        SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+                    MessageBoxA(owner,
+                        "The Catalog ID was saved, but the ROM filename could not be "
+                        "updated in the database.\n\nThe ROM rename has been rolled back.",
+                        "O2EM-NG - ROM rename failed", MB_OK | MB_ICONWARNING);
+                    std::printf("O2EM-NG: database ROM-key rename failed; filesystem rename rolled back.\n");
+                }
+            }
+            else
+            {
+                char message[1024]{};
+                std::snprintf(message, sizeof(message),
+                    "The Catalog ID was saved, but Windows could not rename the ROM.\n\n"
+                    "%s\n\nError code: %d",
+                    oldRomPath.string().c_str(), error.value());
+
+                HWND owner = static_cast<HWND>(SDL_GetPointerProperty(
+                    SDL_GetWindowProperties(window_),
+                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+                MessageBoxA(owner, message, "O2EM-NG - ROM rename failed",
+                    MB_OK | MB_ICONWARNING);
+                std::printf("O2EM-NG: ROM rename failed (%d): %s\n",
+                    error.value(), oldRomPath.string().c_str());
+            }
+        }
+    }
+
+    *game = metadataWorkingCopy_;
+
+    if (renamed)
+        metadataWorkingCopy_ = *game;
+
+    collections_.Rebuild();
+    metadataEditMode_ = false;
+    std::printf("O2EM-NG: metadata saved for %s.\n", game->filename.c_str());
     redraw_ = true;
 }
 
 bool FrontendApp::IsLongMetadataField() const noexcept
 {
-    return metadataSelected_ >= 10 && metadataSelected_ <= 12;
+    return metadataSelected_ >= 11 && metadataSelected_ <= 13;
 }
 
 void FrontendApp::EditCurrentMetadataField()
@@ -1894,7 +2114,7 @@ bool FrontendApp::TryMetadataControlAt(float x, float y)
     {
         float ry=firstY+i*29.0f;
         if(x>=c.x+20 && x<c.x+c.w-20 && y>=ry-5 && y<ry+22)
-        { metadataSelected_=i; redraw_=true; if(i!=13) EditCurrentMetadataField(); return true; }
+        { metadataSelected_=i; redraw_=true; if(i!=14) EditCurrentMetadataField(); return true; }
     }
     if(y>=c.y+c.h-58 && y<c.y+c.h-24)
     {
@@ -1921,7 +2141,19 @@ void FrontendApp::RefreshInstalledBiosFiles(bool preserveSelection)
             std::transform(extension.begin(), extension.end(), extension.begin(),
                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             if (extension == ".bin" || extension == ".rom")
-                installedBiosFiles_.push_back(entry.path().filename().string());
+            {
+                std::string filename = entry.path().filename().string();
+                std::string lowerName = filename;
+                std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+                // C7010/C7420 NSC800 firmware is expansion-module firmware,
+                // not a selectable G7000/G7400/Jopac console BIOS.
+                if (lowerName.rfind("c7010_", 0) == 0 || lowerName.rfind("c7420_", 0) == 0)
+                    continue;
+
+                installedBiosFiles_.push_back(filename);
+            }
         }
     }
     std::stable_sort(installedBiosFiles_.begin(), installedBiosFiles_.end(),
@@ -1939,6 +2171,16 @@ void FrontendApp::RefreshInstalledBiosFiles(bool preserveSelection)
         installedBiosFiles_.end(), settings_.bios_file) != installedBiosFiles_.end();
     if (!preserveSelection || !currentExists)
         settings_.bios_file = installedBiosFiles_.empty() ? std::string() : installedBiosFiles_.front();
+
+    // Patch 0030A Settings fix: expansion-module firmware lives in BIOS
+    // subfolders and must not be mixed with the selectable console BIOS list.
+    // Detect it separately so Settings can report both C7010 and C7420.
+    error.clear();
+    c7010FirmwareInstalled_ = std::filesystem::is_regular_file(
+        folder / "C7010" / "c7010_z80.bin", error) && !error;
+    error.clear();
+    c7420FirmwareInstalled_ = std::filesystem::is_regular_file(
+        folder / "C7420" / "c7420_z80.bin", error) && !error;
 }
 
 bool FrontendApp::HasInstalledBios() const noexcept
@@ -1969,51 +2211,21 @@ void FrontendApp::RefreshSelectedGameAssets(GameInfo& game)
 void FrontendApp::RunImport(ImportAssetType type)
 {
     GameInfo* game = GetSelectedGame();
-    if (type != ImportAssetType::Bios && !game)
+    if (type != ImportAssetType::Bios && type != ImportAssetType::Rom && !game)
     {
         importStatus_ = "Select a game before importing this file.";
         redraw_ = true;
         return;
     }
 
-    // Patch 0022d revised: IMPORT always means import a ROM for the selected
-    // catalogue title. If a ROM is already present, confirm before opening
-    // the file dialogs so an installed game cannot be overwritten by mistake.
-    if (type == ImportAssetType::Rom && game && !game->romPath.empty())
-    {
-        // SDL_Window* cannot be passed to the Win32 MessageBoxA(HWND, ...).
-        // Use SDL3's native message-box API so the parent window type is correct
-        // and the confirmation remains portable.
-        const SDL_MessageBoxButtonData buttons[] =
-        {
-            { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" },
-            { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" }
-        };
-
-        const SDL_MessageBoxData messageBox =
-        {
-            SDL_MESSAGEBOX_WARNING,
-            window_,
-            "O2EM-NG - Confirm ROM import",
-            "A ROM is already installed for this game.\n\n"
-            "Do you want to import another ROM and overwrite the installed file?",
-            static_cast<int>(std::size(buttons)),
-            buttons,
-            nullptr
-        };
-
-        int selectedButton = 0;
-        if (!SDL_ShowMessageBox(&messageBox, &selectedButton) || selectedButton != 1)
-        {
-            importStatus_ = "ROM import cancelled.";
-            redraw_ = true;
-            return;
-        }
-    }
+    // Patch 0024: ROM import is independent of the selected catalogue row.
+    // The source filename is preserved and unknown ROMs become library items.
 
     const ImportResult result = (type == ImportAssetType::Bios)
         ? importManager_.ImportBios()
-        : importManager_.ImportForGame(type, *game);
+        : (type == ImportAssetType::Rom
+            ? importManager_.ImportRom()
+            : importManager_.ImportForGame(type, *game));
     importStatus_ = result.message;
     if (result.success)
     {
@@ -2023,15 +2235,27 @@ void FrontendApp::RunImport(ImportAssetType type)
             settings_.bios_file = result.destination.filename().string();
             SaveSettings(settingsPath_, settings_);
         }
-        if (type == ImportAssetType::Rom && game)
+        if (type == ImportAssetType::Rom)
         {
-            game->romPath = result.destination;
-            // Keep the catalogue filename as the stable database key even if
-            // the user changes the destination name in the save dialog.
-            game->rom.path = result.destination.string();
+            const std::vector<RomEntry> installedRoms =
+                LoadRoms((importManager_.BasePath() / "ROMS").string());
+            library_.SetGames(installedRoms);
+            metadataEngine_.Populate(library_);
+            gameDatabase_.InitializeAndPopulate(library_);
+            for (GameInfo& importedGame : library_.Games())
+                ApplyCatalogFallbacks(importedGame);
+            // Phase 4B: resolve assets only after Catalog IDs/user metadata
+            // have been restored from the database.
+            assetManager_.Populate(library_);
+            FrontendBoxArt_Shutdown();
+            ManualPreview_Shutdown();
+            FrontendScreenshot_Invalidate();
+            collections_.Attach(&library_);
         }
-        if (game)
+        else if (game)
+        {
             RefreshSelectedGameAssets(*game);
+        }
         std::printf("O2EM-NG: %s\n", result.message.c_str());
     }
     redraw_ = true;
@@ -2068,12 +2292,54 @@ void FrontendApp::RunDelete(ImportAssetType type)
         {
             if (type == ImportAssetType::Rom)
             {
-                game->romPath.clear();
-                // Keep filename: it identifies the catalogue/database record and
-                // allows the ROM to be imported again after deletion.
-                game->rom.path.clear();
+                // Safe Delete: deleting the ROM never silently deletes the
+                // user's database metadata. The ROM has already been moved to
+                // the Recycle Bin; now offer a separate, explicit database
+                // cleanup choice. "No" is the safe/default action.
+                const std::string deletedRomFilename = game->filename;
+                const std::wstring dataQuestion =
+                    L"The ROM was moved to the Recycle Bin.\n\n"
+                    L"Also delete this game's stored Game Data from the O2EM-NG database?\n\n"
+                    L"Choose No to keep metadata for later re-import.";
+                const int dataChoice = MessageBoxW(nullptr, dataQuestion.c_str(),
+                    L"O2EM-NG - Safe Delete",
+                    MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2);
+
+                if (dataChoice == IDYES)
+                {
+                    if (gameDatabase_.DeleteGameRecord(deletedRomFilename))
+                        importStatus_ = "ROM moved to Recycle Bin; stored Game Data deleted.";
+                    else
+                        importStatus_ = "ROM moved to Recycle Bin, but Game Data could not be deleted.";
+                }
+                else
+                {
+                    importStatus_ = "ROM moved to Recycle Bin; stored Game Data kept.";
+                }
+
+                // Rebuild the catalogue immediately after ROM deletion.
+                // Official catalogue rows remain as uninstalled entries; an
+                // unknown ROM disappears from the visible library, while its
+                // database row remains intact unless explicitly deleted above.
+                const std::vector<RomEntry> installedRoms =
+                    LoadRoms((importManager_.BasePath() / "ROMS").string());
+                library_.SetGames(installedRoms);
+                metadataEngine_.Populate(library_);
+                gameDatabase_.InitializeAndPopulate(library_);
+                for (GameInfo& remainingGame : library_.Games())
+                    ApplyCatalogFallbacks(remainingGame);
+                // Phase 4B: database/user identity first, media resolution last.
+                assetManager_.Populate(library_);
+                collections_.Attach(&library_);
+
+                FrontendBoxArt_Shutdown();
+                ManualPreview_Shutdown();
+                FrontendScreenshot_Invalidate();
             }
-            RefreshSelectedGameAssets(*game);
+            else
+            {
+                RefreshSelectedGameAssets(*game);
+            }
         }
         std::printf("O2EM-NG: %s\n", result.message.c_str());
     }
@@ -2301,11 +2567,11 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
         1.6f,
         metadataEditMode_ ? "EDIT GAME DATA" : "GAME DATA");
 
-    const std::string idText = source->videopacNumber > 0
-        ? (source->videopacNumber < 10
-            ? "0" + std::to_string(source->videopacNumber)
-            : std::to_string(source->videopacNumber))
-        : "-";
+    const std::string idText = !source->catalogId.empty()
+        ? source->catalogId
+        : (source->videopacNumber > 0
+            ? (source->videopacNumber < 10 ? "0" + std::to_string(source->videopacNumber) : std::to_string(source->videopacNumber))
+            : "-");
 
     DrawText(
         renderer_,
@@ -2321,6 +2587,7 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
         "ROM File:     " + source->filename);
 
     const std::string values[MetadataFieldCount] = {
+        source->catalogId,
         source->title,
         source->year,
         source->publisher,
@@ -2338,7 +2605,7 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
     };
 
     static const char* labels[MetadataFieldCount] = {
-        "Title", "Year", "Publisher", "Developer", "Genre", "Players",
+        "Catalog ID", "Title", "Year", "Publisher", "Developer", "Genre", "Players",
         "Controls", "Voice Module", "Videopac+", "Rating",
         "Short Description", "Game Description", "Trivia / History", "Manual Path"
     };
@@ -2547,8 +2814,9 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
     const ProjectPage& page = projectPages_[projectPageIndex_];
 
     const float buttonGap = 4.0f;
-    const float buttonWidth = (inner.w - 24.0f - buttonGap * 5.0f) / 6.0f;
-    for (int i = 0; i < static_cast<int>(projectPages_.size()) && i < 6; ++i)
+    const int pageCount = (std::max)(1, static_cast<int>(projectPages_.size()));
+    const float buttonWidth = (inner.w - 24.0f - buttonGap * (pageCount - 1)) / static_cast<float>(pageCount);
+    for (int i = 0; i < static_cast<int>(projectPages_.size()); ++i)
     {
         SDL_FRect button{inner.x + 12.0f + i * (buttonWidth + buttonGap), inner.y + 12.0f, buttonWidth, 30.0f};
         Win95Theme::SetRenderColor(renderer_, i == projectPageIndex_ ? Win95Theme::TabActive : Win95Theme::Face);
@@ -2586,7 +2854,10 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
     float y = textArea.y + 4.0f;
     for (int i = projectPageScroll_; i < static_cast<int>(lines.size()) && i < projectPageScroll_ + visibleLines; ++i)
     {
+        const bool specialName = page.pageKey == "special_thanks" &&
+            (lines[i].rfind("Mark Guttenbrunner", 0) == 0 || lines[i].rfind("Brian Dehli", 0) == 0);
         DrawText(renderer_, textArea.x + 4.0f, y, 0.92f, lines[i]);
+        if (specialName) DrawText(renderer_, textArea.x + 5.0f, y, 0.92f, lines[i]);
         y += 23.0f;
     }
     if (maxScroll > 0)
@@ -2603,99 +2874,68 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
 void FrontendApp::DrawSettingsTab(const SDL_FRect& content)
 {
     const float margin = 14.0f;
-    const SDL_FRect frame{
-        content.x + margin,
-        content.y + margin,
-        content.w - margin * 2.0f,
-        content.h - margin * 2.0f
-    };
-
+    const SDL_FRect frame{content.x + margin, content.y + margin, content.w - margin * 2.0f, content.h - margin * 2.0f};
     DrawSunkenFrame(renderer_, frame);
-
-    const SDL_FRect inner{
-        frame.x + 4.0f,
-        frame.y + 4.0f,
-        frame.w - 8.0f,
-        frame.h - 8.0f
-    };
-
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
-    SDL_RenderFillRect(renderer_, &inner);
+    const SDL_FRect inner{frame.x + 4.0f, frame.y + 4.0f, frame.w - 8.0f, frame.h - 8.0f};
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &inner);
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+    DrawText(renderer_, inner.x + 20.0f, inner.y + 18.0f, 1.5f, "EMULATOR SETTINGS");
 
-    DrawText(
-        renderer_,
-        inner.x + 20.0f,
-        inner.y + 18.0f,
-        1.5f,
-        "EMULATOR SETTINGS");
-
-    const float rowY[SettingsItemCount] = {
-        inner.y + 75.0f,
-        inner.y + 135.0f,
-        inner.y + 195.0f,
-        inner.y + 255.0f
-    };
-
-    for (int index = 0; index < SettingsItemCount; ++index)
+    const float x = inner.x + 34.0f;
+    auto drawCheck = [&](float y, const char* label, bool checked)
     {
-        if (index == settingsSelected_)
-        {
-            SDL_SetRenderDrawColor(renderer_, 185, 35, 35, 255);
+        SDL_FRect box{x, y, 19.0f, 19.0f}; DrawSunkenFrame(renderer_, box);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_FRect f{box.x+2,box.y+2,box.w-4,box.h-4}; SDL_RenderFillRect(renderer_, &f);
+        if (checked) { Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText); DrawText(renderer_, box.x+3, box.y-1, .9f, "x"); }
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText); DrawText(renderer_, box.x+29, y-1, 1.05f, label);
+    };
+    auto drawCombo = [&](float y, const char* label, const std::string& value)
+    {
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText); DrawText(renderer_, x, y, 1.0f, label);
+        SDL_FRect box{x, y+23.0f, (std::min)(430.0f, inner.w-90.0f), 30.0f}; DrawSunkenFrame(renderer_, box);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_FRect f{box.x+2,box.y+2,box.w-30,box.h-4}; SDL_RenderFillRect(renderer_, &f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText); DrawText(renderer_, f.x+6,f.y+3,.95f,value);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face); SDL_FRect a{box.x+box.w-28,box.y+2,26,box.h-4}; SDL_RenderFillRect(renderer_,&a);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+        DrawText(renderer_,a.x+8,a.y+3,.9f,"v");
+    };
 
-            const SDL_FRect highlight{
-                inner.x + 18.0f,
-                rowY[index] - 12.0f,
-                inner.w - 36.0f,
-                42.0f
-            };
-
-            SDL_RenderFillRect(renderer_, &highlight);
-            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
-        }
-        else
-        {
-            Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-        }
-
-        std::string line;
-
-        switch (index)
-        {
-        case 0:
-            line = std::string("Fullscreen: ") +
-                (settings_.start_fullscreen ? "ON" : "OFF") +
-                "  (changes immediately)";
-            break;
-
-        case 1:
-            line = std::string("Region Mode: ") +
-                RegionModeToString(settings_.region_mode);
-            break;
-
-        case 2:
-            line = std::string("Scanlines: ") +
-                (settings_.scanlines ? "ON" : "OFF");
-            break;
-
-        case 3:
-            line = std::string("BIOS File: ") + settings_.bios_file;
-            break;
-
-        default:
-            break;
-        }
-
-        DrawText(renderer_, inner.x + 36.0f, rowY[index], 1.6f, line);
-    }
+    drawCheck(inner.y + 76.0f, "Fullscreen (changes immediately)", settings_.start_fullscreen);
+    std::string region = RegionModeToString(settings_.region_mode); std::transform(region.begin(),region.end(),region.begin(),[](unsigned char c){return static_cast<char>(std::toupper(c));});
+    drawCombo(inner.y + 126.0f, "Region Mode", region);
+    drawCheck(inner.y + 205.0f, "Scanlines", settings_.scanlines);
+    drawCombo(inner.y + 255.0f, "BIOS File", settings_.bios_file.empty()?"No BIOS installed":settings_.bios_file);
 
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(
-        renderer_,
-        inner.x + 24.0f,
-        inner.y + inner.h - 42.0f,
-        1.2f,
-        "UP/DOWN or mouse: choose   ENTER/A/click: change   ESC/B: Library");
+    DrawText(renderer_, x, inner.y + 345.0f, 1.0f, std::string("C7010 NSC800 BIOS: ") + (c7010FirmwareInstalled_ ? "c7010_z80.bin  [INSTALLED]" : "NOT FOUND"));
+    DrawText(renderer_, x, inner.y + 374.0f, 1.0f, std::string("C7420 NSC800 BIOS: ") + (c7420FirmwareInstalled_ ? "c7420_z80.bin  [INSTALLED]" : "NOT FOUND"));
+
+    if (openDropdown_ == 1)
+    {
+        const char* items[]={"AUTO","PAL","NTSC"}; const float ih=30.0f; SDL_FRect pop{x,inner.y+179.0f,(std::min)(430.0f,inner.w-90.0f),ih*3};
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Window); SDL_RenderFillRect(renderer_,&pop); DrawSunkenFrame(renderer_,pop);
+        const int selectedRegion = settings_.region_mode == RegionMode::Auto ? 0 : (settings_.region_mode == RegionMode::PAL ? 1 : 2);
+        for(int i=0;i<3;++i)
+        {
+            SDL_FRect row{pop.x+2.0f,pop.y+2.0f+i*ih,pop.w-4.0f,ih};
+            Win95Theme::SetRenderColor(renderer_,i==selectedRegion?Win95Theme::SelectedItem:Win95Theme::Window); SDL_RenderFillRect(renderer_,&row);
+            Win95Theme::SetRenderColor(renderer_,i==selectedRegion?Win95Theme::SelectedItemText:Win95Theme::WindowText);
+            DrawText(renderer_,pop.x+7,pop.y+4+i*ih,.95f,items[i]);
+        }
+    }
+    else if (openDropdown_ == 3)
+    {
+        RefreshInstalledBiosFiles(); const float ih=30.0f; SDL_FRect pop{x,inner.y+308.0f,(std::min)(430.0f,inner.w-90.0f),ih*static_cast<float>(installedBiosFiles_.size())};
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Window); SDL_RenderFillRect(renderer_,&pop); DrawSunkenFrame(renderer_,pop);
+        for(int i=0;i<static_cast<int>(installedBiosFiles_.size());++i)
+        {
+            const bool selected=installedBiosFiles_[i]==settings_.bios_file;
+            SDL_FRect row{pop.x+2.0f,pop.y+2.0f+i*ih,pop.w-4.0f,ih};
+            Win95Theme::SetRenderColor(renderer_,selected?Win95Theme::SelectedItem:Win95Theme::Window); SDL_RenderFillRect(renderer_,&row);
+            Win95Theme::SetRenderColor(renderer_,selected?Win95Theme::SelectedItemText:Win95Theme::WindowText);
+            DrawText(renderer_,pop.x+7,pop.y+4+i*ih,.95f,installedBiosFiles_[i]);
+        }
+    }
 }
 
 void FrontendApp::DrawPlaceholderTab(

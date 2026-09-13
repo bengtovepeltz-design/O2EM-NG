@@ -45,4 +45,8 @@ void ext_IRQ(void);
 void tim_IRQ(void);
 void make_psw_debug(void);
 
+// Patch 0030P: arm an extended 8048 instruction trace when the C7010
+// keyboard ENTER key is actually observed in the Videopac matrix scan.
+void CPU_ArmC7010EnterTrace(Byte scannedP2);
+
 #endif  /* CPU_H */

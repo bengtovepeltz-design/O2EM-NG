@@ -1,5 +1,5 @@
 #define MyAppName "O2EM-NG"
-#define MyAppVersion "Beta 3"
+#include "..\dist\release-info.iss"
 #define MyAppPublisher "Bengt-Ove Peltz"
 #define MyAppExeName "O2EM-NG.exe"
 
@@ -8,17 +8,20 @@ AppId={{E8C65F7D-8F6E-4A4A-A271-BA3BBDBA67C1}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\O2EM-NG
+DefaultDirName={localappdata}\Programs\O2EM-NG
+; Keep upgrades from reusing the old, protected Program Files location.
+UsePreviousAppDir=no
 DefaultGroupName=O2EM-NG
 DisableProgramGroupPage=yes
 OutputDir=Output
-OutputBaseFilename=O2EM-NG-Beta3-Setup
+OutputBaseFilename=O2EM-NG-v{#MyAppVersion}-Setup
+SetupIconFile=..\assets\O2EM-NG.ico
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
@@ -35,15 +38,10 @@ Name: "{app}\CARTRIDGES"
 Name: "{app}\Gamedata"
 
 [Files]
-Source: "..\x64\Release\O2EM-NG.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\x64\Release\*.dll"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "..\third_party\pdfium\pdfium.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
-Source: "..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\Gamedata\o2em-ng.db"; DestDir: "{app}\Gamedata"; Flags: ignoreversion
-Source: "..\Gamedata\Gamelist.txt"; DestDir: "{app}\Gamedata"; Flags: ignoreversion
-Source: "..\o2em-ng.cfg"; DestDir: "{app}"; Flags: onlyifdoesntexist
-Source: "..\README_SV.txt"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\Docs\COPYRIGHTS.txt"; DestDir: "{app}\Docs"; Flags: ignoreversion
+; All distributable content comes from the validated package, never the working tree.
+Source: "{#PackageDirectory}\*"; DestDir: "{app}"; Excludes: "GAMEDATA\o2em-ng.db"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Seed new installations without overwriting an existing user's catalogue.
+Source: "{#PackageDirectory}\GAMEDATA\o2em-ng.db"; DestDir: "{app}\GAMEDATA"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [Icons]
 Name: "{autoprograms}\O2EM-NG"; Filename: "{app}\{#MyAppExeName}"

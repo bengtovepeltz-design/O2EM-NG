@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -126,7 +126,8 @@
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
 copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
 if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
-copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"</Command>
+copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"
+copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -154,10 +155,13 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
 copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
 if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
-copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"</Command>
+copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"
+copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="audio8245.cpp" />
+    <ClCompile Include="c7010.cpp" />
     <ClCompile Include="audio_sdl.cpp" />
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="crc32.cpp" />
@@ -198,7 +202,8 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
     <ClCompile Include="videopac_font.cpp" />
     <ClCompile Include="vmachine.cpp" />
     <ClCompile Include="voice_stub.cpp" />
-    <ClCompile Include="vpp_stub.cpp" />
+    <ClCompile Include="vpp_sdl.cpp" />
+    <ClCompile Include="vpp_cset.cpp" />
     <ClCompile Include="src\metadata\metadata_engine.cpp" />
     <ClCompile Include="src\database\game_database.cpp" />
     <ClCompile Include="src\collection\collection_manager.cpp" />
@@ -206,6 +211,9 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
   <ItemGroup>
     <ClInclude Include="..\o2em\vdc.h" />
     <ClInclude Include="audio.h" />
+    <ClInclude Include="c7010.h" />
+    <ClInclude Include="audio8245.h" />
+    <ClInclude Include="audio_config.h" />
     <ClInclude Include="cpu.h" />
     <ClInclude Include="crc32.h" />
     <ClInclude Include="cset.h" />
@@ -243,6 +251,8 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
     <ClInclude Include="vdc_stub.h" />
     <ClInclude Include="videopac_font.h" />
     <ClInclude Include="vmachine.h" />
+    <ClInclude Include="vpp.h" />
+    <ClInclude Include="vpp_cset.h" />
     <ClInclude Include="src\metadata\metadata_engine.h" />
     <ClInclude Include="src\database\game_database.h" />
     <ClInclude Include="src\collection\collection_manager.h" />
@@ -254,6 +264,10 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>GAMEDATA\Gamelist.txt</TargetPath>
     </None>
+    <None Include="Gamedata\videopac.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Gamedata\videopac.xml</TargetPath>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -261,4 +275,27 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Hea
   <ItemGroup>
     <None Include="assets\O2EM-NG_Header.png" />
   </ItemGroup>
-</Project>
+  <ItemGroup>
+    <None Include="README_Patch_0030Q_Enter_Communication_Trace.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README_Patch_0030R_C7010_Write_Routing.txt" />
+  </ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030S_C7010_Interleave.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030T_Input_Response_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030U_Move_Validation_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030V_Video_Regions.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030W_Lower_Board_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030X_Pending_Timer_IRQ.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030Y_C7010_Raster_Scale.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030Z_Board_Transfer_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030AA_Filtered_Board_Trace.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AB_JR_Displacement_Fix.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AC_Character_Snapshot.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AD_Beta_Baseline.txt" /></ItemGroup>
+  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /></ItemGroup>
+  <Target Name="PackageRelease" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(DesignTimeBuild)' != 'true' and '$(SkipReleasePackaging)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\package-release.ps1&quot; -ProjectDir &quot;$(ProjectDir).&quot; -TargetPath &quot;$(TargetPath)&quot; -RedistDir &quot;$(VCInstallDir)Redist\MSVC&quot;" />
+  </Target>
+  <ItemGroup>
+    <None Include="tools\package-release.ps1" />
+    <None Include="tools\release-manifest.json" />
+    <None Include="Docs\Release packaging.md" />
+  </ItemGroup><ItemGroup><ResourceCompile Include="O2EM-NG.rc" /><Image Include="assets\O2EM-NG.ico" /><Image Include="assets\O2EM-NG_Icon.png" /></ItemGroup><ItemGroup><None Include="Docs\readme.md" /></ItemGroup></Project>

@@ -90,3 +90,13 @@ SCREENSHOTS/*
 !SCREENSHOTS/readme.txt
 !SCREENSHOTS/README.txt
 !SCREENSHOTS/README.md
+
+# Generated release packages
+/dist/
+
+# Beta 4 local data and nested firmware
+BIOS/**/*.bin
+BIOS/**/*.rom
+*.db.backup-*
+import-folders.ini
+!Gamedata/o2em-ng.db

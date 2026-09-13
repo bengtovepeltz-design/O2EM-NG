@@ -399,7 +399,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         "short_description TEXT NOT NULL DEFAULT '',"
         "user_description TEXT NOT NULL DEFAULT '',"
         "trivia TEXT NOT NULL DEFAULT '',"
-        "manual_path TEXT NOT NULL DEFAULT ''"
+        "manual_path TEXT NOT NULL DEFAULT '',"
+        "user_catalog_id TEXT NOT NULL DEFAULT ''"
         ");"
         "CREATE INDEX IF NOT EXISTS idx_games_filename ON games(rom_filename);";
 
@@ -423,7 +424,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         "ALTER TABLE games ADD COLUMN short_description TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE games ADD COLUMN user_description TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE games ADD COLUMN trivia TEXT NOT NULL DEFAULT '';",
-        "ALTER TABLE games ADD COLUMN manual_path TEXT NOT NULL DEFAULT '';"
+        "ALTER TABLE games ADD COLUMN manual_path TEXT NOT NULL DEFAULT '';",
+        "ALTER TABLE games ADD COLUMN user_catalog_id TEXT NOT NULL DEFAULT '';"
     };
     for (const char* migration : migrations)
     {
@@ -534,6 +536,7 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         game.genre = record.category;
         game.description = record.notes;
         game.videopacNumber = ParseVideopacNumberFromFilename(record.filename);
+        game.catalogId = ParseVideopacCatalogIdFromFilename(record.filename);
         game.videopacPlus = record.plusVersion ? "Yes" : "No";
         game.rom.name = game.title;
         game.rom.info = classification;
@@ -543,12 +546,34 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         libraryFilenames[key] = true;
     }
 
+    // Patch 0024: every installed ROM owns a database row, including
+    // homebrew, prototypes and completely unknown filenames. The filename
+    // stem is only the initial editable title; catalogue/user data can replace it.
+    Statement ensureRom(api, handle.Get(),
+        "INSERT OR IGNORE INTO games(rom_filename,title,category) VALUES(?,?,?);");
+    if (!ensureRom)
+    {
+        result.message = "Could not prepare universal ROM database import.";
+        return result;
+    }
+    for (const GameInfo& game : library.Games())
+    {
+        if (game.filename.empty())
+            continue;
+        BindText(api, ensureRom.Get(), 1, game.filename);
+        BindText(api, ensureRom.Get(), 2, game.title.empty() ? game.filename : game.title);
+        BindText(api, ensureRom.Get(), 3, game.genre);
+        api.step(ensureRom.Get());
+        api.reset(ensureRom.Get());
+        api.clearBindings(ensureRom.Get());
+    }
+
     Statement select(api, handle.Get(),
         "SELECT title,notes,category,plus_version,prototype,unreleased,"
         "alternate,hack,fixed,favorite,play_count,last_played,"
         "user_title,year,publisher,developer,genre,players,controls,"
         "voice_module,videopac_plus_text,rating,short_description,"
-        "user_description,trivia,manual_path "
+        "user_description,trivia,manual_path,user_catalog_id "
         "FROM games WHERE rom_filename=? COLLATE NOCASE;");
 
     if (!select)
@@ -623,6 +648,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
             if (!userTrivia.empty()) game.trivia = userTrivia;
             const std::string manualPath = ColumnString(api, select.Get(), 25);
             if (!manualPath.empty()) game.manual = basePath_ / manualPath;
+            const std::string userCatalogId = ColumnString(api, select.Get(), 26);
+            game.catalogId = !userCatalogId.empty() ? userCatalogId : ParseVideopacCatalogIdFromFilename(game.filename);
 
             game.favorite = api.columnInt(select.Get(), 9) != 0;
             game.playCount = api.columnInt(select.Get(), 10);
@@ -707,7 +734,7 @@ bool GameDatabase::SaveUserMetadata(const GameInfo& game) const
     Statement statement(api, handle.Get(),
         "UPDATE games SET user_title=?,year=?,publisher=?,developer=?,genre=?,"
         "players=?,controls=?,voice_module=?,videopac_plus_text=?,rating=?,"
-        "short_description=?,user_description=?,trivia=?,manual_path=? "
+        "short_description=?,user_description=?,trivia=?,manual_path=?,user_catalog_id=? "
         "WHERE rom_filename=? COLLATE NOCASE;");
     if (!statement) return false;
     std::string manualPath;
@@ -721,12 +748,56 @@ bool GameDatabase::SaveUserMetadata(const GameInfo& game) const
         game.title, game.year, game.publisher, game.developer, game.genre,
         game.players, game.controls, game.voiceModule, game.videopacPlus,
         game.rating, game.shortDescription, game.description, game.trivia,
-        manualPath, game.filename
+        manualPath, game.catalogId, game.filename
     };
-    for (int index = 0; index < 15; ++index)
+    for (int index = 0; index < 16; ++index)
         if (!BindText(api, statement.Get(), index + 1, values[index])) return false;
     return api.step(statement.Get()) == SQLITE_DONE;
 }
+
+
+bool GameDatabase::RenameRomFilename(const std::string& oldFilename,
+    const std::string& newFilename) const
+{
+    if (oldFilename.empty() || newFilename.empty())
+        return false;
+    if (_stricmp(oldFilename.c_str(), newFilename.c_str()) == 0)
+        return true;
+
+    WinSQLite api;
+    if (!api.Available()) return false;
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) return false;
+
+    Statement statement(api, handle.Get(),
+        "UPDATE games SET rom_filename=? WHERE rom_filename=? COLLATE NOCASE;");
+    if (!statement) return false;
+    if (!BindText(api, statement.Get(), 1, newFilename)) return false;
+    if (!BindText(api, statement.Get(), 2, oldFilename)) return false;
+    return api.step(statement.Get()) == SQLITE_DONE;
+}
+
+
+bool GameDatabase::DeleteGameRecord(const std::string& romFilename) const
+{
+    if (romFilename.empty()) return false;
+
+    WinSQLite api;
+    if (!api.Available()) return false;
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) return false;
+
+    Statement statement(api, handle.Get(),
+        "DELETE FROM games WHERE rom_filename=? COLLATE NOCASE;");
+    if (!statement) return false;
+    if (!BindText(api, statement.Get(), 1, romFilename)) return false;
+    return api.step(statement.Get()) == SQLITE_DONE;
+}
+
 
 bool GameDatabase::ClearUserMetadata(const std::string& romFilename) const
 {
@@ -739,7 +810,7 @@ bool GameDatabase::ClearUserMetadata(const std::string& romFilename) const
     Statement statement(api, handle.Get(),
         "UPDATE games SET user_title='',year='',publisher='',developer='',genre='',"
         "players='',controls='',voice_module='',videopac_plus_text='',rating='',"
-        "short_description='',user_description='',trivia='',manual_path='' "
+        "short_description='',user_description='',trivia='',manual_path='',user_catalog_id='' "
         "WHERE rom_filename=? COLLATE NOCASE;");
     if (!statement) return false;
     BindText(api, statement.Get(), 1, romFilename);
@@ -770,11 +841,10 @@ bool GameDatabase::InitializeProjectPages() const
     struct DefaultPage { const char* key; const char* title; const char* content; int order; };
     const DefaultPage defaults[] = {
         {"about", "About", "O2EM-NG is a modern Windows continuation of the original O2EM emulator.\n\nMission\nPreserve the original emulation core while modernizing the surrounding Windows experience.\n\nProject principles\nCompatibility before features. Accuracy before speed. Preservation before convenience.\n\nPlatform\nWindows x64, C/C++, SDL3, SQLite and PDFium.", 0},
-        {"credits", "Credits", "ORIGINAL O2EM\n\nOriginal developers and contributors:\nAdd verified names and roles here.\n\nO2EM-NG\n\nProject direction and Windows modernization:\nBengt-Ove Peltz\n\nTHIRD-PARTY TECHNOLOGY\n\nSDL3\nSQLite\nPDFium\nMicrosoft Visual Studio and Windows SDK", 1},
-        {"contributors", "Contributors", "Add people who have contributed code, testing, documentation, metadata, scans, research or other project work here.\n\nSuggested format:\nName\nRole or contribution\nOptional notes", 2},
-        {"special_thanks", "Special Thanks", "Videopac and Odyssey2 communities\nCollectors and archivists\nBeta testers\nEveryone helping preserve the platform for future generations", 3},
-        {"roadmap", "Roadmap", "BETA 3\nAbout and project information system\nCredits and contributors\nShelf View status review\nFrontend polish\nRegression testing\nDocumentation and release package\n\nFUTURE\nAdd planned features and priorities here.", 4},
-        {"release_notes", "Release Notes", "0.24.0-beta - Beta 3\n\nAdd the final Beta 3 release notes here before packaging.\n\nOlder release history remains available in Docs/CHANGELOG.md.", 5}
+        {"credits", "Credits", "ORIGINAL O2EM - Free Odyssey2 / Videopac+ Emulator\n\nCreated by Daniel Boris <dboris@comcast.net> - (c) 1997, 1998\nDeveloped by Andre de la Rocha <adlroc@users.sourceforge.net>\nArlindo M. de Oliveira <dgtec@users.sourceforge.net>\n\nOriginal O2EM project website:\nhttp://o2em.sourceforge.net\n\nO2EM-NG\n\nProject direction and Windows modernization:\nBengt-Ove Peltz\n\nTHIRD-PARTY TECHNOLOGY\n\nSDL3\nSQLite\nPDFium\nMicrosoft Visual Studio and Windows SDK", 1},
+        {"special_thanks", "Special Thanks", "Videopac and Odyssey2 communities\n\nCollectors and archivists\n\nMark Guttenbrunner (Manopac)\nFor his extensive work on the original O2EM emulator and his invaluable contributions to understanding and preserving the Philips Videopac/Odyssey2 hardware. His research and emulation work remains an important technical reference for O2EM-NG.\n\nBrian Dehli - Tvspil.dk\nFor his kind assistance in locating rare Videopac documentation, and for his dedication to preserving Philips Videopac hardware, games and history through his extensive private collection at Tvspil.dk. His knowledge and willingness to help are greatly appreciated by the O2EM-NG project.", 2},
+        {"roadmap", "Roadmap", "BETA 3\nAbout and project information system\nCredits and Special Thanks\nShelf View status review\nFrontend polish\nRegression testing\nDocumentation and release package\n\nFUTURE\nAdd planned features and priorities here.", 3},
+        {"release_notes", "Release Notes", "0.24.0-beta - Beta 3\n\nAdd the final Beta 3 release notes here before packaging.\n\nOlder release history remains available in Docs/CHANGELOG.md.", 4}
     };
     Statement insert(api, handle.Get(),
         "INSERT OR IGNORE INTO project_pages(page_key,title,content,sort_order) VALUES(?,?,?,?);");
@@ -814,6 +884,8 @@ std::vector<ProjectPage> GameDatabase::LoadProjectPages() const
         page.title = title ? reinterpret_cast<const char*>(title) : "";
         page.content = content ? reinterpret_cast<const char*>(content) : "";
         page.sortOrder = api.columnInt(statement.Get(), 3);
+        if (page.pageKey == "contributors")
+            continue;
         pages.push_back(std::move(page));
     }
     return pages;

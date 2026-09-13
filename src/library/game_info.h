@@ -11,6 +11,9 @@
 struct GameInfo
 {
     int videopacNumber = 0;
+    // Editable European catalogue identity, e.g. 10, 11+, 54+, C7010.
+    // This is metadata; rom_filename remains the stable database key.
+    std::string catalogId;
 
     std::string title;
     std::string sortTitle;
@@ -45,6 +48,7 @@ struct GameInfo
 // Returns the official two-digit Videopac number from filenames such as
 // vp_40.bin, or 0 when the filename does not contain a valid official ID.
 int ParseVideopacNumberFromFilename(const std::string& filename);
+std::string ParseVideopacCatalogIdFromFilename(const std::string& filename);
 
 GameInfo MakeGameInfo(const RomEntry& rom);
 

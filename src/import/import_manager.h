@@ -35,6 +35,7 @@ public:
     const std::filesystem::path& BasePath() const noexcept;
 
     ImportResult ImportForGame(ImportAssetType type, const GameInfo& game) const;
+    ImportResult ImportRom() const;
     ImportResult ImportBios() const;
 
     ImportResult DeleteForGame(ImportAssetType type, const GameInfo& game,

@@ -7,7 +7,7 @@
 namespace
 {
     constexpr std::array<const char*, static_cast<size_t>(FrontendTab::Count)> Tabs = {
-        "Library", "Game Data", "Import Center", "Screenshot",
+        "Library", "Edit Game Data", "Import Center", "Screenshot",
         "Manual", "Settings", "About", "Credits"
     };
 

@@ -1,4 +1,6 @@
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
+#include <string>
 
 #include "src/frontend/frontend_app.h"
 
@@ -42,6 +44,14 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    const char* basePath = SDL_GetBasePath();
+    if (basePath) {
+        const std::string iconPath = std::string(basePath) + "assets/O2EM-NG_Icon.png";
+        if (SDL_Surface* icon = IMG_Load(iconPath.c_str())) {
+            SDL_SetWindowIcon(window, icon);
+            SDL_DestroySurface(icon);
+        }
+    }
     SDL_SetWindowMinimumSize(window, 800, 600);
 
     int exitCode = 0;

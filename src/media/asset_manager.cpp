@@ -102,6 +102,25 @@ namespace
         return value;
     }
 
+    std::vector<std::string> MediaKeys(const GameInfo& game)
+    {
+        std::vector<std::string> keys;
+        auto add = [&](std::string value)
+        {
+            if (value.empty()) return;
+            const std::string lower = ToLower(value);
+            for (const std::string& existing : keys)
+                if (ToLower(existing) == lower) return;
+            keys.push_back(value);
+        };
+
+        add(game.catalogId);
+        add(TwoDigitNumber(game.videopacNumber));
+        if (!game.romPath.empty()) add(game.romPath.stem().string());
+        if (!game.filename.empty()) add(Path(game.filename).stem().string());
+        return keys;
+    }
+
     bool IsPlusVariant(const GameInfo& game)
     {
         const std::string stem = ToLower(game.romPath.stem().string());
@@ -115,9 +134,10 @@ namespace
         const Path& folder,
         const GameInfo& game)
     {
-        const std::string number = TwoDigitNumber(game.videopacNumber);
-        if (number.empty())
+        const std::vector<std::string> keys = MediaKeys(game);
+        if (keys.empty())
             return;
+        const std::string number = keys.front();
 
         const bool plusVariant = IsPlusVariant(game);
 
@@ -189,7 +209,13 @@ namespace
         std::vector<Path> candidates;
 
         if (includeOfficialBoxNames)
+        {
             AddOfficialBoxCandidates(candidates, folder, game);
+            // Imported covers also work for games without a catalogue ID.
+            for (const std::string& key : MediaKeys(game))
+                AddCandidates(candidates, folder, key + "_plastic_front",
+                    ImageExtensions, std::size(ImageExtensions));
+        }
 
         AddCandidates(
             candidates,
@@ -215,16 +241,13 @@ namespace
         if (!IsDirectory(folder))
             return {};
 
-        const std::string number = TwoDigitNumber(game.videopacNumber);
-        if (number.empty())
+        const std::vector<std::string> keys = MediaKeys(game);
+        if (keys.empty())
             return {};
 
-        // Manuals use the cartridge ID as their stable key, for example:
-        //   ROM:    vp_37.bin
-        //   Manual: 37_philips_manual.pdf
-        // Match only the leading two-digit ID and ignore the descriptive
-        // remainder of the filename.
-        const std::string requiredPrefix = ToLower(number + "_");
+        std::vector<std::string> requiredPrefixes;
+        for (const std::string& key : keys)
+            requiredPrefixes.push_back(ToLower(key + "_"));
         std::vector<Path> matches;
 
         std::error_code error;
@@ -240,8 +263,14 @@ namespace
             }
 
             const std::string filename = ToLower(path.filename().string());
-            if (filename.rfind(requiredPrefix, 0) == 0)
-                matches.push_back(path);
+            for (const std::string& prefix : requiredPrefixes)
+            {
+                if (filename.rfind(prefix, 0) == 0)
+                {
+                    matches.push_back(path);
+                    break;
+                }
+            }
         }
 
         if (matches.empty())
@@ -258,7 +287,7 @@ namespace
             return screenshots;
 
         const std::string stem = ToLower(game.romPath.stem().string());
-        const std::string number = TwoDigitNumber(game.videopacNumber);
+        const std::vector<std::string> keys = MediaKeys(game);
         const Path gameFolder = folder / game.romPath.stem();
 
         auto collectDirectory = [&](const Path& directory)
@@ -297,12 +326,20 @@ namespace
             const std::string candidateStem = ToLower(path.stem().string());
             const bool matchesRom =
                 !stem.empty() && candidateStem.rfind(stem, 0) == 0;
-            const bool matchesNumber =
-                !number.empty() &&
-                (candidateStem.rfind(number, 0) == 0 ||
-                 candidateStem.rfind("vp_" + number, 0) == 0);
+            bool matchesKey = false;
+            for (const std::string& keyValue : keys)
+            {
+                const std::string key = ToLower(keyValue);
+                if (!key.empty() &&
+                    (candidateStem.rfind(key, 0) == 0 ||
+                     candidateStem.rfind("vp_" + key, 0) == 0))
+                {
+                    matchesKey = true;
+                    break;
+                }
+            }
 
-            if (matchesRom || matchesNumber)
+            if (matchesRom || matchesKey)
                 screenshots.push_back(path);
         }
 

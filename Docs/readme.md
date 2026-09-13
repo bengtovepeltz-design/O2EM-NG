@@ -1,185 +1,112 @@
 # O2EM-NG
 
-## Philips Videopac G7000 / Magnavox Odyssey² Emulator
+![O2EM-NG](../assets/O2EM-NG_Header.png)
 
-O2EM-NG is a modern SDL3-based continuation of the original O2EM emulator.
+A Windows x64, SDL3-based continuation of the original O2EM emulator for
+Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-The goal of the project is to preserve the original O2EM emulation core while modernizing the platform around it with SDL3 video, audio, input, controller support, an integrated frontend, and a simpler living-room experience.
+**Upcoming release: v0.31.0-beta - Beta 4.**
+The latest published release is [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
+Beta 4 is being prepared for community testing; this README is not a publication announcement.
 
-O2EM-NG is currently available as a public Beta for Windows x64.
+[Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
+[Quick start](Beta_4_v0.31.0_Quick%20start%20guide.md) |
+[Changelog](CHANGELOG.md) |
+[Project notes](Project.md)
 
-Current version:
+## What's new in Beta 4
 
-**v0.30.0-beta**
+- C7010 Chess with a separate NSC800/Z80-compatible module and firmware support.
+- Corrected move-coordinate handling: the wrong source square is no longer cleared
+  in the reproduced E2-E4 case.
+- Stable chess-board rendering in local testing, with the earlier disappearing
+  pieces, lower-board clipping and flicker addressed.
+- Several moves, computer replies and a pawn capture tested successfully by the
+  developer. Full games and special moves remain community-testing targets.
+- Detailed chess diagnostics off by default; important error messages retained.
+- A program icon based on the O2EM-NG emblem and automated Release packaging.
 
-## Current Features
+## Features
 
-- SDL3 video, audio, and event system
-- Integrated Game Library and launcher
-- Integrated Import Center
-- SQLite-backed game database
-- BIOS management
-- ROM import
-- JPG and PNG cover-art import
-- PDF manual import and external manual opening
-- Screenshot import
-- Game Information display
-- Favorites support
-- Live media refresh
-- Integrated Settings screen
-- Persistent configuration through `o2em-ng.cfg`
-- Fullscreen or windowed startup
-- Region selection: Auto, PAL, and NTSC
-- Original O2EM CRC-based compatibility behavior preserved in Auto mode
-- PAL 50 FPS and NTSC 60 FPS video modes
-- Keyboard and mouse support in the frontend
-- Xbox-compatible controller support
-- Two simultaneous physical controllers
-- Controller navigation in the frontend and Settings screen
-- In-game controller shortcuts
-- In-game controller port switching
-- Brief on-screen controller routing notifications
-- Original O2EM CPU and VDC emulation core
-- Working SDL3 game audio
-- Playable commercial Videopac / Odyssey² games
-- Two-player gameplay with physical controllers
-- Windows x64 Release build
+- Game Library, launcher, favorites and editable game information.
+- Supplied SQLite game catalogue with titles, descriptions and metadata. Recognized
+  ROMs such as `vp_01.bin` populate the library with the matching information.
+- Import Center for user-supplied ROMs, box art, PDF manuals and screenshots.
+- SDL3 video, audio, keyboard, mouse and Xbox-compatible controller support.
+- Fullscreen/windowed operation, Settings, Auto/PAL/NTSC region selection.
+- Two-controller gameplay and in-game controller-port swapping.
 
-## Current Status
+The catalogue is included; game ROMs, BIOS/firmware and cover/media files are not.
+Media appears when the user supplies matching files.
 
-O2EM-NG has reached Beta 3 of its public Windows x64 release.
+## Getting started
 
-The emulator is playable and has been tested with a growing collection of Philips Videopac G7000 and Magnavox Odyssey² games.
+1. Download an available release and install it or extract its portable ZIP.
+2. Add your compatible console BIOS to `BIOS` and games to `ROMS`.
+3. Run `O2EM-NG.exe`, select the console BIOS in Settings and choose a game.
+4. Add optional artwork, manuals and screenshots through the Import Center.
 
-Confirmed playable games include:
+The portable Beta 4 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
+required Microsoft C++ runtime DLLs beside the executable. Windows system runtime
+components are still required. Keep the whole extracted folder together.
 
-- Gunfighter
-- Atlantis
-- Bowling-Basketball
-- Munchkin
-- Pickaxe Pete
-- Skiing
-- Spacemonster
-- Speedway + Spin-out + Crypto-logic
-- Cosmic Conflict
-- Stone Sling
-- Air-Sea War & Battle
-- Electronic Billiards
-- Frogger
-- Golf
+### C7010 Chess
 
-Additional titles have also been tested successfully.
+In addition to the console BIOS, supply:
 
-Two-player gameplay has been successfully tested using two physical controllers simultaneously.
+```text
+BIOS/C7010/c7010_z80.bin   (8 KiB module firmware)
+ROMS/vp_C7010.bin         (chess cartridge)
+```
 
-Gunfighter multiplayer has been confirmed working with video, sound, and controller input.
-
-Bowling-Basketball has been tested successfully with the new controller port switching feature using a single physical controller.
-
-The main known compatibility issue is currently Four in 1 Row, which remains under investigation.
-
-Beta 3 focuses on the new Game Library, Import Center, game database, media handling, and continued community testing without breaking the current working game base.
-
-## Settings
-
-The Settings screen is available directly from the frontend.
-
-Current settings include:
-
-- Startup display mode: Fullscreen / Windowed
-- Region mode: Auto / PAL / NTSC
-- Scanlines setting stored in configuration for future renderer integration
-
-Settings are saved in:
-
-`o2em-ng.cfg`
-
-### Region Modes
-
-**Auto** preserves the original O2EM CRC-based compatibility behavior and is the recommended default for Beta testing.
-
-**PAL** explicitly selects the PAL 50 FPS video mode.
-
-**NTSC** explicitly selects the NTSC 60 FPS video mode.
-
-External feedback from testers familiar with real Odyssey² NTSC behavior is especially welcome.
+Start with **1 -> Y/YES -> 2** to play white at beginner level 2, then enter a move
+such as **E2-E4** and press Enter. **N/NO** selects black and reverses the board.
+Level **1** is tournament mode, not the easiest level; longer thinking time there
+is expected. Exact hardware timing has not been established.
 
 ## Controls
 
-### Frontend and Settings
+| Action | Keyboard | Xbox-compatible controller |
+| --- | --- | --- |
+| Select in frontend | Enter | A |
+| Navigate frontend | Arrow keys | D-pad / left stick |
+| Reset game | F5 | B |
+| Return from game to frontend | Esc | Back / View |
+| Swap joystick ports | - | Y |
 
-Keyboard:
+Chess setup and moves use the keyboard. Keyboard Y/YES and controller Y have different roles.
 
-- Up / Down: Move selection
-- Enter: Select or launch
-- Esc: Return from Settings or exit the frontend
+## Beta testing
 
-Controller:
+Please test longer chess games, captures, castling, en passant, promotion, both
+colours and console configurations. Ordinary-game regression testing is also welcome.
+Earlier releases were tested with games including Gunfighter, Atlantis, Golf,
+Munchkin and Bowling-Basketball; this is not a fresh compatibility certification
+for every title in Beta 4. Four in 1 Row remains a previously recorded issue pending retest.
 
-- D-pad Up / Down: Move selection
-- Left stick Up / Down: Move selection
-- A: Select or launch
-- B: Return from Settings or exit the frontend
+Reports should include version, Windows version, game/ROM name, console BIOS,
+region, startup choices, exact moves or reproduction steps, and screenshots/video.
+Do not attach BIOS or ROM files. Use [GitHub issues](https://github.com/bengtovepeltz-design/O2EM-NG/issues)
+or the community beta discussion.
 
-### In Game
+## Building and packaging
 
-Keyboard:
+Open the Visual Studio solution/project and build **Release | x64**. SDK paths
+currently refer to the developer's installed SDL libraries; adjust them for your machine.
+The build creates a versioned folder and ZIP under `dist` from the explicit list in
+`tools/release-manifest.json`. The supplied game catalogue is included; private
+configuration and user ROM/media folders are not copied.
 
-- Esc: Return to the frontend
-- F5: Reset the emulated machine
+See [Release packaging](Release%20packaging.md) for file selection and installer building.
+Debug builds do not create distribution packages. Detailed C7010 tracing is opt-in
+with the build definition `O2EM_C7010_TRACE=1`.
 
-Controller:
+## Credits and licensing
 
-- D-pad / left stick: Joystick movement
-- A: Fire
-- Xbox B: Reset the emulated machine
-- Xbox Back/View: Return to the frontend
-- Xbox Y: Switch controller ports
+O2EM-NG builds on the original O2EM work by **Daniel Boris, Andre de la Rocha and
+Arlindo M. de Oliveira**. SDL3 modernization, frontend integration and ongoing
+O2EM-NG development: **Bengt-Ove Peltz**.
 
-## Controller Port Switching
-
-The original Philips Videopac G7000 / Magnavox Odyssey² hardware does not use one universal joystick port for every single-player game.
-
-Depending on the game, the active player may use joystick port 1 or joystick port 2.
-
-O2EM-NG preserves this original behavior.
-
-Starting with v0.22.1-beta, users can press:
-
-**Xbox Y**
-
-during gameplay to switch physical controller routing between the two emulated joystick ports.
-
-The emulator briefly displays:
-
-`CONTROLLER PORTS SWAPPED`
-
-or:
-
-`CONTROLLER PORTS NORMAL`
-
-This means a user with one physical controller can play single-player games regardless of which original joystick port the game expects.
-
-For multiplayer games, two physical controllers remain fully supported.
-
-The feature has been tested successfully with:
-
-- Bowling-Basketball in single-player mode
-- Gunfighter in two-player multiplayer mode
-
-## Required Files
-
-O2EM-NG does not include BIOS files, commercial game ROMs, copyrighted box artwork, or commercial game manuals.
-
-Users must provide compatible files themselves.
-
-Local content folders:
-
-```text
-BIOS/
-ROMS/
-BOXART/
-MANUALS/
-SCREENSHOTS/
-GAMEDATA/
-DOCS/
+See [COPYRIGHTS.txt](COPYRIGHTS.txt) for the project licence and retained notices.
+BIOS files, C7010 firmware, commercial ROMs, commercial manuals and copyrighted
+artwork are not distributed. Users supply their own legally obtained files.

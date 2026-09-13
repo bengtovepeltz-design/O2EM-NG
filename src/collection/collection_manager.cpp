@@ -1,9 +1,81 @@
 #include "collection_manager.h"
 
 #include <algorithm>
+#include <cctype>
+#include <string>
 
 #include "../library/game_info.h"
 #include "../library/game_library.h"
+
+
+namespace
+{
+    struct CatalogSortKey
+    {
+        int group = 2;       // 0 = numbered Videopac, 1 = hardware IDs (C7010...), 2 = no ID
+        int number = 0;
+        int variant = 0;     // plain number before '+' variant
+        std::string text;
+    };
+
+    CatalogSortKey MakeCatalogSortKey(const GameInfo& game)
+    {
+        std::string id = game.catalogId;
+        if (id.empty() && game.videopacNumber > 0)
+            id = std::to_string(game.videopacNumber);
+
+        CatalogSortKey key;
+        if (id.empty())
+        {
+            key.text = game.title;
+            return key;
+        }
+
+        std::string upper = id;
+        std::transform(upper.begin(), upper.end(), upper.begin(),
+            [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+
+        std::size_t pos = 0;
+        while (pos < upper.size() && std::isdigit(static_cast<unsigned char>(upper[pos])))
+            ++pos;
+        if (pos > 0)
+        {
+            key.group = 0;
+            key.number = std::stoi(upper.substr(0, pos));
+            key.variant = upper.find('+', pos) != std::string::npos ? 1 : 0;
+            key.text = upper;
+            return key;
+        }
+
+        if (upper.size() > 1 && upper[0] == 'C')
+        {
+            std::size_t digit = 1;
+            while (digit < upper.size() && std::isdigit(static_cast<unsigned char>(upper[digit])))
+                ++digit;
+            if (digit > 1)
+            {
+                key.group = 1;
+                key.number = std::stoi(upper.substr(1, digit - 1));
+                key.text = upper;
+                return key;
+            }
+        }
+
+        key.text = upper;
+        return key;
+    }
+
+    bool CatalogLess(const GameInfo& a, const GameInfo& b)
+    {
+        const CatalogSortKey ka = MakeCatalogSortKey(a);
+        const CatalogSortKey kb = MakeCatalogSortKey(b);
+        if (ka.group != kb.group) return ka.group < kb.group;
+        if (ka.number != kb.number) return ka.number < kb.number;
+        if (ka.variant != kb.variant) return ka.variant < kb.variant;
+        if (ka.text != kb.text) return ka.text < kb.text;
+        return a.title < b.title;
+    }
+}
 
 void CollectionManager::Attach(GameLibrary* library)
 {
@@ -49,7 +121,16 @@ void CollectionManager::Rebuild()
             indices_.push_back(i);
     }
 
-    if (view_ == CollectionView::RecentlyPlayed)
+    if (view_ == CollectionView::AllGames)
+    {
+        // Patch 0030C phase 2: user-edited European catalogue IDs drive
+        // the visible library order. This keeps e.g. 54 and 54+ adjacent
+        // without changing the ROM filename or database identity.
+        std::stable_sort(indices_.begin(), indices_.end(), [&](std::size_t a, std::size_t b) {
+            return CatalogLess(games[a], games[b]);
+        });
+    }
+    else if (view_ == CollectionView::RecentlyPlayed)
     {
         std::stable_sort(indices_.begin(), indices_.end(), [&](std::size_t a, std::size_t b) {
             return games[a].lastPlayed > games[b].lastPlayed;

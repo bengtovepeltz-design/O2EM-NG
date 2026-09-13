@@ -1,8 +1,10 @@
 #include "vdc_stub.h"
+#include "c7010.h"
 #include "vmachine.h"
 #include "config.h"
 #include "cpu.h"
 #include "cset.h"
+#include "vpp.h"
 #include <SDL3/SDL.h>
 #include <cstdint>
 #include <cstdio>
@@ -316,6 +318,12 @@ static void draw_quad(Byte ypos, Byte xpos, Byte cp0l, Byte cp0h, Byte cp1l, Byt
     }
 }
 
+// 0030AC: C7010 compatibility experiment. Preserve complete character
+// registers while the firmware rewrites the multiplexed row with A0.5 off.
+// CPU-visible registers remain live; this copy is only used by the renderer.
+static Byte c7010Characters[0x80] = {};
+static bool c7010CharactersValid = false;
+
 void draw_display(void)
 {
     int i, j, x, sm, t;
@@ -336,13 +344,15 @@ void draw_display(void)
     if (useforen && (!(VDCwrite[0xA0] & 0x20)))
         return;
 
+    const Byte* characters = C7010_IsEnabled() && c7010CharactersValid
+        ? c7010Characters : VDCwrite;
     for (i = 0x10; i < 0x40; i += 4)
-        draw_char(VDCwrite[i], VDCwrite[i + 1], VDCwrite[i + 2], VDCwrite[i + 3]);
+        draw_char(characters[i], characters[i + 1], characters[i + 2], characters[i + 3]);
 
     for (i = 0x40; i < 0x80; i += 0x10)
-        draw_quad(VDCwrite[i], VDCwrite[i + 1], VDCwrite[i + 2], VDCwrite[i + 3],
-                  VDCwrite[i + 6], VDCwrite[i + 7], VDCwrite[i + 10], VDCwrite[i + 11],
-                  VDCwrite[i + 14], VDCwrite[i + 15]);
+        draw_quad(characters[i], characters[i + 1], characters[i + 2], characters[i + 3],
+                  characters[i + 6], characters[i + 7], characters[i + 10], characters[i + 11],
+                  characters[i + 14], characters[i + 15]);
 
     c = 8;
     for (i = 12; i >= 0; i -= 4)
@@ -421,8 +431,19 @@ void draw_display(void)
 void draw_region(void)
 {
     int i;
+    if (!C7010_IsEnabled()) {
+        c7010CharactersValid = false;
+    } else if (!c7010CharactersValid || last_line == 0 || (VDCwrite[0xA0] & 0x20)) {
+        std::memcpy(c7010Characters, VDCwrite, sizeof(c7010Characters));
+        c7010CharactersValid = true;
+    }
 
-    if (regionoff == 0xffff)
+    // 0030Y: C7010 multiplexes characters down the screen. Use the same
+    // 22-cycle raster scale as the VDC beam latch, preserving the origin.
+    // The legacy 20-cycle scale clips later rows before they are installed.
+    if (C7010_IsEnabled())
+        i = (master_clk / 22 - 5);
+    else if (regionoff == 0xffff)
         i = (master_clk / (LINECNT - 1) - 5);
     else
         i = (master_clk / 22 + regionoff);
@@ -466,6 +487,13 @@ void draw_region(void)
     if (clip_low < 0)
         clip_low = 0;
 
+    if (C7010_TraceVideoFrame()) {
+        std::printf("O2EM-NG: C7010 0030V REGION clk=%d lines=%ld-%d ctrl=%02X foregroundGate=%d\n",
+            master_clk, static_cast<long>(last_line), i, VDCwrite[0xA0], useforen);
+        std::printf("O2EM-NG: C7010 0030V OBJECTS 00-7F:");
+        for (unsigned int a=0; a<0x80; ++a) std::printf(" %02X", VDCwrite[a]);
+        std::printf("\n");
+    }
     if (clip_low < clip_high)
         draw_display();
 
@@ -481,6 +509,10 @@ void finish_display(void)
 
     if (!gTexture)
         return;
+
+    // Composite the Videopac+ EF934x layer only when a G7400/Jopac BIOS
+    // has enabled VPP emulation.
+    vpp_compose(vscreen, BMPW, BMPH);
 
     for (int i = 0; i < BMPW * BMPH; i++)
         pixels[i] = palette_to_argb(vscreen[i]);

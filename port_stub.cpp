@@ -1,12 +1,10 @@
-#include <cstdint>
+/*
+    O2EM-NG
+    Patch 0029A Fix 1
 
-using Byte = uint8_t;
+    read_PB() and write_PB() are implemented by vpp_sdl.cpp.
 
-Byte read_PB(Byte value)
-{
-    return 0xFF;
-}
-
-void write_PB(Byte port, Byte value)
-{
-}
+    This file is intentionally left without those function definitions.
+    Keeping the old placeholder implementations here caused LNK2005
+    duplicate-symbol errors when the Videopac+ core was restored.
+*/

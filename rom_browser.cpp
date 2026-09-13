@@ -1,6 +1,7 @@
 #include "rom_browser.h"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <utility>
 
@@ -22,9 +23,11 @@ std::vector<RomEntry> LoadRoms(const std::string& romFolder)
         }
 
         const std::filesystem::path path = entry.path();
-        const std::string extension = path.extension().string();
+        std::string extension = path.extension().string();
+        std::transform(extension.begin(), extension.end(), extension.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-        if (extension != ".bin" && extension != ".BIN")
+        if (extension != ".bin" && extension != ".rom")
         {
             continue;
         }

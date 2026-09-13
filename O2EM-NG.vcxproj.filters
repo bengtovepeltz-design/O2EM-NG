@@ -1,4 +1,4 @@
-﻿<?xml version='1.0' encoding='utf-8'?>
+<?xml version='1.0' encoding='utf-8'?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <ItemGroup>
     <Filter Include="Source Files">
@@ -21,6 +21,9 @@
     </Filter>
     <Filter Include="Assets">
       <UniqueIdentifier>{A1A63D6E-0F9A-47B4-AE88-8D8F9211B014}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Gamedata">
+      <UniqueIdentifier>{BBAE52B8-77E1-4DD6-9CA2-48BB7DA1692D}</UniqueIdentifier>
     </Filter>
 </ItemGroup>
   <ItemGroup>
@@ -51,7 +54,10 @@
     <ClCompile Include="timefunc_sdl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="vpp_stub.cpp">
+    <ClCompile Include="vpp_sdl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vpp_cset.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="voice_stub.cpp">
@@ -76,6 +82,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="videopac_font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="audio8245.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="c7010.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="audio_sdl.cpp">
@@ -204,6 +216,15 @@
     <ClInclude Include="audio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="c7010.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="audio8245.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="audio_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="settings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -211,6 +232,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="vmachine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vpp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vpp_cset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="crc32.h">
@@ -288,10 +315,29 @@
     <None Include="third_party\pdfium\README.txt">
       <Filter>Third Party</Filter>
     </None>
+    <None Include="Gamedata\videopac.xml">
+      <Filter>Gamedata</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="assets\O2EM-NG_Header.png">
       <Filter>Assets</Filter>
     </None>
   </ItemGroup>
-</Project>
+  <ItemGroup>
+    <None Include="README_Patch_0030Q_Enter_Communication_Trace.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README_Patch_0030R_C7010_Write_Routing.txt" />
+  </ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030S_C7010_Interleave.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030T_Input_Response_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030U_Move_Validation_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030V_Video_Regions.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030W_Lower_Board_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030X_Pending_Timer_IRQ.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030Y_C7010_Raster_Scale.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030Z_Board_Transfer_Trace.txt" /></ItemGroup>
+  <ItemGroup><None Include="README_Patch_0030AA_Filtered_Board_Trace.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AB_JR_Displacement_Fix.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AC_Character_Snapshot.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AD_Beta_Baseline.txt" /></ItemGroup>
+  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /></ItemGroup>
+<ItemGroup><None Include="tools\package-release.ps1" /><None Include="tools\release-manifest.json" /><None Include="Docs\Release packaging.md" /></ItemGroup><ItemGroup><ResourceCompile Include="O2EM-NG.rc" /><Image Include="assets\O2EM-NG.ico" /><Image Include="assets\O2EM-NG_Icon.png" /></ItemGroup><ItemGroup><None Include="Docs\readme.md" /></ItemGroup></Project>

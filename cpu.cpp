@@ -23,6 +23,7 @@
 #include "vdc.h"
 #include "vpp.h"
 #include "cpu.h"
+#include "c7010.h"
 #include <SDL3/SDL.h>
 
 Byte acc = 0;
@@ -60,6 +61,29 @@ Byte tirq_en = 0;
 Byte irq_ex = 0;
 
 int master_count = 0;
+
+// Patch 0030O: focused trace of the 8048 immediately after the C7010
+// ENTER key is observed by read_P2().  This deliberately lives in the
+// 8048 core so we can see whether the cartridge program ever reaches
+// its move-commit/MOVX path after the key scan.
+static int c7010_enter_trace_remaining = 0;
+static unsigned int c7010_enter_trace_seq = 0;
+
+void CPU_ArmC7010EnterTrace(Byte scannedP2)
+{
+    if constexpr (!O2EM_C7010_TRACE) return;
+    C7010_ArmMoveTrace();
+    printf("O2EM-NG: C7010 0030Z EXTRAM BEFORE ENTER:");
+    for (unsigned int i=0; i<128; ++i) printf(" %02X", extRAM[i]);
+    printf("\n");
+    c7010_enter_trace_remaining = 768;
+    c7010_enter_trace_seq = 0;
+    printf("O2EM-NG: C7010 0030P ENTER DETECTED at 8048 PC=%03X A=%02X P1=%02X P2=%02X scanP2=%02X R0=%02X R1=%02X R2=%02X R3=%02X\n",
+        (unsigned int)lastpc, (unsigned int)acc, (unsigned int)p1, (unsigned int)p2,
+        (unsigned int)scannedP2, (unsigned int)intRAM[reg_pnt],
+        (unsigned int)intRAM[reg_pnt + 1], (unsigned int)intRAM[reg_pnt + 2],
+        (unsigned int)intRAM[reg_pnt + 3]);
+}
 
 #define push(d) {intRAM[sp++] = (d); if (sp > 23) sp = 8;}
 #define pull() (sp--, (sp < 8)?(sp=23):0, intRAM[sp])
@@ -101,6 +125,12 @@ void ext_IRQ(void){
 
 
 void tim_IRQ(void){
+    // 0030X: retain an enabled timer/counter overflow while an IRQ is active.
+    // The existing pending-IRQ check services it after RETR; do not nest IRQs.
+    if (tirq_en && irq_ex) {
+        tirq_pend = 1;
+        return;
+    }
 	if (tirq_en && !irq_ex) {
 		irq_ex=2;
 		tirq_pend=0;
@@ -149,6 +179,29 @@ void cpu_exec(void) {
 
 		lastpc=pc;
 		op=ROM(pc++);
+
+        // 0030W: observe the missing lower-board interval before execution.
+        if (master_clk >= 3500 && master_clk <= 5500 && C7010_TakeRasterSample()) {
+            printf("O2EM-NG: C7010 0030W RASTER clk=%d h=%d PC=%03X OP=%02X A=%02X P1=%02X T=%02X timer=%u counter=%u irq=%u en=%u/%u bank=%u R=%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X RAM3F=%02X\n",
+                master_clk, h_clk, static_cast<unsigned int>(lastpc), static_cast<unsigned int>(op),
+                static_cast<unsigned int>(acc), static_cast<unsigned int>(p1), static_cast<unsigned int>(itimer),
+                static_cast<unsigned int>(timer_on), static_cast<unsigned int>(count_on),
+                static_cast<unsigned int>(irq_ex), static_cast<unsigned int>(xirq_en), static_cast<unsigned int>(tirq_en),
+                static_cast<unsigned int>(reg_pnt), intRAM[reg_pnt], intRAM[reg_pnt+1], intRAM[reg_pnt+2], intRAM[reg_pnt+3],
+                intRAM[reg_pnt+4], intRAM[reg_pnt+5], intRAM[reg_pnt+6], intRAM[reg_pnt+7], intRAM[0x3F]);
+        }
+        if (c7010_enter_trace_remaining > 0) {
+            ++c7010_enter_trace_seq;
+            printf("O2EM-NG: C7010 ENTER8048 #%03u PC=%03X OP=%02X A=%02X P1=%02X P2=%02X R0=%02X R1=%02X R2=%02X R3=%02X CY=%u F0=%u F1=%u\n",
+                c7010_enter_trace_seq, (unsigned int)lastpc, (unsigned int)op,
+                (unsigned int)acc, (unsigned int)p1, (unsigned int)p2,
+                (unsigned int)intRAM[reg_pnt], (unsigned int)intRAM[reg_pnt + 1],
+                (unsigned int)intRAM[reg_pnt + 2], (unsigned int)intRAM[reg_pnt + 3],
+                (unsigned int)cy, (unsigned int)(f0 ? 1 : 0), (unsigned int)(f1 ? 1 : 0));
+            --c7010_enter_trace_remaining;
+            if (c7010_enter_trace_remaining == 0)
+                printf("O2EM-NG: C7010 0030P ENTER 8048 trace window complete (768 instructions).\n");
+        }
 		switch (op) {
 			case 0x00: /* NOP */
 				clk++;
@@ -906,11 +959,23 @@ void cpu_exec(void) {
 				break;
 
 			case 0x80:  /* MOVX  A,@Ri */
-				acc=ext_read(intRAM[reg_pnt]);
+                {
+                    Byte traceAdr = intRAM[reg_pnt];
+                    acc=ext_read(traceAdr);
+                    if (c7010_enter_trace_remaining > 0)
+                        printf("O2EM-NG: C7010 ENTER-MOVX READ  R0=%02X -> A=%02X P1=%02X P2=%02X\n",
+                            (unsigned int)traceAdr, (unsigned int)acc, (unsigned int)p1, (unsigned int)p2);
+                }
 				clk+=2;
 				break;
 			case 0x81:  /* MOVX A,@Ri */
-				acc=ext_read(intRAM[reg_pnt+1]);
+                {
+                    Byte traceAdr = intRAM[reg_pnt+1];
+                    acc=ext_read(traceAdr);
+                    if (c7010_enter_trace_remaining > 0)
+                        printf("O2EM-NG: C7010 ENTER-MOVX READ  R1=%02X -> A=%02X P1=%02X P2=%02X\n",
+                            (unsigned int)traceAdr, (unsigned int)acc, (unsigned int)p1, (unsigned int)p2);
+                }
 				clk+=2;
 				break;
 			case 0x82: /* ILL */
@@ -975,10 +1040,16 @@ void cpu_exec(void) {
 				clk+=2;
 				break;
 			case 0x90:  /* MOVX @Ri,A */
+                if (c7010_enter_trace_remaining > 0)
+                    printf("O2EM-NG: C7010 ENTER-MOVX WRITE R0=%02X A=%02X P1=%02X P2=%02X\n",
+                        (unsigned int)intRAM[reg_pnt], (unsigned int)acc, (unsigned int)p1, (unsigned int)p2);
 				ext_write(acc,intRAM[reg_pnt]);
 				clk+=2;
 				break;
 			case 0x91:  /* MOVX @Ri,A */
+                if (c7010_enter_trace_remaining > 0)
+                    printf("O2EM-NG: C7010 ENTER-MOVX WRITE R1=%02X A=%02X P1=%02X P2=%02X\n",
+                        (unsigned int)intRAM[reg_pnt+1], (unsigned int)acc, (unsigned int)p1, (unsigned int)p2);
 				ext_write(acc,intRAM[reg_pnt+1]);
 				clk+=2;
 				break;
@@ -1568,7 +1639,9 @@ void cpu_exec(void) {
 		}
 
 
-		master_clk+=clk;
+		// 0030S: allow the coprocessor to run between 8048 instructions.
+        C7010_Run8048Cycles(static_cast<unsigned int>(clk), static_cast<unsigned int>(evblclk));
+        master_clk+=clk;
 		h_clk+=clk;
 		clk_counter+=clk;
 

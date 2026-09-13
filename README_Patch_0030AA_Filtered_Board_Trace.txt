@@ -1,0 +1,1 @@
+0030AA: exclude external RAM 5A-7F display scratch buffer from the 0030Z event budget. Keep board table 00-59. No emulation behavior changes. Repeat E2-E4.

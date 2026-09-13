@@ -31,7 +31,7 @@ private:
     static constexpr int VisibleRows = 18;
     static constexpr Sint16 StickDeadzone = 16000;
     static constexpr int SettingsItemCount = 4;
-    static constexpr int MetadataFieldCount = 14;
+    static constexpr int MetadataFieldCount = 15;
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
@@ -44,9 +44,12 @@ private:
     ImportManager importManager_;
     std::string importStatus_;
     std::vector<std::string> installedBiosFiles_;
+    bool c7010FirmwareInstalled_ = false;
+    bool c7420FirmwareInstalled_ = false;
     MetadataEngine metadataEngine_;
 
     int settingsSelected_ = 0;
+    int openDropdown_ = -1; // -1 none, 1 region, 3 BIOS
     FrontendTab activeTab_ = FrontendTab::Library;
     bool running_ = true;
     bool redraw_ = true;

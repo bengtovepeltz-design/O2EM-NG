@@ -152,10 +152,25 @@ namespace
         return L"Add file to O2EM-NG";
     }
 
-    Path SelectSourceFile(ImportAssetType type, bool& cancelled)
+    Path SelectSourceFile(ImportAssetType type, bool& cancelled, const Path& basePath)
     {
         wchar_t filename[32768] = {};
         const wchar_t* filter = FilterFor(type);
+        // Source history is separate from the destination/save dialog history.
+        const Path history = std::filesystem::absolute(basePath / "import-folders.ini");
+        wchar_t remembered[32768] = {};
+        GetPrivateProfileStringW(L"Sources", AssetName(type), L"", remembered,
+            static_cast<DWORD>(std::size(remembered)), history.c_str());
+        std::error_code folderError;
+        if (!std::filesystem::is_directory(Path(remembered), folderError))
+            GetPrivateProfileStringW(L"Sources", L"Last", L"", remembered,
+                static_cast<DWORD>(std::size(remembered)), history.c_str());
+        folderError.clear();
+        if (std::filesystem::is_directory(Path(remembered), folderError))
+        {
+            const std::wstring initialPattern = (Path(remembered) / L"*.*").wstring();
+            wcsncpy_s(filename, initialPattern.c_str(), _TRUNCATE);
+        }
 
         OPENFILENAMEW dialog{};
         dialog.lStructSize = sizeof(dialog);
@@ -175,7 +190,11 @@ namespace
         }
 
         cancelled = false;
-        return Path(filename);
+        const Path selected(filename);
+        const std::wstring sourceFolder = selected.parent_path().wstring();
+        WritePrivateProfileStringW(L"Sources", AssetName(type), sourceFolder.c_str(), history.c_str());
+        WritePrivateProfileStringW(L"Sources", L"Last", sourceFolder.c_str(), history.c_str());
+        return selected;
     }
 
     std::string LowerExtension(const Path& path)
@@ -208,9 +227,32 @@ namespace
 
     std::string TwoDigitId(int id)
     {
+        if (id <= 0 || id > 99)
+            return {};
         std::ostringstream stream;
         stream << std::setfill('0') << std::setw(2) << id;
         return stream.str();
+    }
+
+    // Patch 0030C Phase 4: media must not depend on an official Philips
+    // catalogue number. Prototypes/homebrew such as Tutankham have no
+    // official ID, so fall back to the installed ROM stem as a stable key.
+    std::string MediaKeyFor(const GameInfo& game)
+    {
+        if (!game.catalogId.empty())
+            return game.catalogId;
+
+        const std::string number = TwoDigitId(game.videopacNumber);
+        if (!number.empty())
+            return number;
+
+        if (!game.romPath.empty() && !game.romPath.stem().empty())
+            return game.romPath.stem().string();
+
+        if (!game.filename.empty())
+            return Path(game.filename).stem().string();
+
+        return {};
     }
 
     Path NextScreenshotPath(const Path& folder, const std::string& id,
@@ -231,7 +273,7 @@ namespace
         const Path& source, const Path& basePath)
     {
         const std::string extension = LowerExtension(source);
-        const std::string id = TwoDigitId(game.videopacNumber);
+        const std::string id = MediaKeyFor(game);
 
         switch (type)
         {
@@ -263,7 +305,8 @@ namespace
         bool& cancelled)
     {
         wchar_t filename[32768] = {};
-        const std::wstring suggested = suggestedDestination.filename().wstring();
+        // Supply the full path so the save dialog cannot reuse the source dialog's folder.
+        const std::wstring suggested = std::filesystem::absolute(suggestedDestination).wstring();
         wcsncpy_s(filename, suggested.c_str(), _TRUNCATE);
 
         const std::wstring initialFolder = suggestedDestination.parent_path().wstring();
@@ -300,6 +343,13 @@ namespace
         const Path& suggestedDestination)
     {
         ImportResult result;
+        std::error_code folderError;
+        std::filesystem::create_directories(suggestedDestination.parent_path(), folderError);
+        if (folderError)
+        {
+            result.message = "O2EM-NG could not create the destination folder.";
+            return result;
+        }
         bool cancelled = false;
         const Path destination = AskForDestinationName(type, suggestedDestination, cancelled);
         if (destination.empty())
@@ -357,14 +407,16 @@ ImportResult ImportManager::ImportForGame(
     ImportAssetType type, const GameInfo& game) const
 {
     ImportResult result;
-    if (game.videopacNumber <= 0 || game.videopacNumber > 99)
+    // Phase 4: Catalog ID is metadata, not a prerequisite for media.
+    // An installed ROM filename is a valid fallback identity.
+    if (MediaKeyFor(game).empty())
     {
-        result.message = "The selected game does not have a valid Videopac ID.";
+        result.message = "This game has no usable media identity yet. Import its ROM first.";
         return result;
     }
 
     bool cancelled = false;
-    const Path source = SelectSourceFile(type, cancelled);
+    const Path source = SelectSourceFile(type, cancelled, basePath_);
     if (source.empty())
     {
         result.cancelled = cancelled;
@@ -388,11 +440,36 @@ ImportResult ImportManager::ImportForGame(
     return CopySelectedFile(type, source, suggestedDestination);
 }
 
+
+ImportResult ImportManager::ImportRom() const
+{
+    ImportResult result;
+    bool cancelled = false;
+    const Path source = SelectSourceFile(ImportAssetType::Rom, cancelled, basePath_);
+    if (source.empty())
+    {
+        result.cancelled = cancelled;
+        result.message = cancelled ? "Import cancelled." : "The file dialog could not be opened.";
+        return result;
+    }
+
+    if (!IsAllowedExtension(ImportAssetType::Rom, source))
+    {
+        result.message = "The selected ROM file type is not supported.";
+        return result;
+    }
+
+    // Universal ROM import keeps the source filename. Identification and
+    // metadata matching must never depend on an invented catalogue number.
+    const Path suggestedDestination = basePath_ / "ROMS" / source.filename();
+    return CopySelectedFile(ImportAssetType::Rom, source, suggestedDestination);
+}
+
 ImportResult ImportManager::ImportBios() const
 {
     ImportResult result;
     bool cancelled = false;
-    const Path source = SelectSourceFile(ImportAssetType::Bios, cancelled);
+    const Path source = SelectSourceFile(ImportAssetType::Bios, cancelled, basePath_);
     if (source.empty())
     {
         result.cancelled = cancelled;

@@ -9,7 +9,6 @@ namespace
 {
     SDL_Texture* gHeaderTexture = nullptr;
     SDL_Renderer* gHeaderRenderer = nullptr;
-    bool gHeaderLoadAttempted = false;
 
     void DrawHeaderText(
         SDL_Renderer* renderer,
@@ -31,7 +30,6 @@ namespace
             gHeaderTexture = nullptr;
         }
         gHeaderRenderer = nullptr;
-        gHeaderLoadAttempted = false;
     }
 
     void EnsureHeaderTexture(SDL_Renderer* renderer)
@@ -42,14 +40,20 @@ namespace
             gHeaderRenderer = renderer;
         }
 
-        if (gHeaderTexture || gHeaderLoadAttempted)
+        if (gHeaderTexture)
             return;
 
-        gHeaderLoadAttempted = true;
         const char* basePath = SDL_GetBasePath();
         const std::string imagePath =
             std::string(basePath ? basePath : "") + "assets/O2EM-NG_Header.png";
         gHeaderTexture = IMG_LoadTexture(renderer, imagePath.c_str());
+        if (!gHeaderTexture)
+        {
+            // Renderer recreation after returning from emulation can briefly
+            // make the first image load fail. Do not latch that failure; the
+            // next frontend redraw must be allowed to try again.
+            SDL_Log("O2EM-NG: header reload failed, will retry: %s", SDL_GetError());
+        }
     }
 }
 

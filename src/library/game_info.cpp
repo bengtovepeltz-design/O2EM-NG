@@ -30,12 +30,32 @@ int ParseVideopacNumberFromFilename(const std::string& romId)
     return number >= 1 && number <= 99 ? number : 0;
 }
 
+std::string ParseVideopacCatalogIdFromFilename(const std::string& filename)
+{
+    std::string lower = filename;
+    for (char& c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (lower.rfind("vp_", 0) == 0 && lower.size() >= 5 &&
+        std::isdigit(static_cast<unsigned char>(lower[3])) &&
+        std::isdigit(static_cast<unsigned char>(lower[4])))
+    {
+        std::string id = filename.substr(3, 2);
+        // Accept the preservation-friendly vp_54+.bin spelling directly.
+        if (filename.size() > 5 && filename[5] == '+') id += "+";
+        return id;
+    }
+    // Expansion modules may use their hardware designation as catalogue ID.
+    if (lower.find("c7010") != std::string::npos) return "C7010";
+    if (lower.find("c7420") != std::string::npos) return "C7420";
+    return {};
+}
+
 GameInfo MakeGameInfo(const RomEntry& rom)
 {
     GameInfo game;
 
     game.rom = rom;
     game.videopacNumber = ParseVideopacNumberFromFilename(rom.info.romId);
+    game.catalogId = ParseVideopacCatalogIdFromFilename(rom.info.romId);
     game.title = rom.name;
     game.sortTitle = rom.name;
     game.genre = rom.info.displayCategory;
