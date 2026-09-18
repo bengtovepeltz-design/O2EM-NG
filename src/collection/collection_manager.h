@@ -40,5 +40,7 @@ private:
     CollectionView view_ = CollectionView::AllGames;
     std::vector<std::size_t> indices_;
     std::size_t currentPosition_ = 0;
+    // Import Center switch: include every catalogue entry regardless of ROM
+    // presence. ALL GAMES always shows the full catalogue now.
     bool showUninstalled_ = false;
 };

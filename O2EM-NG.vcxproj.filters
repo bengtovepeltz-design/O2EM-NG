@@ -123,6 +123,7 @@
     <ClCompile Include="frontend_boxart.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\media\video_preview.cpp"><Filter>Source Files</Filter></ClCompile>
     <ClCompile Include="src\frontend\frontend_screenshot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -264,6 +265,7 @@
     <ClInclude Include="frontend_boxart.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\media\video_preview.h"><Filter>Header Files</Filter></ClInclude>
     <ClInclude Include="src\frontend\frontend_screenshot.h">
       <Filter>Header Files</Filter>
     </ClInclude>

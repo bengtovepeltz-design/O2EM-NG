@@ -7,7 +7,7 @@ struct GameInfo;
 void FrontendBoxArt_DrawImage(
     SDL_Renderer* renderer,
     const SDL_FRect& imageArea,
-    const GameInfo* game);
+    const GameInfo* game, bool scaleImage = true);
 
 void FrontendBoxArt_Draw(
     SDL_Renderer* renderer,

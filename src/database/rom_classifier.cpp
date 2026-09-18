@@ -38,8 +38,13 @@ namespace
     bool IsOfficialVideopacRom(
         const std::string& romId)
     {
+        // Patch 0031: the master catalogue also spells Videopac+ cartridges
+        // as vp_NNpl.bin and vp_NN_12fix.bin. These are official catalogue
+        // entries in their own right (independent from the plain number),
+        // so they must seed and be able to show as RED when their ROM is
+        // missing. Installed vp_NN+.bin spellings are unaffected here.
         static const std::regex officialPattern(
-            R"(^vp_(0[1-9]|[1-5][0-9]|60)(?:_12|_16)?$)",
+            R"(^vp_(0[1-9]|[1-5][0-9]|60)(?:pl|_12fix|_12|_16)?$)",
             std::regex_constants::icase);
 
         return std::regex_match(

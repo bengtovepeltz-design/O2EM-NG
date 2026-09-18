@@ -13,9 +13,11 @@ namespace
 {
     using Path = std::filesystem::path;
 
+    const char* ScreenshotExtensions[] = { ".jpg", ".png", ".jpeg", ".gif", ".bmp", ".webp", ".mp4" };
+
     const char* ImageExtensions[] =
     {
-        ".jpg", ".png", ".jpeg", ".bmp", ".webp"
+        ".jpg", ".png", ".jpeg", ".gif", ".bmp", ".webp"
     };
 
     const char* ManualExtensions[] =
@@ -302,7 +304,7 @@ namespace
             {
                 const Path path = iterator->path();
                 if (IsRegularFile(path) &&
-                    HasExtension(path, ImageExtensions, std::size(ImageExtensions)))
+                    HasExtension(path, ScreenshotExtensions, std::size(ScreenshotExtensions)))
                 {
                     screenshots.push_back(path);
                 }
@@ -318,7 +320,7 @@ namespace
         {
             const Path path = iterator->path();
             if (!IsRegularFile(path) ||
-                !HasExtension(path, ImageExtensions, std::size(ImageExtensions)))
+                !HasExtension(path, ScreenshotExtensions, std::size(ScreenshotExtensions)))
             {
                 continue;
             }

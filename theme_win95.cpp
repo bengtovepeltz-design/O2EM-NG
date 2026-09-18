@@ -14,13 +14,13 @@ namespace Win95Theme
     const SDL_Color ActiveTitle{ 0, 0, 128, 255 };
     const SDL_Color ActiveTitleText{ 255, 255, 255, 255 };
 
-    const SDL_Color SelectedItem{ 185, 35, 35, 255 };
+    const SDL_Color SelectedItem{ 0, 0, 128, 255 };
     const SDL_Color SelectedItemText{ 255, 255, 255, 255 };
 
     const SDL_Color TabInactive{ 192, 192, 192, 255 };
     const SDL_Color TabInactiveText{ 0, 0, 0, 255 };
-    const SDL_Color TabActive{ 215, 165, 55, 255 };
-    const SDL_Color TabActiveText{ 0, 0, 0, 255 };
+    const SDL_Color TabActive{ 223, 223, 223, 255 };
+    const SDL_Color TabActiveText{ 0, 0, 128, 255 };
 
     void SetRenderColor(SDL_Renderer* renderer, const SDL_Color& color)
     {

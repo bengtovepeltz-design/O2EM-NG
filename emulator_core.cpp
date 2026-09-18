@@ -92,6 +92,11 @@ static bool LoadCart(const std::string& file)
     C7010_ConfigureForCartridge(app_data.crc);
 
     long size = FileSize(fn);
+    // VP31/VP40 use fixed 3 KiB program ROM and MOVX access to the cartridge.
+    app_data.exrom = (size == 4096 &&
+        (app_data.crc == 0xAFB23F89 || app_data.crc == 0x3BFEF56B ||
+         app_data.crc == 0x9B5E9356));
+    std::memset(extROM, 0, 4096);
 
     if ((size % 1024) != 0)
     {
@@ -156,17 +161,14 @@ static bool LoadCart(const std::string& file)
 
         if ((nb == 2) && (app_data.exrom))
         {
-            if (fread(&extROM[0], 1024, 1, fn) != 1)
+            if (fread(&extROM[0], 4096, 1, fn) != 1)
             {
                 fclose(fn);
                 return false;
             }
 
-            if (fread(&rom_table[0][1024], 3072, 1, fn) != 1)
-            {
-                fclose(fn);
-                return false;
-            }
+            std::memcpy(&rom_table[0][1024], &extROM[1024], 3072);
+            nb = 1; // Fixed program mapping; P1 must not switch program banks.
         }
         else
         {

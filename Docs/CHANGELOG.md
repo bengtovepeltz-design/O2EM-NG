@@ -1,5 +1,93 @@
 # Changelog
 
+## Unreleased fixes after Beta 4
+
+- Two new Win95 panels use the unused Library space right of Emulator
+  Settings. Library Folders lists the runtime ROMs, Box Art, Screenshots /
+  Media, Manuals and BIOS / Firmware folders with an OPEN button per row that
+  opens that folder in Windows Explorer (paths reuse the existing runtime
+  folder conventions and nothing is created). Collection Statistics counts
+  the current library only - Games, Favorites, Box Art, Screenshots, Videos
+  and Manuals - with no completeness, percentage or official-total figures.
+  When the column is narrow the panels switch to a compact fallback with
+  short labels and hide the footer note, and they fold away entirely when the
+  layout has no room for them.
+
+- Library Cover / Media is now the main media viewer: the standalone Screenshot
+  tab was removed and its full viewer (still images, GIF animation, silent
+  looping MP4 through Windows Media Foundation, Previous/Next browsing with
+  counter) is reached through Box Art / Screenshots buttons under the cover.
+  Mode switches and game changes stop playback cleanly. A per-item DELETE
+  button removes only the currently displayed cover or screenshot, with
+  confirmation, to the Recycle Bin. Import Center deletion still removes whole
+  categories and is unchanged.
+
+- Game Library became a full-height classic list: alternating rows fill the
+  panel and a Win95 scrollbar (wheel, arrows, track, draggable thumb) appears
+  when the collection exceeds the visible rows. Keyboard/PageUp/PageDown
+  selection keeps the selected game visible. Favorites scrolls the same way and
+  the "+ N more" fallback is gone.
+
+- Win95 push buttons with pressed states replace text-styled actions: Library
+  Quick Add imports (the cover action is now labelled "Import Cover..."), EDIT
+  GAME DATA / SAVE / CANCEL, and a new DELETE GAME DATA. The O2EM-NG panel
+  tagline now reads "The Videopac Experience".
+
+- DELETE GAME DATA removes only the selected database/catalogue entry after an
+  explicit confirmation that names the entry. ROM files, covers, screenshots,
+  GIF/MP4 media, manuals, BIOS and firmware are never touched. Deleted
+  catalogue entries are remembered in a suppressed_catalog_entries table so the
+  permanent catalogue does not reseed them; importing the ROM again creates a
+  fresh entry.
+
+- Emulator Settings in the Library gained a Fullscreen checkbox below
+  Scanlines, sharing the existing persisted fullscreen setting with the
+  Settings screen; BIOS and REGION dropdowns were shortened. System Information
+  now reports C7010 and C7420 NSC800 firmware status using the same detection
+  as Settings.
+
+- Catalogue identity fix: Videopac+ cartridges are separate identities (54 is
+  not 54+). Historical Plus filename spellings (vp_NN+, vp_NNpl, vp_NN_12,
+  vp_NN_12fix, vp_NN_16) now resolve to the same N+ catalogue entry, removing
+  duplicate plain-number rows while N and N+ remain fully independent.
+
+- ROM presence is now decided by the actual ROM directory: ALL GAMES lists the
+  full permanent catalogue, and the Videopac number shows green when the exact
+  ROM is installed, red when the catalogue entry has no ROM, and stays blank
+  for games without a catalogue number; the Game Information number plate
+  behaves the same. Missing-ROM entries stay selectable for metadata and media
+  and refuse to launch with guidance; importing the ROM reactivates the
+  existing entry without duplicates.
+
+- Library makeup: number/title/favorite columns, alternating rows, vector gold
+  favorite stars and row-aligned mouse selection. Full catalogue names are
+  retained; long titles are shortened only for display. Narrower portrait cover
+  frame and compact catalogue number field.
+
+- Win95 UI stage 2: classic captioned group frames in Library, grey
+  information/settings/favorites panels, aligned blue metadata labels and a
+  distinct Videopac number field. Media and description retain white
+  backgrounds. Dashboard action coordinates and emulator behavior are
+  unchanged.
+
+- Win95 UI stage 1: larger 1600x960 startup window bounded by the desktop, a
+  desktop-aware minimum size, grey workspace, navy selection/headings, narrower
+  library and more room for cover/information. Existing tabs and actions
+  remain. Search and thumbnail gallery are planned for a later stage.
+
+- Screenshot import and previews support MP4 videos: silent playback loops
+  while visible, using Windows Media Foundation on a decoding thread. Switching
+  games or tabs releases playback. Still images and animated GIFs remain
+  supported.
+
+- Screenshot view plays animated GIF previews using frame delays, looping while
+  visible. Switching away releases the animation; returning restarts it. GIF
+  files can be imported and discovered alongside still screenshots.
+
+- VP31 Musician and VP40 4 in 1 Row now activate XROM mapping by CRC: fixed
+  3 KiB program mapping and bounded MOVX access to the full 4 KiB cartridge.
+  Includes the French VP40 variant. Gameplay verification pending.
+
 ## 0.31.0-beta "Beta 4" - Unreleased
 
 Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
@@ -19,7 +107,8 @@ Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
 
 - Per-user installation allows imports and settings saves without administrator rights.
 - Import source folders are remembered separately from automatic destination folders.
-- Distribution includes the populated 222-record catalogue, with personal favorites and play history reset.
+- Distribution includes the populated 222-record catalogue, with personal
+  favorites and play history reset.
 
 - Cartridge write routing that interfered with C7010/VDC communication.
 - Lost enabled timer interrupts when the 8048 was already servicing an interrupt.
@@ -67,11 +156,14 @@ Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
 
 ### Improved
 
-- The frontend has developed from the original ROM browser into a more complete library-based interface.
-- Games and related media can be added from inside O2EM-NG instead of being managed only through File Explorer.
+- The frontend has developed from the original ROM browser into a more complete
+  library-based interface.
+- Games and related media can be added from inside O2EM-NG instead of being
+  managed only through File Explorer.
 - Game records and media are organized through the integrated database and project folder structure.
 - Box art and game information are available directly from the library.
-- Existing SDL3 video, audio, input, controller, region, and emulator-core behavior remains preserved.
+- Existing SDL3 video, audio, input, controller, region, and emulator-core
+  behavior remains preserved.
 - Controller and mouse operation in the frontend have been improved.
 - The Windows 95 / Philips-era visual direction has been retained for the frontend.
 
@@ -90,14 +182,17 @@ Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
 
 - Version updated to `v0.30.0-beta`.
 - Beta 3 Windows x64 distribution prepared for GitHub and community testing.
-- BIOS files, commercial ROMs, copyrighted box artwork, screenshots, and commercial manuals remain excluded from the release.
+- BIOS files, commercial ROMs, copyrighted box artwork, screenshots, and
+  commercial manuals remain excluded from the release.
 - Existing project documentation and release history are preserved and continued for Beta 3.
 
 ### Notes
 
 Beta 3 is the largest frontend expansion since the first public Beta.
 
-The emulator core remains based on the original O2EM work, while the surrounding Windows and SDL3 platform now provides an integrated library, database, import workflow, media handling, and game-information system.
+The emulator core remains based on the original O2EM work, while the
+surrounding Windows and SDL3 platform now provides an integrated library,
+database, import workflow, media handling, and game-information system.
 
 ---
 
@@ -107,7 +202,8 @@ The emulator core remains based on the original O2EM work, while the surrounding
 ### Added
 
 - In-game controller port switching.
-- Xbox Y now switches physical gamepad routing between the two emulated G7000 / Odyssey² joystick ports.
+- Xbox Y now switches physical gamepad routing between the two emulated
+  G7000 / Odyssey² joystick ports.
 - Brief on-screen controller routing notifications:
   - `CONTROLLER PORTS SWAPPED`
   - `CONTROLLER PORTS NORMAL`
@@ -115,9 +211,12 @@ The emulator core remains based on the original O2EM work, while the surrounding
 
 ### Improved
 
-- Single-player games that use different original joystick ports can now be played with one physical controller.
-- Users no longer need two physical controllers simply to accommodate game-dependent joystick-port behavior.
-- Original G7000 / Odyssey² joystick-port behavior remains preserved internally while the SDL3 input layer handles physical controller routing.
+- Single-player games that use different original joystick ports can now be
+  played with one physical controller.
+- Users no longer need two physical controllers simply to accommodate
+  game-dependent joystick-port behavior.
+- Original G7000 / Odyssey² joystick-port behavior remains preserved internally
+  while the SDL3 input layer handles physical controller routing.
 - Physical controller routing can be changed instantly during gameplay.
 - Two-controller multiplayer remains fully supported.
 
@@ -131,13 +230,17 @@ The emulator core remains based on the original O2EM work, while the surrounding
 
 ### Notes
 
-The original Philips Videopac G7000 / Magnavox Odyssey² hardware did not have a universal standard for which joystick port a single-player game used.
+The original Philips Videopac G7000 / Magnavox Odyssey² hardware did not have
+a universal standard for which joystick port a single-player game used.
 
 Some games expect joystick port 1 while others expect joystick port 2.
 
-O2EM-NG continues to emulate this original behavior, but version 0.22.1-beta adds a convenience layer in the SDL3 input system. A single physical controller can now be switched between the two emulated joystick ports by pressing Xbox Y.
+O2EM-NG continues to emulate this original behavior, but version 0.22.1-beta
+adds a convenience layer in the SDL3 input system. A single physical controller
+can now be switched between the two emulated joystick ports by pressing Xbox Y.
 
-This keeps the emulated machine behavior authentic while making the emulator easier to use with modern controllers.
+This keeps the emulated machine behavior authentic while making the emulator
+easier to use with modern controllers.
 
 ---
 
@@ -178,7 +281,8 @@ This keeps the emulated machine behavior authentic while making the emulator eas
 - Fullscreen mode better matches the intended living-room experience.
 - Settings can be changed without leaving the frontend.
 - Settings persist between emulator launches.
-- Source layout cleaned up by removing the obsolete emulator source subfolder after project paths were corrected and verified.
+- Source layout cleaned up by removing the obsolete emulator source subfolder
+  after project paths were corrected and verified.
 - Release build configuration completed for Windows x64.
 - Windows console/debug window removed from the Release build.
 
@@ -186,8 +290,10 @@ This keeps the emulated machine behavior authentic while making the emulator eas
 
 - In-game controller shortcut handling works through SDL gamepad events.
 - Reset and return-to-browser actions are mapped correctly during emulation.
-- Esc and controller B return correctly from the Settings screen to the ROM browser instead of exiting the frontend.
-- Fullscreen OFF correctly starts O2EM-NG in a normal window instead of being overridden by old forced-fullscreen startup code.
+- Esc and controller B return correctly from the Settings screen to the ROM
+  browser instead of exiting the frontend.
+- Fullscreen OFF correctly starts O2EM-NG in a normal window instead of being
+  overridden by old forced-fullscreen startup code.
 - Release build SDL3 include, library, and linker configuration corrected.
 - BIOS startup verified using the expected `o2rom.bin` BIOS filename.
 
@@ -228,7 +334,8 @@ Current test status:
   - CPU executes cartridge code.
   - External IRQ path is reached.
   - The issue may relate to special EXROM mapping behavior or another emulation-core difference.
-- Four in 1 Row investigation is paused after extensive debugging and will be revisited through comparison with known working O2EM implementations.
+- Four in 1 Row investigation is paused after extensive debugging and will be
+  revisited through comparison with known working O2EM implementations.
 
 ### Beta Release
 
@@ -236,7 +343,8 @@ Current test status:
 - BIOS, ROMS, BOXART, MANUALS, and DOCS distribution folders are in place.
 - Data folders contain explanatory README files.
 - Copyright and attribution information is maintained in `DOCS/COPYRIGHTS.txt`.
-- Custom `.gitignore` prevents BIOS files, ROM files, build output, and local development artifacts from being committed.
+- Custom `.gitignore` prevents BIOS files, ROM files, build output, and local
+  development artifacts from being committed.
 - Release x64 build completed.
 - Release package tested outside the development folder.
 - Public GitHub repository published.
@@ -246,4 +354,5 @@ Current test status:
 
 - Four in 1 Row has officially earned the title of first O2EM-NG nemesis ROM.
 - O2EM-NG v0.22.0-beta marked the first public release of the project.
-- O2EM-NG development continues through testing, compatibility investigation, and community feedback.
+- O2EM-NG development continues through testing, compatibility investigation,
+  and community feedback.

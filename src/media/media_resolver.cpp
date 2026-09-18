@@ -63,7 +63,7 @@ namespace
             ".jpg",
             ".png",
             ".jpeg",
-            ".bmp"
+            ".gif", ".bmp"
         };
 
         for (const char* extension : extensions)

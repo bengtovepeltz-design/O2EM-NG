@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -62,9 +63,24 @@ private:
     bool metadataTextInput_ = false;
     int metadataSelected_ = 0;
     std::size_t metadataCaret_ = 0;
+    // Game Data push buttons (EDIT GAME DATA / SAVE / CANCEL) currently held
+    // down, else -1. Same Win95 pressed-state idiom as the Quick Add buttons.
+    int metadataButtonPressed_ = -1;
     GameInfo metadataWorkingCopy_;
     std::string metadataManualPath_;
     int libraryDescriptionScroll_ = 0;
+    int quickAddPressed_ = -1; // Library Quick Add button held down, else -1
+    int folderOpenPressed_ = -1; // Library Folders OPEN button held down, else -1
+    // Library Cover / Media viewer mode: box art or the relocated screenshot
+    // media viewer (still images, GIF, MP4 via FrontendScreenshot_*).
+    enum class LibraryMediaMode { BoxArt = 0, Screenshots };
+    LibraryMediaMode libraryMediaMode_ = LibraryMediaMode::BoxArt;
+    bool scaleCoverImage_ = true;
+    // Favorites panel scrolling (Win95-style scrollbar; geometry shared by
+    // draw and hit paths via FavoritesScrollMetrics).
+    int favoritesScroll_ = 0;
+    bool favoritesScrollDrag_ = false;
+    float favoritesScrollDragGrab_ = 0.0f;
     std::vector<ProjectPage> projectPages_;
     int projectPageIndex_ = 0;
     int projectPageScroll_ = 0;
@@ -93,11 +109,17 @@ private:
     void BeginMetadataEdit();
     void CancelMetadataEdit();
     void SaveMetadataEdit();
+    void DeleteGameDataForSelectedGame();
     void ToggleMetadataTextInput();
     void EditCurrentMetadataField();
     bool IsLongMetadataField() const noexcept;
     std::string* CurrentMetadataField();
     const char* CurrentMetadataLabel() const;
+    SDL_FRect MetadataButtonRect(const SDL_FRect& inner, int index) const;
+    void DrawMetadataButton(const SDL_FRect& rect, int index, const char* label);
+    // Shared Win95 push-button body (shadow, raised/sunken edges, centered
+    // label); Game Data and Library OPEN buttons use it.
+    void DrawWin95Button(const SDL_FRect& rect, const char* label, bool pressed);
     void OpenSelectedManual();
     void EditLibraryDescription();
     void EditCurrentProjectPage();
@@ -117,6 +139,58 @@ private:
     bool TryMetadataControlAt(float x, float y);
     bool TryEditLibraryDescriptionAt(float x, float y);
     bool TryLibraryQuickControlAt(float x, float y);
+    SDL_FRect QuickAddButtonRect(const SDL_FRect& importsPanel, int index) const;
+    // Library Folders group: OPEN button rect for a row and the runtime
+    // folder path each row opens (base path from AssetManager).
+    SDL_FRect LibraryOpenButtonRect(const SDL_FRect& foldersPanel, int index) const;
+    std::filesystem::path LibraryFolderPath(int index) const;
+    SDL_FRect QuickComboRect(const SDL_FRect& inner, float y, float h) const;
+    SDL_FRect LibraryCoverMediaRect(const SDL_FRect& coverPanel) const;
+    void LibraryMediaButtonRects(const SDL_FRect& coverPanel,
+        SDL_FRect& boxArt, SDL_FRect& screenshots) const;
+    // Box Art mode's per-item DELETE (deletes only the displayed cover).
+    SDL_FRect LibraryBoxArtDeleteRect(const SDL_FRect& coverPanel) const;
+    bool TryLibraryMediaControlAt(float x, float y);
+    void HandleMouseButtonUp(const SDL_MouseButtonEvent& event);
+    void HandleMouseMotion(const SDL_MouseMotionEvent& event);
+    // Favorites scrollbar: parts are 0 none, 1 up arrow, 2 down arrow,
+    // 3 track page-up, 4 track page-down, 5 thumb.
+    struct FavoritesScrollGeom
+    {
+        SDL_FRect track{};
+        SDL_FRect upArrow{};
+        SDL_FRect downArrow{};
+        SDL_FRect thumb{};
+        int maxScroll = 0;
+        int visibleRows = 0;
+    };
+    // Clamps favoritesScroll_ against the live favorite count, so both are
+    // non-const on purpose.
+    FavoritesScrollGeom FavoritesScrollMetrics(const SDL_FRect& favInner,
+        std::size_t favoriteCount);
+    int FavoritesScrollPartAt(float x, float y, const SDL_FRect& favInner,
+        std::size_t favoriteCount);
+    bool HandleFavoritesScrollbarAt(float x, float y,
+        const SDL_FRect& favInner, std::size_t favoriteCount);
+    // Game Library list viewport scrolling: same Win95 scrollbar idiom as the
+    // Favorites panel (17 px column, raised arrows, sunken track, thumb),
+    // with 28 px list rows. libraryListScroll_ is the top visible row.
+    int libraryListScroll_ = 0;
+    bool libraryListScrollDrag_ = false;
+    float libraryListScrollDragGrab_ = 0.0f;
+    // Visible list rows area of the Game Library panel (below the column
+    // header), shared by the draw and hit paths.
+    SDL_FRect LibraryListRect(const SDL_FRect& content) const;
+    FavoritesScrollGeom LibraryListScrollMetrics(const SDL_FRect& listRect,
+        int itemCount);
+    int LibraryListScrollPartAt(float x, float y, const SDL_FRect& listRect,
+        int itemCount);
+    bool HandleLibraryListScrollbarAt(float x, float y,
+        const SDL_FRect& listRect, int itemCount);
+    // Adjusts libraryListScroll_ so the selected game stays in view after
+    // selection movement or collection/view changes; never fights wheel
+    // scrolling because it only runs when the selection itself moves.
+    void KeepLibrarySelectionVisible();
     bool TryLibraryFavoriteAt(float x, float y, bool activate);
     bool TryProjectControlAt(float x, float y);
     bool TryExitButtonAt(float x, float y);

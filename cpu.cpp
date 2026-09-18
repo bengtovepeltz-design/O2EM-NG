@@ -16,6 +16,7 @@
 
 
 #include <stdio.h>
+#include <cstdlib>
 #include "types.h"
 #include "vmachine.h"
 #include "keyboard.h"
@@ -177,6 +178,27 @@ void cpu_exec(void) {
 
 		clk=0;	
 
+        static const bool traceVp31 = std::getenv("O2EM_TRACE_VP31") != nullptr;
+        struct Vp31Step { unsigned pc, op, a, p1, p2, bank, irq, r0, r1; };
+        static Vp31Step history[96]{};
+        static unsigned historyCount = 0;
+        static bool dumped = false;
+        if (traceVp31 && app_data.crc == 0xAFB23F89 && !dumped)
+        {
+            history[historyCount++ % 96] = {pc, ROM(pc), acc, p1, p2, A11, irq_ex, intRAM[reg_pnt], intRAM[reg_pnt+1]};
+            if (pc == 0x27F)
+            {
+                unsigned begin = historyCount > 96 ? historyCount - 96 : 0;
+                for (unsigned n = begin; n < historyCount; ++n)
+                {
+                    const auto& t = history[n % 96];
+                    printf("VP31 STEP PC=%03X OP=%02X A=%02X P1=%02X P2=%02X MB=%03X IRQ=%u R0=%02X R1=%02X\n",
+                        t.pc,t.op,t.a,t.p1,t.p2,t.bank,t.irq,t.r0,t.r1);
+                }
+                fflush(stdout);
+                dumped = true;
+            }
+        }
 		lastpc=pc;
 		op=ROM(pc++);
 

@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <cstdlib>
 
 namespace
 {
@@ -410,6 +411,11 @@ void vpp_compose(Byte* framebuffer, int width, int height)
 {
     if (!app_data.vpp || !framebuffer || width <= 0 || height <= 0)
         return;
+
+    static const bool traceVp31 = std::getenv("O2EM_TRACE_VP31") != nullptr;
+    if (traceVp31 && app_data.crc == 0xAFB23F89 && frame % 60 == 0)
+        std::printf("VP31 PLUS transparency=%02X lum=%02X mode=%02X cursor=%d,%d\n",
+            unsigned(gTransparency), unsigned(gLum), unsigned(gMode), gCursorX, gCursorY);
 
     if (++gBlinkCounter >= 50)
     {

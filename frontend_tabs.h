@@ -7,7 +7,6 @@ enum class FrontendTab
     Library = 0,
     Cartridge,
     Extras,
-    Screenshot,
     Manual,
     Settings,
     About,

@@ -71,7 +71,7 @@ Byte rom_table[8][4096];
 
 Byte intRAM[64];
 Byte extRAM[256];
-Byte extROM[1024];
+Byte extROM[4096];
 Byte VDCwrite[256];
 Byte ColorVector[MAXLINES];
 Byte AudioVector[MAXLINES];
@@ -366,14 +366,7 @@ void write_p1(Byte d)
     C7010_WriteP1(d);
 
     if (app_data.bank == 2) {
-        int selected_bank;
-
-        if (app_data.crc == 0x3BFEF56B)
-            selected_bank = p1 & 0x01;      /* Four in 1 Row */
-        else
-            selected_bank = (~p1) & 0x01;   /* Normal 4K banking */
-
-        rom = rom_table[selected_bank];
+        rom = rom_table[(~p1) & 0x01];   /* Normal 4K banking */
     }
     else if (app_data.bank == 3) {
         rom = rom_table[~p1 & 0x03];
@@ -435,7 +428,23 @@ Byte read_P2(void)
     return p2;
 }
 
+static Byte ext_read_impl(ADDRESS adr);
 Byte ext_read(ADDRESS adr)
+{
+    const Byte value = ext_read_impl(adr);
+    static const bool traceVp31 = getenv("O2EM_TRACE_VP31") != nullptr;
+    static unsigned samples = 0;
+    if (traceVp31 && app_data.crc == 0xAFB23F89 && pc == 0x280 && samples < 24)
+    {
+        ++samples;
+        printf("VP31 BIOS WAIT PC=%03X adr=%02X value=%02X P1=%02X P2=%02X VDC06=%02X\n",
+            unsigned(pc), unsigned(adr), unsigned(value), unsigned(p1), unsigned(p2), unsigned(VDCwrite[6]));
+        fflush(stdout);
+    }
+    return value;
+}
+
+static Byte ext_read_impl(ADDRESS adr)
 {
     // Patch 0030K: observe the real 8048 MOVX read before C7010/VDC routing.
     // 0xFF is the pre-routing/open-bus value; returned data is still logged by
@@ -545,7 +554,7 @@ Byte ext_read(ADDRESS adr)
         return vpp_read(adr);
     } else if (app_data.exrom && (p1 & 0x02)) {
         /* Handle read from exrom */
-        return extROM[(p2 << 8) | (adr & 0xFF)];
+        return extROM[((p2 & 0x0F) << 8) | (adr & 0xFF)];
     } else if (app_data.megaxrom && !(p1 & 0x02) && !(p1 & 0x40)) {
         /* Handle data read from MegaCART */
         return megarom[(extRAM[0x81] << 12) | ((p2 & 0x0f) << 8) | (adr & 0xff)];
@@ -556,7 +565,7 @@ Byte ext_read(ADDRESS adr)
 
 Byte in_bus(void)
 {
-    Byte si = 0, d = 0, mode = 0, jn = 0, sticknum = 0;
+    Byte si = 0, d = 0, mode = 0, jn = 0;
 
     if ((p1 & 0x08) && (p1 & 0x10)) {
         /* Handle joystick read */
@@ -567,11 +576,9 @@ Byte in_bus(void)
         if (si == 1) {
             mode = app_data.stick[0];
             jn = 0;
-            sticknum = app_data.sticknumber[0] - 1;
         } else {
             mode = app_data.stick[1];
             jn = 1;
-            sticknum = app_data.sticknumber[1] - 1;
         }
         switch (mode) {
         case 1:

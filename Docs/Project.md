@@ -1,3 +1,62 @@
+## UI checkpoint - 17 September 2026 (Library side panels)
+
+The unused space right of Emulator Settings now holds two Win95 group
+panels:
+
+- Library Folders: one row per runtime folder (ROMs, Box Art, Screenshots /
+  Media, Manuals, BIOS / Firmware) with an OPEN push button that opens that
+  existing folder in Windows Explorer. Paths come from the existing runtime
+  folder conventions via AssetManager's base path; missing folders are never
+  created.
+- Collection Statistics: Games, Favorites, Box Art, Screenshots, Videos and
+  Manuals, counted from the existing library/media state only. No
+  completeness, percentage or official-total figures.
+
+A compact fallback (short row labels, short panel captions, footer note
+hidden) takes over below a 200px comfort width, and the panels fold away
+entirely below the existing 170px column threshold. Statistics split into
+Library (Games, Favorites) and Media (Box Art, Screenshots, Videos, Manuals)
+sections, and OPEN button text renders as normal active black label text.
+Human QA approved the panels, the compact labels, both thresholds and the
+footer-note behavior.
+
+## UI checkpoint - 17 September 2026
+
+The Library dashboard is now a complete collection workspace.
+
+- The standalone Screenshot tab was removed and its viewer lives inside
+  Cover / Media behind Box Art / Screenshots buttons, including GIF and looping
+  MP4 playback and per-item DELETE to the Recycle Bin.
+- The Game Library is a full-height scrollable list over the permanent catalogue
+  with green/red Videopac numbers showing ROM presence, and a manually
+  deletable catalogue (suppressed_catalog_entries keeps DELETE GAME DATA
+  permanent).
+- All actions use Win95 push buttons with pressed states.
+
+The full catalogue lists every known game regardless of ROM presence; red
+entries are legitimate missing-ROM records, not errors, and can be removed with
+DELETE GAME DATA when unwanted.
+
+Human QA passed for N/N+ separation, per-item DELETE and the 58/58+ deletion
+test; the developer is reviewing remaining red entries against the real ROM
+collection.
+
+## UI checkpoint - 15 September 2026
+
+Stage 2 implements captioned Win95 group frames and grey
+information/settings/favorites panels, aligned blue metadata labels and a
+separate catalogue number. Existing controls remain in place. Next: user review
+in windowed/fullscreen modes before media tabs, thumbnails and search. Changes
+remain local for the next beta.
+
+<!-- Local UI checkpoint: 2026-09-14 -->
+Win95 redesign, stage 1: grey workspace, navy selection and library dashboard
+headings, 25% library column (max 440px), larger default window (1600x960,
+desktop bounded), dashboard top area enlarged. Existing tabs and hit regions
+retained. Next: assess windowed/fullscreen screenshots with Bengt against the
+July 22 reference, then plan media tabs, thumbnail gallery and search. No
+release published for these changes.
+
 # O2EM-NG Project Notes
 
 ## Current status - 13 September 2026
@@ -60,7 +119,8 @@ for setup and useful bug-report details.
 
 ## Release preparation
 
-Documentation now targets v0.31.0-beta. Release packaging now creates a versioned folder and ZIP, including the game catalogue
+Documentation now targets v0.31.0-beta. Release packaging now creates a
+versioned folder and ZIP, including the game catalogue
 and runtime DLLs. The installer reads the same package/version, and the new icon is
 integrated. GitHub tag/release creation, publication and clean-PC testing remain.
 Do not publish the development folder: BIOS, C7010 firmware, commercial ROMs,
@@ -98,9 +158,12 @@ to those earlier versions, not to Beta 4. The status above takes precedence.
 
 # Project Goal
 
-O2EM-NG is a modernized Philips Videopac G7000 / Magnavox Odyssey² emulator project based on the original O2EM emulator.
+O2EM-NG is a modernized Philips Videopac G7000 / Magnavox Odyssey² emulator
+project based on the original O2EM emulator.
 
-The goal is to preserve the original O2EM emulation core and original machine behavior while replacing outdated platform dependencies with a modern SDL3-based architecture.
+The goal is to preserve the original O2EM emulation core and original machine
+behavior while replacing outdated platform dependencies with a modern
+SDL3-based architecture.
 
 The project aims to provide:
 
@@ -144,9 +207,11 @@ This version follows the first public release:
 
 The main addition in v0.22.1-beta is controller port switching.
 
-Xbox Y can now switch physical controller routing between the two emulated G7000 / Odyssey² joystick ports.
+Xbox Y can now switch physical controller routing between the two emulated
+G7000 / Odyssey² joystick ports.
 
-This allows a user with one physical controller to play single-player games regardless of which original joystick port the game expects.
+This allows a user with one physical controller to play single-player games
+regardless of which original joystick port the game expects.
 
 The emulator briefly displays:
 
@@ -217,7 +282,8 @@ Current development focus:
 
 # Current User Experience
 
-O2EM-NG is designed to behave more like a dedicated living-room console frontend than a traditional command-line emulator.
+O2EM-NG is designed to behave more like a dedicated living-room console
+frontend than a traditional command-line emulator.
 
 Typical use:
 
@@ -233,7 +299,8 @@ Typical use:
 10. Open Settings to change display mode or region.
 11. Settings are saved automatically to `o2em-ng.cfg`.
 
-The goal is to make normal gameplay possible without requiring command-line use or constant keyboard access.
+The goal is to make normal gameplay possible without requiring command-line
+use or constant keyboard access.
 
 ---
 
@@ -307,13 +374,15 @@ The input layer keeps separate state for:
 
 These states are combined and sent to the original emulated joystick system.
 
-This separation makes it possible to change physical controller routing without changing the emulated hardware behavior.
+This separation makes it possible to change physical controller routing
+without changing the emulated hardware behavior.
 
 ---
 
 # Original G7000 Joystick Behavior
 
-The Philips Videopac G7000 / Magnavox Odyssey² does not have a universal rule requiring every single-player game to use the same joystick port.
+The Philips Videopac G7000 / Magnavox Odyssey² does not have a universal rule
+requiring every single-player game to use the same joystick port.
 
 Some games expect one joystick.
 
@@ -323,11 +392,14 @@ This is authentic original hardware behavior.
 
 O2EM-NG preserves this behavior.
 
-During early controller testing, this meant that users might need two connected controllers or might need to change which physical controller they were holding when moving between games.
+During early controller testing, this meant that users might need two connected
+controllers or might need to change which physical controller they were holding
+when moving between games.
 
 The goal became:
 
-**Preserve authentic emulated joystick-port behavior while allowing one modern physical controller to access either port.**
+**Preserve authentic emulated joystick-port behavior while allowing one modern
+physical controller to access either port.**
 
 The solution was implemented entirely in the SDL3 input layer.
 
@@ -585,7 +657,8 @@ Result:
 
 This confirmed the main purpose of the feature:
 
-**A user does not need to own two physical controllers simply because different original games expect different joystick ports.**
+**A user does not need to own two physical controllers simply because different
+original games expect different joystick ports.**
 
 ---
 
@@ -720,7 +793,8 @@ PAL uses the core's 50 FPS video mode.
 
 ## NTSC Mode
 
-NTSC mode allows the original compatibility logic to run and then explicitly selects NTSC video mode.
+NTSC mode allows the original compatibility logic to run and then explicitly
+selects NTSC video mode.
 
 Flow:
 
@@ -751,7 +825,8 @@ Most development and testing is performed in Sweden.
 
 PAL behavior is therefore easier to verify locally.
 
-External feedback from users familiar with real Magnavox Odyssey² NTSC behavior remains especially valuable.
+External feedback from users familiar with real Magnavox Odyssey² NTSC
+behavior remains especially valuable.
 
 Useful reports should include:
 
@@ -844,7 +919,8 @@ O2EM-NG did not begin as a plan to create a modern emulator fork.
 
 It evolved through several stages.
 
-The history is preserved here because many current architectural decisions came directly from problems encountered during those earlier stages.
+The history is preserved here because many current architectural decisions came
+directly from problems encountered during those earlier stages.
 
 ---
 
@@ -892,7 +968,8 @@ Features included:
 - ROM count display
 - Game launching
 
-This version successfully launched games and proved that a more convenient O2EM experience was possible.
+This version successfully launched games and proved that a more convenient
+O2EM experience was possible.
 
 It also established several ideas that remain part of the O2EM-NG vision:
 
@@ -957,7 +1034,8 @@ However, the emulator still remained a separate legacy executable.
 
 The larger question became:
 
-**Should development continue building frontends around old O2EM, or should O2EM itself be modernized?**
+**Should development continue building frontends around old O2EM, or should
+O2EM itself be modernized?**
 
 The decision was made to investigate the source code.
 
@@ -1033,7 +1111,8 @@ Milestone:
 
 A new Visual Studio C/C++ project was created.
 
-The project began integrating the original O2EM emulation code into a modern Visual Studio and SDL3 environment.
+The project began integrating the original O2EM emulation code into a modern
+Visual Studio and SDL3 environment.
 
 Initial goals:
 
@@ -1191,7 +1270,8 @@ Controller testing included:
 - Fire button
 - Multiple controllers
 
-The separation between physical controller state and emulated joystick state later made Switch Sticks possible.
+The separation between physical controller state and emulated joystick state
+later made Switch Sticks possible.
 
 ---
 
@@ -1287,7 +1367,8 @@ Settings are stored in:
 
     o2em-ng.cfg
 
-This moved the project further away from command-line configuration and toward an appliance-style emulator experience.
+This moved the project further away from command-line configuration and toward
+an appliance-style emulator experience.
 
 ---
 
@@ -1497,11 +1578,13 @@ Different games may expect different joystick ports.
 
 O2EM-NG correctly preserved this behavior.
 
-However, a modern user with only one physical controller could encounter a game that expected the other emulated port.
+However, a modern user with only one physical controller could encounter a game
+that expected the other emulated port.
 
 The new goal became:
 
-**Keep the emulated hardware authentic while making one physical controller usable with either original joystick port.**
+**Keep the emulated hardware authentic while making one physical controller
+usable with either original joystick port.**
 
 The correct location for this solution was the SDL3 input layer.
 
@@ -1591,7 +1674,8 @@ The new routing feature did not break the existing multiplayer input system.
 
 # Stage 26 – v0.22.1-beta
 
-Because users had already downloaded v0.22.0-beta, the updated build should not silently replace the original release.
+Because users had already downloaded v0.22.0-beta, the updated build should not
+silently replace the original release.
 
 A new version was selected:
 
@@ -1643,11 +1727,16 @@ Major features:
 
 Release Name: **Beta 3**
 
-Beta 3 expands O2EM-NG from the original ROM-browser frontend into a more complete game-library environment.
+Beta 3 expands O2EM-NG from the original ROM-browser frontend into a more
+complete game-library environment.
 
-The release adds the integrated Game Library, Import Center, SQLite-backed game database, BIOS management, media import, favorites, game information, manual access, and live media refresh while preserving the existing SDL3 emulator core, controller support, region handling, and living-room workflow.
+The release adds the integrated Game Library, Import Center, SQLite-backed game
+database, BIOS management, media import, favorites, game information, manual
+access, and live media refresh while preserving the existing SDL3 emulator core,
+controller support, region handling, and living-room workflow.
 
-The Windows x64 release package was tested outside the development environment and on a clean Windows PC before publication.
+The Windows x64 release package was tested outside the development environment
+and on a clean Windows PC before publication.
 
 ---
 
@@ -1887,7 +1976,8 @@ The architecture intentionally separates:
 - Configuration
 - Rendering presentation
 
-This separation allows modern convenience features without unnecessary changes to the original emulation core.
+This separation allows modern convenience features without unnecessary changes
+to the original emulation core.
 
 ---
 
@@ -2368,7 +2458,8 @@ Its user benefit is large.
 
 One controller can now be used across games that expect different original joystick ports.
 
-This demonstrates the value of improving the platform layer without changing emulated hardware behavior.
+This demonstrates the value of improving the platform layer without changing
+emulated hardware behavior.
 
 ---
 
@@ -2404,7 +2495,8 @@ Examples:
 - C7420 interest
 - Controller-port usability
 
-Public Beta development therefore changes the project from one development environment into a broader compatibility effort.
+Public Beta development therefore changes the project from one development
+environment into a broader compatibility effort.
 
 ---
 
@@ -2528,7 +2620,8 @@ Original copyright and attribution information is maintained in:
 
 ## O2EM-NG
 
-Modern SDL3 modernization, frontend development, integration, testing, packaging, and project development:
+Modern SDL3 modernization, frontend development, integration, testing,
+packaging, and project development:
 
 **Bengt-Ove Peltz**
 
@@ -2538,9 +2631,11 @@ Copyright © 2026 Bengt-Ove Peltz
 
 # Final Project Principle
 
-O2EM-NG exists to help preserve and enjoy the Philips Videopac G7000 / Magnavox Odyssey² on modern systems.
+O2EM-NG exists to help preserve and enjoy the Philips Videopac G7000 /
+Magnavox Odyssey² on modern systems.
 
-The project should continue to modernize the experience without casually changing the machine being emulated.
+The project should continue to modernize the experience without casually
+changing the machine being emulated.
 
 The guiding principle remains:
 

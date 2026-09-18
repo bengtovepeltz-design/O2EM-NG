@@ -82,7 +82,7 @@ namespace
 void FrontendBoxArt_DrawImage(
     SDL_Renderer* renderer,
     const SDL_FRect& imageArea,
-    const GameInfo* game)
+    const GameInfo* game, bool scaleImage)
 {
     if (!renderer)
         return;
@@ -99,6 +99,15 @@ void FrontendBoxArt_DrawImage(
         if (SDL_GetTextureSize(gTexture, &imageWidth, &imageHeight) &&
             imageWidth > 0.0f && imageHeight > 0.0f)
         {
+            if (!scaleImage)
+            {
+                const float w=(std::min)(imageArea.w,imageWidth);
+                const float h=(std::min)(imageArea.h,imageHeight);
+                const SDL_FRect source{(imageWidth-w)*0.5f,(imageHeight-h)*0.5f,w,h};
+                const SDL_FRect target{imageArea.x+(imageArea.w-w)*0.5f,imageArea.y+(imageArea.h-h)*0.5f,w,h};
+                SDL_RenderTexture(renderer,gTexture,&source,&target);
+                return;
+            }
             const float scale = (std::min)(
                 imageArea.w / imageWidth,
                 imageArea.h / imageHeight);

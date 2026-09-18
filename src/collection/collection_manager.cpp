@@ -98,12 +98,18 @@ void CollectionManager::Rebuild()
     for (std::size_t i = 0; i < games.size(); ++i)
     {
         const GameInfo& game = games[i];
-        // Patch 0022a: the normal Game Library contains only games with an
-        // installed ROM. Import Center temporarily exposes the complete
-        // catalogue so the user can select a title before importing its ROM.
+        // The Game Library represents the permanent known catalogue: entries
+        // whose ROM is not installed stay visible in ALL GAMES, with the
+        // catalogue number drawn red (library/Game Information) instead of
+        // green. Play-oriented views still require an installed ROM. Import
+        // Center keeps exposing the complete catalogue as before.
         const bool installed = !game.romPath.empty() || !game.rom.path.empty();
         bool include = false;
         if (showUninstalled_)
+        {
+            include = true;
+        }
+        else if (view_ == CollectionView::AllGames)
         {
             include = true;
         }
@@ -111,7 +117,7 @@ void CollectionManager::Rebuild()
         {
             switch (view_)
             {
-            case CollectionView::AllGames: include = true; break;
+            case CollectionView::AllGames: break;
             case CollectionView::Favorites: include = game.favorite; break;
             case CollectionView::RecentlyPlayed: include = game.lastPlayed > 0; break;
             case CollectionView::MostPlayed: include = game.playCount > 0; break;

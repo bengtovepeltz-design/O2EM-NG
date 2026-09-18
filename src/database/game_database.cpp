@@ -502,6 +502,7 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
     // selectable games and can import its first ROM. Existing ROM-backed
     // entries remain authoritative and are never duplicated.
     std::unordered_map<std::string, bool> libraryFilenames;
+    std::unordered_map<std::string, bool> libraryCatalogIds;
     for (const GameInfo& game : library.Games())
     {
         std::string key = game.filename;
@@ -511,6 +512,31 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
                 return static_cast<char>(std::tolower(character));
             });
         libraryFilenames[key] = true;
+        // Patch 0031: catalogue identity includes the '+' variant. Track
+        // both the stored ID and the ID derived from the filename so
+        // preservation spellings (vp_55_12.bin) of an already-present
+        // identity (vp_55+.bin) do not seed a duplicate entry.
+        if (!game.catalogId.empty())
+            libraryCatalogIds[game.catalogId] = true;
+        const std::string filenameId =
+            ParseVideopacCatalogIdFromFilename(game.filename);
+        if (!filenameId.empty())
+            libraryCatalogIds[filenameId] = true;
+    }
+
+    // Patch 0031: entries removed via manual DELETE GAME DATA must stay
+    // removed; skip suppressed catalogue filenames while seeding.
+    const std::vector<std::string> suppressed = LoadSuppressedCatalogEntries();
+    std::unordered_map<std::string, bool> suppressedKeys;
+    for (const std::string& filename : suppressed)
+    {
+        std::string key = filename;
+        std::transform(key.begin(), key.end(), key.begin(),
+            [](unsigned char character)
+            {
+                return static_cast<char>(std::tolower(character));
+            });
+        suppressedKeys[key] = true;
     }
 
     for (const ImportedRecord& record : records)
@@ -528,6 +554,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
             });
         if (libraryFilenames.find(key) != libraryFilenames.end())
             continue;
+        if (suppressedKeys.find(key) != suppressedKeys.end())
+            continue;
 
         GameInfo game;
         game.filename = record.filename;
@@ -537,6 +565,11 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         game.description = record.notes;
         game.videopacNumber = ParseVideopacNumberFromFilename(record.filename);
         game.catalogId = ParseVideopacCatalogIdFromFilename(record.filename);
+        // Identity merge: if the same catalogue identity (including '+')
+        // is already present (e.g. installed vp_55+.bin), keep ONE entry.
+        if (!game.catalogId.empty() &&
+            libraryCatalogIds.find(game.catalogId) != libraryCatalogIds.end())
+            continue;
         game.videopacPlus = record.plusVersion ? "Yes" : "No";
         game.rom.name = game.title;
         game.rom.info = classification;
@@ -544,6 +577,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
 
         library.Add(game);
         libraryFilenames[key] = true;
+        if (!game.catalogId.empty())
+            libraryCatalogIds[game.catalogId] = true;
     }
 
     // Patch 0024: every installed ROM owns a database row, including
@@ -796,6 +831,93 @@ bool GameDatabase::DeleteGameRecord(const std::string& romFilename) const
     if (!statement) return false;
     if (!BindText(api, statement.Get(), 1, romFilename)) return false;
     return api.step(statement.Get()) == SQLITE_DONE;
+}
+
+
+// --- Manual DELETE GAME DATA support -------------------------------
+//
+// A persistent delete needs a suppression marker, otherwise the next
+// catalogue seed (InitializeAndPopulate) would simply re-insert the entry.
+// The marker table is created lazily and is database-only: it never
+// touches ROM files, media or any other entry.
+
+bool GameDatabase::SuppressCatalogEntry(const std::string& romFilename) const
+{
+    if (romFilename.empty()) return false;
+
+    WinSQLite api;
+    if (!api.Available()) return false;
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) return false;
+
+    std::string error;
+    const char* schema =
+        "CREATE TABLE IF NOT EXISTS suppressed_catalog_entries ("
+        "rom_filename TEXT PRIMARY KEY COLLATE NOCASE"
+        ");";
+    if (!Execute(api, handle.Get(), schema, error)) return false;
+
+    Statement statement(api, handle.Get(),
+        "INSERT OR IGNORE INTO suppressed_catalog_entries(rom_filename) VALUES(?);");
+    if (!statement) return false;
+    if (!BindText(api, statement.Get(), 1, romFilename)) return false;
+    return api.step(statement.Get()) == SQLITE_DONE;
+}
+
+bool GameDatabase::IsCatalogEntrySuppressed(const std::string& romFilename) const
+{
+    if (romFilename.empty()) return false;
+
+    WinSQLite api;
+    if (!api.Available()) return false;
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) return false;
+
+    std::string error;
+    const char* schema =
+        "CREATE TABLE IF NOT EXISTS suppressed_catalog_entries ("
+        "rom_filename TEXT PRIMARY KEY COLLATE NOCASE"
+        ");";
+    if (!Execute(api, handle.Get(), schema, error)) return false;
+
+    Statement statement(api, handle.Get(),
+        "SELECT 1 FROM suppressed_catalog_entries WHERE rom_filename=? COLLATE NOCASE LIMIT 1;");
+    if (!statement) return false;
+    if (!BindText(api, statement.Get(), 1, romFilename)) return false;
+    return api.step(statement.Get()) == SQLITE_ROW;
+}
+
+std::vector<std::string> GameDatabase::LoadSuppressedCatalogEntries() const
+{
+    std::vector<std::string> result;
+
+    WinSQLite api;
+    if (!api.Available()) return result;
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK) return result;
+
+    std::string error;
+    const char* schema =
+        "CREATE TABLE IF NOT EXISTS suppressed_catalog_entries ("
+        "rom_filename TEXT PRIMARY KEY COLLATE NOCASE"
+        ");";
+    if (!Execute(api, handle.Get(), schema, error)) return result;
+
+    Statement statement(api, handle.Get(),
+        "SELECT rom_filename FROM suppressed_catalog_entries;");
+    if (!statement) return result;
+    while (api.step(statement.Get()) == SQLITE_ROW)
+    {
+        if (const unsigned char* text = api.columnText(statement.Get(), 0))
+            result.emplace_back(reinterpret_cast<const char*>(text));
+    }
+    return result;
 }
 
 

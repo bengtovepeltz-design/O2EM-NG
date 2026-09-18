@@ -111,12 +111,12 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions);ALLEGRO_WINDOWS;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -139,12 +139,12 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_ttf-3.2.2\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>d:\Librarys\SDL3-3.4.10\include;d:\Librarys\SDL3_image-3.4.4\include;d:\Project\O2EM-NG;d:\Project\o2em</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
@@ -169,6 +169,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClCompile Include="debug_stub.cpp" />
     <ClCompile Include="emulator_core.cpp" />
     <ClCompile Include="frontend_boxart.cpp" />
+    <ClCompile Include="src\media\video_preview.cpp" />
     <ClCompile Include="src\frontend\frontend_screenshot.cpp" />
     <ClCompile Include="frontend_layout.cpp" />
     <ClCompile Include="frontend_panels.cpp" />
@@ -219,6 +220,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="cset.h" />
     <ClInclude Include="emulator_core.h" />
     <ClInclude Include="frontend_boxart.h" />
+    <ClInclude Include="src\media\video_preview.h" />
     <ClInclude Include="src\frontend\frontend_screenshot.h" />
     <ClInclude Include="frontend_layout.h" />
     <ClInclude Include="frontend_panels.h" />

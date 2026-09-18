@@ -50,6 +50,14 @@ struct GameInfo
 int ParseVideopacNumberFromFilename(const std::string& filename);
 std::string ParseVideopacCatalogIdFromFilename(const std::string& filename);
 
+// True when a catalogue ID and a ROM filename denote the SAME entry
+// (e.g. "54+" <-> vp_54+.bin). Catalogue identity includes the '+' variant:
+// 54 and 54+ are independent entries and neither implies the other. Used to
+// keep the library, Game Information and the actual ROM directory in exact
+// agreement when coloring the catalogue number.
+bool CatalogIdMatchesFilename(const std::string& catalogId,
+    const std::string& romFilename);
+
 GameInfo MakeGameInfo(const RomEntry& rom);
 
 // Fills only missing fields with conservative, clearly generic catalog data.

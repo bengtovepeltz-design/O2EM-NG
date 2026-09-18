@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <string>
+#include <string.h>
 
 int ParseVideopacNumberFromFilename(const std::string& romId)
 {
@@ -38,15 +39,38 @@ std::string ParseVideopacCatalogIdFromFilename(const std::string& filename)
         std::isdigit(static_cast<unsigned char>(lower[3])) &&
         std::isdigit(static_cast<unsigned char>(lower[4])))
     {
+        // Patch 0031: catalogue IDs must keep the '+' variant as part of the
+        // identity. The master catalogue (Gamelist.txt) spells Videopac+
+        // cartridges as vp_NNpl.bin, vp_NN_12.bin, vp_NN_12fix.bin or
+        // vp_NN_16.bin; installed ROMs usually use vp_NN+.bin. All of these
+        // denote the SAME catalogue identity (54+), never the plain number.
         std::string id = filename.substr(3, 2);
-        // Accept the preservation-friendly vp_54+.bin spelling directly.
-        if (filename.size() > 5 && filename[5] == '+') id += "+";
+        const std::string lowerSuffix = lower.substr(5);
+        const bool plusVariant =
+            (filename.size() > 5 && filename[5] == '+') ||
+            lowerSuffix.rfind("pl", 0) == 0 ||          // vp_54pl.bin
+            lowerSuffix.rfind("_12", 0) == 0 ||         // vp_55_12.bin / _12fix
+            lowerSuffix.rfind("_16", 0) == 0;           // vp_59_16.bin / vp_60_16.bin
+        if (plusVariant) id += "+";
         return id;
     }
     // Expansion modules may use their hardware designation as catalogue ID.
     if (lower.find("c7010") != std::string::npos) return "C7010";
     if (lower.find("c7420") != std::string::npos) return "C7420";
     return {};
+}
+
+bool CatalogIdMatchesFilename(const std::string& catalogId,
+    const std::string& romFilename)
+{
+    // Derive the catalogue ID the file itself denotes and compare exactly.
+    // '+' is part of the identity: 54 != 54+. Canonical catalogue spellings
+    // (vp_54pl.bin, vp_55_12.bin, vp_59_16.bin, vp_54+.bin) all map to the
+    // same 54+/55+ style ID as their user-visible filename spellings.
+    if (catalogId.empty() || romFilename.empty())
+        return false;
+    return _stricmp(ParseVideopacCatalogIdFromFilename(romFilename).c_str(),
+        catalogId.c_str()) == 0;
 }
 
 GameInfo MakeGameInfo(const RomEntry& rom)

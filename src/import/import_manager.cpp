@@ -132,9 +132,10 @@ namespace
             return L"Videopac binary files (*.bin;*.rom)\0*.bin;*.rom\0All files (*.*)\0*.*\0\0";
         case ImportAssetType::Manual:
             return L"Manuals (*.pdf;*.txt;*.html)\0*.pdf;*.txt;*.html;*.htm\0All files (*.*)\0*.*\0\0";
-        case ImportAssetType::Cover:
         case ImportAssetType::Screenshot:
-            return L"Images (*.jpg;*.jpeg;*.png;*.bmp;*.webp)\0*.jpg;*.jpeg;*.png;*.bmp;*.webp\0All files (*.*)\0*.*\0\0";
+            return L"Screenshots and videos (*.jpg;*.jpeg;*.png;*.bmp;*.webp;*.gif;*.mp4)\0*.jpg;*.jpeg;*.png;*.bmp;*.webp;*.gif;*.mp4\0All files (*.*)\0*.*\0\0";
+        case ImportAssetType::Cover:
+            return L"Images (*.jpg;*.jpeg;*.png;*.bmp;*.webp;*.gif)\0*.jpg;*.jpeg;*.png;*.bmp;*.webp;*.gif\0All files (*.*)\0*.*\0\0";
         }
         return L"All files (*.*)\0*.*\0\0";
     }
@@ -216,11 +217,13 @@ namespace
         case ImportAssetType::Manual:
             return extension == ".pdf" || extension == ".txt" ||
                 extension == ".html" || extension == ".htm";
-        case ImportAssetType::Cover:
         case ImportAssetType::Screenshot:
+            if (extension == ".mp4") return true;
+            [[fallthrough]];
+        case ImportAssetType::Cover:
             return extension == ".jpg" || extension == ".jpeg" ||
                 extension == ".png" || extension == ".bmp" ||
-                extension == ".webp";
+                extension == ".webp" || extension == ".gif";
         }
         return false;
     }

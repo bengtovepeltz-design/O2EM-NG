@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 
 using Byte = uint8_t;
 
@@ -512,7 +513,23 @@ void finish_display(void)
 
     // Composite the Videopac+ EF934x layer only when a G7400/Jopac BIOS
     // has enabled VPP emulation.
+    static const bool traceVp31 = std::getenv("O2EM_TRACE_VP31") != nullptr;
+    const bool sampleVp31 = traceVp31 && app_data.crc == 0xAFB23F89 && frame % 60 == 0;
+    int beforePixels = 0;
+    if (sampleVp31)
+        for (int i = 0; i < BMPW * BMPH; ++i)
+            beforePixels += (palette_to_argb(vscreen[i]) & 0x00FFFFFF) != 0;
     vpp_compose(vscreen, BMPW, BMPH);
+    if (sampleVp31)
+    {
+        int afterPixels = 0;
+        for (int i = 0; i < BMPW * BMPH; ++i)
+            afterPixels += (palette_to_argb(vscreen[i]) & 0x00FFFFFF) != 0;
+        std::printf("VP31 VIDEO frame=%d bios=%d vpp=%d PC=%03X P1=%02X P2=%02X A0=%02X A3=%02X before=%d after=%d\n",
+            frame, app_data.bios, app_data.vpp, unsigned(pc), unsigned(p1), unsigned(p2),
+            unsigned(VDCwrite[0xA0]), unsigned(VDCwrite[0xA3]), beforePixels, afterPixels);
+        std::fflush(stdout);
+    }
 
     for (int i = 0; i < BMPW * BMPH; i++)
         pixels[i] = palette_to_argb(vscreen[i]);

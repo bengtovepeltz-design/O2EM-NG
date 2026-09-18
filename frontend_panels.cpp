@@ -104,21 +104,21 @@ FrontendPanelLayout FrontendPanels_Calculate(
     const float height = static_cast<float>(windowHeight);
 
     const float margin =
-        std::clamp(width * 0.015f, 12.0f, 28.0f);
+        12.0f;
 
     const float gap =
-        std::clamp(width * 0.010f, 8.0f, 18.0f);
+        10.0f;
 
     const float top = 196.0f;
-    const float bottom = 96.0f;
+    const float bottom = 48.0f;
 
     const float usableWidth = width - (margin * 2.0f) - gap;
     const float usableHeight = std::max(220.0f, height - top - bottom);
 
     // Keep the ROM list useful on small windows, but allow the
     // right panel to become dominant on wide fullscreen displays.
-    float leftWidth = usableWidth * 0.37f;
-    leftWidth = std::clamp(leftWidth, 300.0f, 620.0f);
+    float leftWidth = usableWidth * 0.25f;
+    leftWidth = std::clamp(leftWidth, 300.0f, 440.0f);
 
     float rightWidth = usableWidth - leftWidth;
 

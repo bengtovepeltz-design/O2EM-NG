@@ -6,8 +6,8 @@
 
 namespace
 {
-    constexpr int FrontendWidth = 1200;
-    constexpr int FrontendHeight = 900;
+    constexpr int FrontendWidth = 1600;
+    constexpr int FrontendHeight = 960;
 }
 
 int main(int argc, char* argv[])
@@ -26,10 +26,17 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    int initialWidth = FrontendWidth, initialHeight = FrontendHeight;
+    SDL_Rect workArea{};
+    if (SDL_GetDisplayUsableBounds(SDL_GetPrimaryDisplay(), &workArea))
+    {
+        initialWidth = SDL_min(initialWidth, workArea.w - 40);
+        initialHeight = SDL_min(initialHeight, workArea.h - 60);
+    }
     SDL_Window* window = SDL_CreateWindow(
         "O2EM-NG",
-        FrontendWidth,
-        FrontendHeight,
+        initialWidth,
+        initialHeight,
         SDL_WINDOW_RESIZABLE);
 
     if (!window)
@@ -52,7 +59,7 @@ int main(int argc, char* argv[])
             SDL_DestroySurface(icon);
         }
     }
-    SDL_SetWindowMinimumSize(window, 800, 600);
+    SDL_SetWindowMinimumSize(window, SDL_min(initialWidth, 1200), SDL_min(initialHeight, 900));
 
     int exitCode = 0;
 

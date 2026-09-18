@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstring>
 #include <ctime>
 #include <string>
 #include <vector>
@@ -30,6 +31,53 @@
 
 namespace
 {
+    // Width at which the far-right folders panel switches to its compact
+    // presentation (short labels, no footer note). Below the existing 170px
+    // column threshold the panel is folded away entirely.
+    constexpr float kFoldersComfortWidth = 200.0f;
+    struct DashboardLayout
+    {
+        SDL_FRect cover, info, description, quick, system, imports, recent,
+            favorites, welcome;
+        // Optional far-right column, present only when the media panel's
+        // aspect cap leaves unused space right of Emulator Settings.
+        SDL_FRect folders{}, stats{};
+        bool hasRightColumn = false;
+        // Minimum-content fallback state: the column exists but is narrow.
+        bool compactFolders = false;
+    };
+    DashboardLayout Dashboard(const SDL_FRect& c)
+    {
+        const float gap=10, margin=12;
+        const float topH=c.h-174;
+        const float sideW=(std::clamp)(c.w*0.22f,210.0f,285.0f);
+        const float infoW=(std::clamp)(c.w*0.32f,270.0f,400.0f);
+        const float coverW=(std::min)(c.w-infoW-sideW-44,(topH-33)*0.75f+10);
+        DashboardLayout d{};
+        d.cover={c.x+margin,c.y+margin,coverW,topH};
+        d.info={d.cover.x+coverW+gap,d.cover.y,infoW,360};
+        d.description={d.info.x,d.info.y+370,infoW,topH-370};
+        d.quick={d.info.x+infoW+gap,d.cover.y,sideW,220};
+        d.system={d.quick.x,d.quick.y+230,sideW,topH-230};
+        const float bottomY=c.y+c.h-150;
+        const float column=(c.w-24-30)/4;
+        d.imports={c.x+margin,bottomY,column,138};
+        d.recent={d.imports.x+column+gap,bottomY,column,138};
+        d.favorites={d.recent.x+column+gap,bottomY,column,138};
+        d.welcome={d.favorites.x+column+gap,bottomY,column,138};
+        // Far-right column: uses only the space left over when the media
+        // panel is capped by the cover aspect ratio, so nothing else moves.
+        const float extraRight=c.x+c.w-margin-(d.system.x+sideW);
+        if(extraRight>=170.0f)
+        {
+            d.hasRightColumn=true;
+            d.compactFolders=extraRight<kFoldersComfortWidth;
+            d.folders={d.system.x+sideW+gap,d.cover.y,extraRight-gap,240};
+            d.stats={d.system.x+sideW+gap,d.folders.y+250,extraRight-gap,topH-250};
+        }
+        return d;
+    }
+
     void DrawText(
         SDL_Renderer* renderer,
         float x,
@@ -96,6 +144,65 @@ namespace
                 return false;
         }
         return true;
+    }
+
+    // Shared Win95 vertical scrollbar renderer (Favorites + Game Library):
+    // raised arrow buttons, sunken track, raised proportional thumb.
+    void DrawWin95VScrollbar(SDL_Renderer* renderer, const SDL_FRect& upArrow,
+        const SDL_FRect& downArrow, const SDL_FRect& track, const SDL_FRect& thumb)
+    {
+        const auto drawArrowButton = [&](const SDL_FRect& rect, bool up)
+        {
+            Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
+            SDL_RenderFillRect(renderer, &rect);
+            Win95Theme::SetRenderColor(renderer, Win95Theme::Highlight);
+            SDL_RenderLine(renderer, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+            SDL_RenderLine(renderer, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer, Win95Theme::Shadow);
+            SDL_RenderLine(renderer, rect.x, rect.y + rect.h - 1.0f,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            SDL_RenderLine(renderer, rect.x + rect.w - 1.0f, rect.y,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
+            const float cx = rect.x + rect.w * 0.5f;
+            const float cy = up ? rect.y + rect.h * 0.5f - 1.5f
+                                : rect.y + rect.h * 0.5f + 1.5f;
+            for (int k = 0; k < 4; ++k)
+            {
+                const float half = static_cast<float>(k);
+                const float yy = up ? cy - 1.5f + static_cast<float>(k)
+                                    : cy + 1.5f - static_cast<float>(k);
+                SDL_RenderLine(renderer, cx - half, yy, cx + half, yy);
+            }
+        };
+        drawArrowButton(upArrow, true);
+        drawArrowButton(downArrow, false);
+
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
+        SDL_RenderFillRect(renderer, &track);
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Shadow);
+        SDL_RenderLine(renderer, track.x, track.y,
+            track.x, track.y + track.h - 1.0f);
+        SDL_RenderLine(renderer, track.x, track.y,
+            track.x + track.w - 1.0f, track.y);
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Highlight);
+        SDL_RenderLine(renderer, track.x + track.w - 1.0f, track.y,
+            track.x + track.w - 1.0f, track.y + track.h - 1.0f);
+        SDL_RenderLine(renderer, track.x, track.y + track.h - 1.0f,
+            track.x + track.w - 1.0f, track.y + track.h - 1.0f);
+
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
+        SDL_RenderFillRect(renderer, &thumb);
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Highlight);
+        SDL_RenderLine(renderer, thumb.x, thumb.y,
+            thumb.x + thumb.w - 1.0f, thumb.y);
+        SDL_RenderLine(renderer, thumb.x, thumb.y,
+            thumb.x, thumb.y + thumb.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer, Win95Theme::Shadow);
+        SDL_RenderLine(renderer, thumb.x, thumb.y + thumb.h - 1.0f,
+            thumb.x + thumb.w - 1.0f, thumb.y + thumb.h - 1.0f);
+        SDL_RenderLine(renderer, thumb.x + thumb.w - 1.0f, thumb.y,
+            thumb.x + thumb.w - 1.0f, thumb.y + thumb.h - 1.0f);
     }
 
     std::string CanonicalRomFilenameForCatalogId(const std::string& rawId)
@@ -314,6 +421,14 @@ bool FrontendApp::HandleEvent(const SDL_Event& event)
         HandleMouseButtonDown(event.button);
         break;
 
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        HandleMouseButtonUp(event.button);
+        break;
+
+    case SDL_EVENT_MOUSE_MOTION:
+        HandleMouseMotion(event.motion);
+        break;
+
     case SDL_EVENT_MOUSE_WHEEL:
         HandleMouseWheel(event.wheel);
         break;
@@ -327,6 +442,12 @@ bool FrontendApp::HandleEvent(const SDL_Event& event)
 
 void FrontendApp::Draw()
 {
+    // The screenshot/video engine animates while the Library viewer shows the
+    // media mode; it also self-invalidates whenever it is hidden.
+    if (FrontendScreenshot_Update(GetSelectedGame(),
+            activeTab_ == FrontendTab::Library &&
+            libraryMediaMode_ == LibraryMediaMode::Screenshots))
+        redraw_ = true;
     if (!redraw_ || !renderer_)
         return;
 
@@ -370,6 +491,7 @@ void FrontendApp::CycleCollectionView(int direction)
     collections_.CycleView(direction);
     std::printf("O2EM-NG: collection view changed to %s (%zu games).\n",
         collections_.ViewName(), collections_.Count());
+    KeepLibrarySelectionVisible();
     redraw_ = true;
 }
 
@@ -401,6 +523,7 @@ void FrontendApp::MoveSelection(int direction)
         return;
 
     collections_.Move(direction);
+    KeepLibrarySelectionVisible();
     libraryDescriptionScroll_ = 0;
     redraw_ = true;
 }
@@ -481,6 +604,27 @@ void FrontendApp::ActivateSelection()
     if (!game)
         return;
 
+    // Catalogue entries can exist without their ROM (red number in the
+    // library). They stay selectable for metadata/media, but there is
+    // nothing to launch until the ROM is imported in Import Center.
+    if (game->romPath.empty() && game->rom.path.empty())
+    {
+        const std::string message = "The ROM for \"" + game->title +
+            "\" is not installed.\n\n"
+            "Use Import Center > ROM to install it.";
+        HWND owner = nullptr;
+        if (window_)
+        {
+            owner = static_cast<HWND>(SDL_GetPointerProperty(
+                SDL_GetWindowProperties(window_),
+                SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        }
+        MessageBoxA(owner, message.c_str(), "O2EM-NG - ROM not installed",
+            MB_OK | MB_ICONINFORMATION);
+        redraw_ = true;
+        return;
+    }
+
     if (!SelectedBiosExists())
     {
         const char* message = installedBiosFiles_.empty()
@@ -510,6 +654,7 @@ void FrontendApp::ActivateSelection()
 
     std::printf("O2EM-NG: Launch request using BIOS: %s\n", settings_.bios_file.c_str());
     std::fflush(stdout);
+    FrontendScreenshot_Invalidate(); // Release preview decoding during gameplay.
     LaunchRom(window_, *game, settings_.region_mode, settings_.bios_file, settings_.scanlines);
 
     const std::time_t launchedAt = std::time(nullptr);
@@ -753,7 +898,8 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
     case SDLK_4: if (activeTab_ == FrontendTab::Extras) RunImport(ImportAssetType::Cover); break;
     case SDLK_5: if (activeTab_ == FrontendTab::Extras) RunImport(ImportAssetType::Screenshot); break;
     case SDLK_PAGEUP:
-        if (activeTab_ == FrontendTab::Screenshot)
+        if (activeTab_ == FrontendTab::Library &&
+            libraryMediaMode_ == LibraryMediaMode::Screenshots)
         {
             FrontendScreenshot_Move(GetSelectedGame(), -1);
             redraw_ = true;
@@ -764,7 +910,8 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
             CycleCollectionView(-1);
         break;
     case SDLK_PAGEDOWN:
-        if (activeTab_ == FrontendTab::Screenshot)
+        if (activeTab_ == FrontendTab::Library &&
+            libraryMediaMode_ == LibraryMediaMode::Screenshots)
         {
             FrontendScreenshot_Move(GetSelectedGame(), 1);
             redraw_ = true;
@@ -922,29 +1069,11 @@ void FrontendApp::HandleMouseButtonDown(const SDL_MouseButtonEvent& event)
     if (TryExitButtonAt(event.x, event.y)) return;
     if (TrySelectTabAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Manual && TryActivateManualAt(event.x, event.y)) return;
-    if (activeTab_ == FrontendTab::Screenshot)
-    {
-        int width = 0;
-        int height = 0;
-        SDL_GetWindowSize(window_, &width, &height);
-        const FrontendPanelLayout panels = FrontendPanels_Calculate(width, height);
-        if (FrontendScreenshot_DeleteHitTest(panels.rightContent, GetSelectedGame(),
-                event.x, event.y))
-        {
-            RunDelete(ImportAssetType::Screenshot);
-            return;
-        }
-        if (FrontendScreenshot_HitTest(panels.rightContent, GetSelectedGame(),
-                event.x, event.y))
-        {
-            redraw_ = true;
-            return;
-        }
-    }
     if ((activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits) && TryProjectControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Extras && TryImportControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Cartridge && TryMetadataControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryFavoriteAt(event.x, event.y, event.clicks >= 2)) return;
+    if (activeTab_ == FrontendTab::Library && TryLibraryMediaControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryQuickControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && event.clicks >= 2 &&
         TryEditLibraryDescriptionAt(event.x, event.y)) return;
@@ -984,17 +1113,58 @@ void FrontendApp::HandleMouseWheel(const SDL_MouseWheelEvent& event)
         const FrontendPanelLayout panels =
             FrontendPanels_Calculate(windowWidth, windowHeight);
 
-        const float descriptionTop = panels.rightContent.y +
-            panels.rightContent.h * 0.64f;
-        if (mouseX >= panels.rightContent.x &&
-            mouseX < panels.rightContent.x + panels.rightContent.w &&
-            mouseY >= descriptionTop &&
-            mouseY < panels.rightContent.y + panels.rightContent.h)
+        const auto layout = Dashboard(panels.rightContent);
+
+        // Favorites panel: scroll the favorites list, only while it overflows.
+        const SDL_FRect favInner{
+            layout.favorites.x + 5.0f,
+            layout.favorites.y + 28.0f,
+            layout.favorites.w - 10.0f,
+            layout.favorites.h - 33.0f
+        };
+        if (mouseX >= favInner.x && mouseX < favInner.x + favInner.w &&
+            mouseY >= favInner.y && mouseY < favInner.y + favInner.h)
+        {
+            std::size_t favoriteCount = 0;
+            for (const GameInfo& candidate : library_.Games())
+                if (candidate.favorite) ++favoriteCount;
+            if (FavoritesScrollMetrics(favInner, favoriteCount).maxScroll > 0)
+            {
+                favoritesScroll_ += event.y > 0.0f ? -1 : 1;
+                favoritesScroll_ = (std::clamp)(favoritesScroll_, 0,
+                    FavoritesScrollMetrics(favInner, favoriteCount).maxScroll);
+                redraw_ = true;
+                return;
+            }
+        }
+
+        const auto description = layout.description;
+        if (mouseX >= description.x && mouseX < description.x+description.w &&
+            mouseY >= description.y && mouseY < description.y+description.h)
         {
             libraryDescriptionScroll_ += event.y > 0.0f ? -3 : 3;
             libraryDescriptionScroll_ = (std::max)(0, libraryDescriptionScroll_);
             redraw_ = true;
             return;
+        }
+
+        // Game Library list: wheel scrolls the viewport one row per notch,
+        // only while the current collection/view overflows. Selection is
+        // untouched; the selected game may scroll out of view (Win95 list
+        // behavior). Otherwise fall through to the old selection stepping.
+        const SDL_FRect listRect = LibraryListRect(panels.leftContent);
+        if (mouseX >= listRect.x && mouseX < listRect.x + listRect.w &&
+            mouseY >= listRect.y && mouseY < listRect.y + listRect.h)
+        {
+            const int itemCount = static_cast<int>(collections_.Count());
+            if (LibraryListScrollMetrics(listRect, itemCount).maxScroll > 0)
+            {
+                libraryListScroll_ += event.y > 0.0f ? -1 : 1;
+                libraryListScroll_ = (std::clamp)(libraryListScroll_, 0,
+                    LibraryListScrollMetrics(listRect, itemCount).maxScroll);
+                redraw_ = true;
+                return;
+            }
         }
     }
 
@@ -1058,24 +1228,31 @@ bool FrontendApp::TrySelectLibraryRowAt(float x, float y, bool activate)
     SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
     const FrontendPanelLayout panels = FrontendPanels_Calculate(windowWidth, windowHeight);
     const SDL_FRect& content = panels.leftContent;
+    const SDL_FRect listRect = LibraryListRect(content);
+    const int itemCount = static_cast<int>(collections_.Count());
 
     if (x < content.x || x >= content.x + content.w ||
-        y < content.y + 41.0f || y >= content.y + content.h)
+        y < listRect.y || y >= content.y + content.h)
     {
         return false;
     }
 
-    const int selected = static_cast<int>(collections_.CurrentPosition());
-    int firstVisible = (std::max)(0, selected - (VisibleRows / 2));
-    const int itemCount = static_cast<int>(collections_.Count());
-    firstVisible = (std::min)(firstVisible, (std::max)(0, itemCount - VisibleRows));
+    // Scrollbar column: let the scrollbar handlers own clicks there.
+    // While a thumb drag is in progress the mouse may hover anywhere -
+    // row picking must not swallow the motion-driven updates.
+    if (!libraryListScrollDrag_ &&
+        LibraryListScrollPartAt(x, y, listRect, itemCount) != 0)
+    {
+        return HandleLibraryListScrollbarAt(x, y, listRect, itemCount);
+    }
 
-    const float firstRowY = content.y + 48.0f;
-    const int row = static_cast<int>((y - (firstRowY - 7.0f)) / 32.0f);
-    if (row < 0 || row >= VisibleRows)
+    // Row picking uses the live viewport; empty filler rows (index >=
+    // itemCount) do nothing.
+    const int row = static_cast<int>((y - listRect.y) / 28.0f);
+    if (row < 0 || row >= static_cast<int>(listRect.h / 28.0f))
         return false;
 
-    const int position = firstVisible + row;
+    const int position = libraryListScroll_ + row;
     if (position < 0 || position >= itemCount)
         return false;
 
@@ -1114,7 +1291,7 @@ void FrontendApp::DrawFrontend()
     int windowHeight = 0;
     SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
 
-    SDL_SetRenderDrawColor(renderer_, 10, 10, 14, 255);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
     SDL_RenderClear(renderer_);
 
     FrontendLayout_DrawHeader(window_, renderer_);
@@ -1159,102 +1336,262 @@ void FrontendApp::DrawFrontend()
 
 void FrontendApp::DrawLibraryList(const SDL_FRect& content)
 {
-    const float panelX = content.x;
-    const float panelY = content.y;
-    const float panelWidth = content.w;
-
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    const std::string heading = activeTab_ == FrontendTab::Extras
-        ? "GAME CATALOG - SELECT GAME TO IMPORT"
-        : std::string("GAME LIBRARY - ") + collections_.ViewName();
-    DrawText(renderer_, panelX + 18.0f, panelY + 12.0f, 1.15f, heading);
-
-    if (collections_.Count() == 0)
+    const float left = content.x + 10.0f;
+    const float width = content.w - 20.0f;
+    const float titleX = left + 57.0f;
+    // ROM-presence colors for the catalogue number: restrained Win95-era
+    // tones that stay readable on both the alternating light rows and the
+    // navy selected row.
+    constexpr SDL_Color kCatalogGreen{0, 128, 0, 255};   // ROM installed
+    constexpr SDL_Color kCatalogRed{160, 0, 0, 255};     // catalogue entry, ROM missing
+    // Visible list viewport (below the header) and its scrollbar state.
+    const SDL_FRect listRect = LibraryListRect(content);
+    const FavoritesScrollGeom listScroll =
+        LibraryListScrollMetrics(listRect, static_cast<int>(collections_.Count()));
+    const bool hasScrollbar = listScroll.maxScroll > 0;
+    // Reserve the scrollbar column from the row area so no content is
+    // drawn underneath it.
+    const float listW = hasScrollbar ? listRect.w - 17.0f : listRect.w;
+    const float favoriteX = left + listW - 28.0f;
+    // Vector star stays sharp and does not depend on font glyph availability.
+    const auto star = [&](float cx, float cy)
     {
-        DrawText(renderer_, panelX + 30.0f, panelY + 55.0f, 1.25f, "NO GAMES IN THIS VIEW");
-        return;
+        const SDL_FPoint points[] = {{0,-8},{2,-3},{8,-3},{4,1},{5,7},
+            {0,4},{-5,7},{-4,1},{-8,-3},{-2,-3}};
+        SDL_Vertex vertices[11]{};
+        const SDL_FColor gold{1.0f,0.76f,0.08f,1.0f};
+        vertices[0].position = {cx,cy}; vertices[0].color = gold;
+        int indices[30];
+        for (int i=0;i<10;++i)
+        {
+            vertices[i+1].position = {cx+points[i].x,cy+points[i].y};
+            vertices[i+1].color = gold;
+            indices[i*3]=0; indices[i*3+1]=i+1; indices[i*3+2]=(i+1)%10+1;
+        }
+        SDL_RenderGeometry(renderer_,nullptr,vertices,11,indices,30);
+        SDL_SetRenderDrawColor(renderer_,128,82,0,255);
+        for(int i=0;i<10;++i) SDL_RenderLine(renderer_,cx+points[i].x,cy+points[i].y,
+            cx+points[(i+1)%10].x,cy+points[(i+1)%10].y);
+    };
+    Win95Theme::SetRenderColor(renderer_,Win95Theme::ActiveTitle);
+    DrawText(renderer_,left+3,content.y+12,1.05f,
+        activeTab_ == FrontendTab::Extras ? "Game Catalog" : "Game Library");
+    Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+    DrawText(renderer_,left+3,content.y+35,0.80f,
+        collections_.ViewName()+std::string("  |  Games: ")+std::to_string(collections_.Count()));
+    const SDL_FRect header{left,content.y+57,width,25};
+    DrawSunkenFrame(renderer_,header);
+    Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+    DrawText(renderer_,left+8,header.y+3,0.95f,"#");
+    DrawText(renderer_,titleX+5,header.y+3,0.95f,"Title");
+    star(favoriteX+14,header.y+12);
+    const int selected = static_cast<int>(collections_.CurrentPosition());
+    const int count = static_cast<int>(collections_.Count());
+    // The list fills the panel height: real rows from libraryListScroll_,
+    // then visual-only empty rows continuing the alternating backgrounds so
+    // the control reads as a full-height Win95 list. Empty rows represent no
+    // game and are never selectable (row picking rejects index >= count).
+    const int first = libraryListScroll_;
+    const int capacity = listScroll.visibleRows;
+    for(int row=0;row<capacity;++row)
+    {
+        const int index=first+row;
+        const float rowTop=listRect.y+static_cast<float>(row)*28.0f;
+        // Last visible row extends to the bottom inset so no white sliver
+        // remains below the fill.
+        const float rowH=(row==capacity-1)
+            ? listRect.y+listRect.h-rowTop
+            : 28.0f;
+        const SDL_FRect rowRect{left,rowTop,listW,rowH};
+        const bool realRow=index<count;
+        const bool selectedRow=realRow&&index==selected;
+        if(selectedRow) Win95Theme::SetRenderColor(renderer_,Win95Theme::SelectedItem);
+        else SDL_SetRenderDrawColor(renderer_,index%2 ? 245:255,index%2 ? 245:255,index%2 ? 245:255,255);
+        SDL_RenderFillRect(renderer_,&rowRect);
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Light);
+        SDL_RenderLine(renderer_,left,rowTop+rowH-1.0f,left+listW,rowTop+rowH-1.0f);
+        SDL_RenderLine(renderer_,titleX,rowTop,titleX,rowTop+rowH);
+        SDL_RenderLine(renderer_,favoriteX,rowTop,favoriteX,rowTop+rowH);
+        if(!realRow)
+            continue;
+        const GameInfo* game=collections_.Get(static_cast<std::size_t>(index));
+        // The catalogue number doubles as the ROM-presence indicator:
+        // green = installed/playable, red = known entry without its ROM.
+        // Titles never change color. No-number entries leave the # cell
+        // empty. On the navy selected row the tint stays light for contrast.
+        const std::string numberText=DisplayCatalogId(game);
+        if(!numberText.empty())
+        {
+            const bool installed=game && (!game->romPath.empty() || !game->rom.path.empty());
+            if(selectedRow)
+                SDL_SetRenderDrawColor(renderer_,144,238,144,255);
+            else
+                Win95Theme::SetRenderColor(renderer_,installed ? kCatalogGreen : kCatalogRed);
+            // Patch 0031: fit the number into the # column. Long user IDs
+            // (e.g. "Tutankham+") overflowed into the Title column and
+            // produced a doubled-text artifact; overflow now truncates.
+            std::string numberCell=numberText;
+            const auto maxNumberChars=static_cast<std::size_t>(
+                (std::max)(6.0f, (titleX - (left + 5.0f) - 6.0f) / (8.0f * 0.95f)));
+            if(numberCell.size()>maxNumberChars)
+                numberCell=numberCell.substr(0, maxNumberChars-3)+"...";
+            DrawText(renderer_,left+5,rowTop+4,0.95f,numberCell);
+        }
+        Win95Theme::SetRenderColor(renderer_,selectedRow ? Win95Theme::SelectedItemText : Win95Theme::WindowText);
+        std::string title=game ? game->title : "";
+        if(activeTab_==FrontendTab::Extras)
+            title=(game && (!game->romPath.empty() || !game->rom.path.empty()) ? "[x] " : "[ ] ")+title;
+        if(game && collections_.View()==CollectionView::MostPlayed)
+            title+=" ["+std::to_string(game->playCount)+"]";
+        const auto maxChars=static_cast<std::size_t>((std::max)(32.0f,favoriteX-titleX-12)/(8.0f*0.95f));
+        if(title.size()>maxChars) title=title.substr(0,maxChars-3)+"...";
+        DrawText(renderer_,titleX+5,rowTop+4,0.95f,title);
+        if(game && game->favorite) star(favoriteX+14,rowTop+14);
+    }
+    if(!count)
+    {
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+        DrawText(renderer_,left+5,content.y+90,0.9f,"No games in this view");
     }
 
-    const int selected = static_cast<int>(collections_.CurrentPosition());
-    int firstVisible = (std::max)(0, selected - (VisibleRows / 2));
-    const int itemCount = static_cast<int>(collections_.Count());
-    firstVisible = (std::min)(firstVisible, (std::max)(0, itemCount - VisibleRows));
-    const int lastVisible = (std::min)(firstVisible + VisibleRows, itemCount);
-
-    float y = panelY + 48.0f;
-    constexpr float listScale = 1.18f;
-    for (int index = firstVisible; index < lastVisible; ++index)
+    // Win95 vertical scrollbar on the right edge, only when the current
+    // collection/view overflows the visible capacity.
+    if(hasScrollbar)
     {
-        if (index == selected)
-        {
-            SDL_SetRenderDrawColor(renderer_, 185, 35, 35, 255);
-            const SDL_FRect highlight{ panelX + 15.0f, y - 6.0f, panelWidth - 30.0f, 27.0f };
-            SDL_RenderFillRect(renderer_, &highlight);
-            SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
-        }
-        else Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-
-        const GameInfo* game = collections_.Get(static_cast<std::size_t>(index));
-        const std::string catalogId = DisplayCatalogId(game);
-        std::string prefix = catalogId.empty() ? "    " : catalogId + "  ";
-        std::string line;
-        if (activeTab_ == FrontendTab::Extras)
-        {
-            const bool installed = game &&
-                (!game->romPath.empty() || !game->rom.path.empty());
-            line += installed ? "[x] " : "[ ] ";
-        }
-        line += prefix;
-        if (game && game->favorite) line += "* ";
-        line += game ? game->title : std::string();
-        if (game && collections_.View() == CollectionView::MostPlayed)
-            line += "  [" + std::to_string(game->playCount) + "]";
-
-        const float availableTextWidth = (std::max)(0.0f, panelWidth - 62.0f);
-        const std::size_t maximumCharacters = static_cast<std::size_t>(availableTextWidth / (8.0f * listScale));
-        if (maximumCharacters >= 4 && line.size() > maximumCharacters)
-            line = line.substr(0, maximumCharacters - 3) + "...";
-        DrawText(renderer_, panelX + 30.0f, y, listScale, line);
-        y += 30.0f;
+        DrawWin95VScrollbar(renderer_, listScroll.upArrow, listScroll.downArrow,
+            listScroll.track, listScroll.thumb);
     }
 }
 
 void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
 {
     const GameInfo* game = GetSelectedGame();
-    const float margin = 12.0f;
-    const float gap = 10.0f;
-    const float topHeight = (std::max)(250.0f, content.h * 0.61f);
-    const float sideWidth = (std::clamp)(content.w * 0.22f, 210.0f, 285.0f);
-    const float infoWidth = (std::clamp)(content.w * 0.30f, 270.0f, 370.0f);
+    const auto layout=Dashboard(content);
+    const auto& coverFrame=layout.cover;
+    const auto& infoFrame=layout.info;
+    const auto& quickFrame=layout.quick;
+    const auto& favoritesFrame=layout.favorites;
+    const auto& descriptionFrame=layout.description;
 
-    const SDL_FRect coverFrame{ content.x + margin, content.y + margin,
-        content.w - infoWidth - sideWidth - margin * 2.0f - gap * 2.0f, topHeight - margin };
-    const SDL_FRect infoFrame{ coverFrame.x + coverFrame.w + gap, coverFrame.y, infoWidth, coverFrame.h };
-    const SDL_FRect sideFrame{ infoFrame.x + infoFrame.w + gap, coverFrame.y, sideWidth, coverFrame.h };
-    const float quickHeight = sideFrame.h * 0.52f;
-    const SDL_FRect quickFrame{ sideFrame.x, sideFrame.y, sideFrame.w, quickHeight };
-    const SDL_FRect favoritesFrame{ sideFrame.x, sideFrame.y + quickHeight + gap, sideFrame.w, sideFrame.h - quickHeight - gap };
-    const SDL_FRect descriptionFrame{ content.x + margin, content.y + topHeight + gap,
-        content.w - margin * 2.0f, content.h - topHeight - gap - margin };
-
-    DrawSunkenFrame(renderer_, coverFrame);
-    DrawSunkenFrame(renderer_, infoFrame);
-    DrawSunkenFrame(renderer_, quickFrame);
-    DrawSunkenFrame(renderer_, favoritesFrame);
-    DrawSunkenFrame(renderer_, descriptionFrame);
-
-    const SDL_FRect coverInner{
-        coverFrame.x + 5.0f,
-        coverFrame.y + 28.0f,
-        coverFrame.w - 10.0f,
-        coverFrame.h - 33.0f
+    // Classic group boxes: recessed outline with the caption interrupting the top edge.
+    const auto drawGroup = [&](const SDL_FRect& rect, const char* caption)
+    {
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &rect);
+        SDL_FRect outline{rect.x, rect.y + 9.0f, rect.w - 1.0f, rect.h - 10.0f};
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_FRect light{outline.x + 1.0f, outline.y + 1.0f, outline.w, outline.h};
+        SDL_RenderRect(renderer_, &light);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderRect(renderer_, &outline);
+        const float captionWidth = static_cast<float>(std::char_traits<char>::length(caption)) * 8.0f + 12.0f;
+        const SDL_FRect backing{rect.x + 9.0f, rect.y, (std::min)(captionWidth, rect.w - 18.0f), 21.0f};
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &backing);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+        DrawText(renderer_, rect.x + 14.0f, rect.y + 1.0f, 1.0f, caption);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     };
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
-    SDL_RenderFillRect(renderer_, &coverInner);
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, coverFrame.x + 10.0f, coverFrame.y + 7.0f, 1.05f, "COVER / MEDIA");
-    FrontendBoxArt_DrawImage(renderer_, coverInner, game);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+    SDL_RenderFillRect(renderer_, &content);
+    drawGroup(coverFrame, "Cover / Media");
+    drawGroup(infoFrame, "Game Information");
+    drawGroup(quickFrame, "Emulator Settings");
+    drawGroup(favoritesFrame, "Favorites");
+    drawGroup(descriptionFrame, "Description");
+    drawGroup(layout.system, "System Information");
+    drawGroup(layout.imports, "Library Quick Add");
+    drawGroup(layout.recent, "Recently Played");
+    drawGroup(layout.welcome, "O2EM-NG");
+    if(layout.hasRightColumn)
+    {
+        drawGroup(layout.folders,
+            layout.compactFolders ? "Folders" : "Library Folders");
+        drawGroup(layout.stats,
+            layout.compactFolders ? "Statistics" : "Collection Statistics");
+    }
+
+    // Cover / Media: the panel is the main media viewer. Box Art shows the
+    // game cover; Screenshots embeds the (relocated) screenshot/video viewer
+    // with live MP4/GIF playback. Box Art / Screenshots buttons select the
+    // mode; Scale Image stays associated with the viewer.
+    const SDL_FRect coverInner = LibraryCoverMediaRect(coverFrame);
+    SDL_FRect mediaBoxArt{}, mediaScreenshots{};
+    LibraryMediaButtonRects(coverFrame, mediaBoxArt, mediaScreenshots);
+    if (libraryMediaMode_ == LibraryMediaMode::BoxArt)
+    {
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
+        SDL_RenderFillRect(renderer_, &coverInner);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+        FrontendBoxArt_DrawImage(renderer_, coverInner, game, scaleCoverImage_);
+    }
+    else
+    {
+        FrontendScreenshot_Draw(renderer_, coverInner, game, true);
+    }
+    const bool boxArtActive = (libraryMediaMode_ == LibraryMediaMode::BoxArt);
+    // Win95 tab-style toggle: active side uses the pressed edge (dark
+    // top/left, bright bottom/right), inactive side the raised edge - the
+    // same edge idiom as the top tab strip (frontend_tabs.cpp).
+    const auto drawMediaButton = [&](const SDL_FRect& rect, const char* label,
+        bool active)
+    {
+        Win95Theme::SetRenderColor(renderer_,
+            active ? Win95Theme::TabActive : Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &rect);
+        if (active)
+        {
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::DarkShadow);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+            SDL_RenderLine(renderer_, rect.x, rect.y + rect.h - 1.0f,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            SDL_RenderLine(renderer_, rect.x + rect.w - 1.0f, rect.y,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+        }
+        else
+        {
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+            SDL_RenderLine(renderer_, rect.x, rect.y + rect.h - 1.0f,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            SDL_RenderLine(renderer_, rect.x + rect.w - 1.0f, rect.y,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+        }
+        Win95Theme::SetRenderColor(renderer_,
+            active ? Win95Theme::TabActiveText : Win95Theme::WindowText);
+        DrawText(renderer_, rect.x + 14.0f + (active ? 1.0f : 0.0f),
+            rect.y + 6.0f + (active ? 1.0f : 0.0f), 0.85f, label);
+    };
+    drawMediaButton(mediaBoxArt, "Box Art", boxArtActive);
+    drawMediaButton(mediaScreenshots, "Screenshots", !boxArtActive);
+    if (boxArtActive && game && !game->boxArt.empty())
+    {
+        // Box Art mode's per-item DELETE: deletes ONLY the displayed cover.
+        const SDL_FRect boxArtDelete = LibraryBoxArtDeleteRect(coverFrame);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &boxArtDelete);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_RenderLine(renderer_, boxArtDelete.x, boxArtDelete.y,
+            boxArtDelete.x + boxArtDelete.w - 1.0f, boxArtDelete.y);
+        SDL_RenderLine(renderer_, boxArtDelete.x, boxArtDelete.y,
+            boxArtDelete.x, boxArtDelete.y + boxArtDelete.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderLine(renderer_, boxArtDelete.x, boxArtDelete.y + boxArtDelete.h - 1.0f,
+            boxArtDelete.x + boxArtDelete.w - 1.0f, boxArtDelete.y + boxArtDelete.h - 1.0f);
+        SDL_RenderLine(renderer_, boxArtDelete.x + boxArtDelete.w - 1.0f, boxArtDelete.y,
+            boxArtDelete.x + boxArtDelete.w - 1.0f, boxArtDelete.y + boxArtDelete.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+        DrawText(renderer_, boxArtDelete.x + 22.0f, boxArtDelete.y + 7.0f, 0.85f, "DELETE");
+    }
+    const SDL_FRect scaleBox{coverFrame.x+10,coverFrame.y+coverFrame.h-26,17,17};
+    DrawSunkenFrame(renderer_,scaleBox);
+    Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+    if(scaleCoverImage_) DrawText(renderer_,scaleBox.x+2,scaleBox.y-2,0.85f,"x");
+    DrawText(renderer_,scaleBox.x+25,scaleBox.y-1,0.85f,"Scale image");
 
     Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
     const SDL_FRect infoInner{
@@ -1263,9 +1600,11 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         infoFrame.w - 10.0f,
         infoFrame.h - 33.0f
     };
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
     SDL_RenderFillRect(renderer_, &infoInner);
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, infoFrame.x + 10.0f, infoFrame.y + 7.0f, 1.05f, "GAME INFORMATION");
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
 
     if (!game)
     {
@@ -1288,52 +1627,271 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         return value.substr(0, maximumCharacters - 3) + "...";
     };
 
-    float y = infoInner.y + 16.0f;
-    DrawText(renderer_, infoInner.x + 15.0f, y, 1.30f,
-        fitText(game->title, infoInner.w - 30.0f, 1.30f));
-    y += 36.0f;
+    const auto smallLine=[&](const SDL_FRect& r,float offset,const std::string& text)
+    {
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+        DrawText(renderer_,r.x+10,r.y+offset,0.84f,fitText(text,r.w-20,0.84f));
+    };
+    smallLine(layout.system,30,"BIOS: "+(settings_.bios_file.empty() ? std::string("Not selected") : settings_.bios_file));
+    smallLine(layout.system,55,"Region setting: "+RegionModeToString(settings_.region_mode));
+    smallLine(layout.system,80,"Frontend: SDL3 / Windows");
+#ifdef _WIN64
+    smallLine(layout.system,105,"Architecture: x64");
+#else
+    smallLine(layout.system,105,"Architecture: x86");
+#endif
+#ifdef _DEBUG
+    smallLine(layout.system,130,"Build: Debug");
+#else
+    smallLine(layout.system,130,"Build: Release");
+#endif
+    // C7010/C7420 NSC800 expansion firmware status, from the same detection
+    // the Settings screen reports (RefreshInstalledBiosFiles). One authoritative
+    // source; no duplicated state. The compact wording keeps the narrow panel clean.
+    smallLine(layout.system,155,"C7010 NSC800: "+std::string(c7010FirmwareInstalled_ ? "Installed" : "Not found"));
+    smallLine(layout.system,180,"C7420 NSC800: "+std::string(c7420FirmwareInstalled_ ? "Installed" : "Not found"));
+    const char* importLabels[]={"Import ROM...","Import Cover...","Import Manual..."};
+    for(int i=0;i<3;++i)
+    {
+        // Win95 push button with 3px offset drop shadow, matching the
+        // reference design; renders sunken with the content nudged 2px
+        // down/right while the left button is held on it. The rect comes
+        // from QuickAddButtonRect() so it always matches the hitboxes in
+        // TryLibraryQuickControlAt()/HandleMouseButtonUp().
+        const SDL_FRect button=QuickAddButtonRect(layout.imports,i);
+        const bool pressed=(quickAddPressed_==i);
+        if(!pressed)
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::Shadow);
+            const SDL_FRect buttonShadow{button.x+3.0f,button.y+3.0f,button.w,button.h};
+            SDL_RenderFillRect(renderer_,&buttonShadow);
+        }
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Face);
+        SDL_RenderFillRect(renderer_,&button);
+        if(pressed)
+        {
+            // Same pressed-edge idiom as the frontend tabs: dark top/left,
+            // bright bottom/right. The 1px edge sits inside the rect, so the
+            // face shrinks by 2px and the content reads as pushed in.
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::DarkShadow);
+            SDL_RenderLine(renderer_,button.x,button.y,button.x+button.w-1.0f,button.y);
+            SDL_RenderLine(renderer_,button.x,button.y,button.x,button.y+button.h-1.0f);
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::Highlight);
+            SDL_RenderLine(renderer_,button.x,button.y+button.h-1.0f,button.x+button.w-1.0f,button.y+button.h-1.0f);
+            SDL_RenderLine(renderer_,button.x+button.w-1.0f,button.y,button.x+button.w-1.0f,button.y+button.h-1.0f);
+        }
+        else
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::Highlight);
+            SDL_RenderLine(renderer_,button.x,button.y,button.x+button.w-1.0f,button.y);
+            SDL_RenderLine(renderer_,button.x,button.y,button.x,button.y+button.h-1.0f);
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::Shadow);
+            SDL_RenderLine(renderer_,button.x,button.y+button.h-1.0f,button.x+button.w-1.0f,button.y+button.h-1.0f);
+            SDL_RenderLine(renderer_,button.x+button.w-1.0f,button.y,button.x+button.w-1.0f,button.y+button.h-1.0f);
+        }
+        // 16px procedural pixel glyph on the left, dark outline + mid body:
+        // cartridge / picture / book, echoing the reference mock.
+        const float pressOffset=pressed?2.0f:0.0f;
+        const float glyphX=button.x+8.0f+pressOffset, glyphY=button.y+(button.h-16.0f)*0.5f+pressOffset;
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::DarkShadow);
+        const SDL_FRect glyphFrame{glyphX,glyphY,16.0f,16.0f};
+        SDL_RenderRect(renderer_,&glyphFrame);
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Shadow);
+        const SDL_FRect glyphBody{glyphX+2.0f,glyphY+2.0f,12.0f,12.0f};
+        SDL_RenderFillRect(renderer_,&glyphBody);
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+        const float glyphTextY=glyphY+4.0f;
+        const auto glyphRect=[&](float rx,float ry,float rw,float rh)
+        {
+            const SDL_FRect r{glyphX+rx,glyphTextY+ry,rw,rh};
+            SDL_RenderFillRect(renderer_,&r);
+        };
+        switch(i)
+        {
+        case 0: // cartridge: two label bars
+            glyphRect(4.0f,3.0f,8.0f,2.0f);
+            glyphRect(4.0f,8.0f,8.0f,2.0f);
+            break;
+        case 1: // picture: mountains + sun
+            glyphRect(3.0f,7.0f,4.0f,4.0f);
+            glyphRect(6.0f,5.0f,4.0f,6.0f);
+            glyphRect(9.0f,3.0f,3.0f,3.0f);
+            break;
+        case 2: // open book: two page wedges
+            glyphRect(3.0f,2.0f,4.0f,2.0f);
+            glyphRect(3.0f,5.0f,4.0f,2.0f);
+            glyphRect(3.0f,8.0f,4.0f,2.0f);
+            glyphRect(9.0f,2.0f,4.0f,2.0f);
+            glyphRect(9.0f,5.0f,4.0f,2.0f);
+            glyphRect(9.0f,8.0f,4.0f,2.0f);
+            break;
+        }
+        DrawText(renderer_,button.x+30.0f+pressOffset,button.y+4+pressOffset,0.84f,importLabels[i]);
+    }
+    std::vector<const GameInfo*> recent;
+    for(const auto& item:library_.Games()) if(item.lastPlayed>0) recent.push_back(&item);
+    std::stable_sort(recent.begin(),recent.end(),[](const GameInfo* a,const GameInfo* b){return a->lastPlayed>b->lastPlayed;});
+    for(std::size_t i=0;i<recent.size() && i<4;++i)
+        smallLine(layout.recent,30+24.0f*static_cast<float>(i),DisplayCatalogId(recent[i])+" "+recent[i]->title);
+    if(recent.empty()) smallLine(layout.recent,30,"No games played yet");
+    smallLine(layout.welcome,30,"Welcome to O2EM-NG");
+    smallLine(layout.welcome,55,"The Videopac Experience");
+    smallLine(layout.welcome,80,"Preserve. Play. Enjoy.");
+
+    // Far-right Library Folders / Collection Statistics groups (drawn only
+    // when the responsive layout provides the optional column).
+    if(layout.hasRightColumn)
+    {
+        static const char* folderLabels[]={"ROMs","Box Art","Screenshots / Media",
+            "Manuals","BIOS / Firmware"};
+        // Minimum-content fallback: short row labels in compact mode so they
+        // can never collide with the OPEN buttons at narrow widths. Full
+        // labels are drawn verbatim at comfortable widths (unchanged).
+        static const char* compactFolderLabels[]={"ROMs","Cover","Media",
+            "Docs","Firmware"};
+        const char* const* rowLabels=layout.compactFolders
+            ? compactFolderLabels : folderLabels;
+        for(int i=0;i<5;++i)
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+34+i*34,0.84f,
+                layout.compactFolders
+                    ? fitText(rowLabels[i],layout.folders.w-86.0f,0.84f)
+                    : std::string(rowLabels[i]));
+            const SDL_FRect openButton=LibraryOpenButtonRect(layout.folders,i);
+            DrawWin95Button(openButton,"OPEN",folderOpenPressed_==i);
+        }
+
+        // Subtle footer note in the spare space under the last OPEN row
+        // (pure text; panel geometry unchanged). Omitted in compact mode,
+        // where the panel is too narrow for it to read well.
+        if(!layout.compactFolders)
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+206,0.72f,
+                "Folder access:");
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+222,0.72f,
+                "Opens in Windows Explorer");
+        }
+
+        const auto statLine=[&](float offset,const std::string& text)
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
+            DrawText(renderer_,layout.stats.x+10,layout.stats.y+offset,0.84f,
+                fitText(text,layout.stats.w-20,0.84f));
+        };
+        std::size_t favoritesCount=0,boxArtCount=0,screenshotCount=0,
+            videoCount=0,manualCount=0;
+        for(const GameInfo& item:library_.Games())
+        {
+            if(item.favorite) ++favoritesCount;
+            if(!item.boxArt.empty()) ++boxArtCount;
+            if(!item.manual.empty()) ++manualCount;
+            for(const std::filesystem::path& shot:item.screenshots)
+            {
+                std::string extension=shot.extension().string();
+                std::transform(extension.begin(),extension.end(),extension.begin(),
+                    [](unsigned char c){return static_cast<char>(std::tolower(c));});
+                if(extension==".mp4") ++videoCount; else ++screenshotCount;
+            }
+        }
+        // Two visual sections in the existing blue label color; same values,
+        // same counting logic - presentation only.
+        const auto statCaption=[&](float offset,const std::string& text)
+        {
+            Win95Theme::SetRenderColor(renderer_,Win95Theme::ActiveTitle);
+            DrawText(renderer_,layout.stats.x+10,layout.stats.y+offset,0.84f,
+                fitText(text,layout.stats.w-20,0.84f));
+        };
+        statCaption(34,"Library");
+        statLine(58,"Games: "+std::to_string(library_.Count()));
+        statLine(82,"Favorites: "+std::to_string(favoritesCount));
+        statCaption(110,"Media");
+        statLine(134,"Box Art: "+std::to_string(boxArtCount));
+        statLine(158,"Screenshots: "+std::to_string(screenshotCount));
+        statLine(182,"Videos: "+std::to_string(videoCount));
+        statLine(206,"Manuals: "+std::to_string(manualCount));
+    }
 
     const std::string catalogId = DisplayCatalogId(game);
-    const std::string number = catalogId.empty()
-        ? "Videopac No.: -"
-        : "Videopac No.: " + catalogId;
-    const std::string rows[] = {
-        number,
-        "Publisher: " + valueOrDash(game->publisher),
-        "Developer: " + valueOrDash(game->developer),
-        "Year: " + valueOrDash(game->year),
-        "Genre: " + valueOrDash(game->genre),
-        "Players: " + valueOrDash(game->players),
-        "Controls: " + valueOrDash(game->controls),
-        "Voice Module: " + valueOrDash(game->voiceModule),
-        "Videopac+: " + valueOrDash(game->videopacPlus),
-        "Rating: " + valueOrDash(game->rating),
-        std::string("Manual: ") + (game->manual.empty() ? "No" : "Available"),
-        "Screenshots: " + std::to_string(game->screenshots.size()),
-        std::string("Favorite: ") + (game->favorite ? "Yes" : "No")
-    };
-
-    for (const std::string& row : rows)
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+    DrawText(renderer_, infoInner.x + 10.0f, infoInner.y + 10.0f, 0.90f, "Videopac No.");
+    // Compact catalogue-number plate: navy ground with a heavy colored
+    // number - green tones when the ROM is installed, red tones when the
+    // catalogue entry has no ROM. Left blank when the game has no catalogue
+    // number (the Title row stays the authoritative name display).
+    const SDL_FRect numberBox{infoInner.x + 112.0f, infoInner.y + 3.0f,
+        (std::min)(66.0f, (std::max)(34.0f, infoInner.w - 122.0f)), 30.0f};
+    DrawSunkenFrame(renderer_, numberBox);
+    if (!catalogId.empty())
     {
-        if (y > infoInner.y + infoInner.h - 20.0f)
-            break;
-        DrawText(renderer_, infoInner.x + 15.0f, y, 0.96f,
-            fitText(row, infoInner.w - 30.0f, 0.96f));
-        y += 25.0f;
+        const bool numberInstalled = !game->romPath.empty() || !game->rom.path.empty();
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+        const SDL_FRect plate{numberBox.x + 2.0f, numberBox.y + 2.0f,
+            numberBox.w - 4.0f, numberBox.h - 4.0f};
+        SDL_RenderFillRect(renderer_, &plate);
+        if (numberInstalled)
+            SDL_SetRenderDrawColor(renderer_, 144, 238, 144, 255);
+        else
+            SDL_SetRenderDrawColor(renderer_, 255, 130, 130, 255);
+        // Bold face + true text measurement (Patch 0031): the number is
+        // horizontally AND vertically centered in the plate using the real
+        // rendered extent instead of a per-character estimate, so 01, 54+,
+        // C7010 and 55+ all sit centered and read as a catalogue plate.
+        // UiFont draws at native point size - no extra scale factor.
+        constexpr float kNumberPointSize = 18.0f;
+        float textW = 0.0f;
+        float textH = 0.0f;
+        const bool measured = UiFont_MeasureText(kNumberPointSize, catalogId, &textW, &textH, /*bold=*/true);
+        const float drawX = measured
+            ? plate.x + (std::max)(3.0f, (plate.w - textW) * 0.5f)
+            : plate.x + (std::max)(3.0f, (plate.w - static_cast<float>(catalogId.size()) * 8.0f * 1.35f) * 0.5f);
+        const float drawY = plate.y + (std::max)(2.0f, (plate.h - (measured ? textH : 20.0f)) * 0.5f);
+        if (!UiFont_DrawTextBold(renderer_, drawX, drawY, kNumberPointSize, catalogId))
+            DrawText(renderer_, drawX, drawY, 1.35f, catalogId);
+    }
+    float y = infoInner.y + 49.0f;
+    const std::pair<std::string, std::string> rows[] = {
+        {"Title:", game->title},
+        {"Publisher:", game->publisher},
+        {"Developer:", game->developer},
+        {"Year:", game->year},
+        {"Genre:", game->genre},
+        {"Players:", game->players},
+        {"Controls:", game->controls},
+        {"Voice Module:", game->voiceModule},
+        {"Videopac+:", game->videopacPlus},
+        {"Rating:", game->rating},
+        {"Manual:", game->manual.empty() ? "No" : "Available"},
+        {"Images/video:", std::to_string(game->screenshots.size())},
+        {"Favorite:", game->favorite ? "Yes" : "No"}
+    };
+    const float valueX = infoInner.x + 112.0f;
+    for (const auto& row : rows)
+    {
+        if (y > infoInner.y + infoInner.h - 20.0f) break;
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+        DrawText(renderer_, infoInner.x + 10.0f, y, 0.86f, row.first);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+        DrawText(renderer_, valueX, y, 0.90f,
+            fitText(valueOrDash(row.second), infoInner.x + infoInner.w - valueX - 10.0f, 0.90f));
+        y += 21.0f;
     }
 
     // Quick Settings uses familiar Win95-style controls instead of clickable text rows.
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, quickFrame.x + 10.0f, quickFrame.y + 7.0f, 1.05f, "QUICK SETTINGS");
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     const SDL_FRect quickInner{quickFrame.x + 5.0f, quickFrame.y + 28.0f, quickFrame.w - 10.0f, quickFrame.h - 33.0f};
     Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
     SDL_RenderFillRect(renderer_, &quickInner);
 
     const auto drawCombo = [&](float yPos, const char* label, const std::string& value)
     {
         Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
         DrawText(renderer_, quickInner.x + 10.0f, yPos, 0.82f, label);
-        const SDL_FRect box{quickInner.x + 10.0f, yPos + 17.0f, quickInner.w - 20.0f, 25.0f};
+        const SDL_FRect box=QuickComboRect(quickInner, yPos + 17.0f, 25.0f);
         DrawSunkenFrame(renderer_, box);
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
         const SDL_FRect fill{box.x + 2.0f, box.y + 2.0f, box.w - 23.0f, box.h - 4.0f};
@@ -1353,26 +1911,32 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
     drawCombo(quickInner.y + 62.0f, "REGION", regionText);
 
-    const float checkY = quickInner.y + 122.0f;
-    const SDL_FRect checkBox{quickInner.x + 11.0f, checkY, 17.0f, 17.0f};
-    DrawSunkenFrame(renderer_, checkBox);
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
-    const SDL_FRect checkFill{checkBox.x + 2.0f, checkBox.y + 2.0f, checkBox.w - 4.0f, checkBox.h - 4.0f};
-    SDL_RenderFillRect(renderer_, &checkFill);
-    if (settings_.scanlines)
+    const auto drawQuickCheck = [&](float yPos, const char* label, bool checked)
     {
+        const SDL_FRect box{quickInner.x + 11.0f, yPos, 17.0f, 17.0f};
+        DrawSunkenFrame(renderer_, box);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
+        const SDL_FRect checkFill{box.x + 2.0f, box.y + 2.0f, box.w - 4.0f, box.h - 4.0f};
+        SDL_RenderFillRect(renderer_, &checkFill);
+        if (checked)
+        {
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+            DrawText(renderer_, box.x + 2.0f, box.y - 2.0f, 0.82f, "x");
+        }
         Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-        DrawText(renderer_, checkBox.x + 2.0f, checkBox.y - 2.0f, 0.82f, "x");
-    }
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, checkBox.x + 25.0f, checkY - 1.0f, 0.86f, "Scanlines");
+        DrawText(renderer_, box.x + 25.0f, yPos - 1.0f, 0.86f, label);
+    };
+    drawQuickCheck(quickInner.y + 122.0f, "Scanlines", settings_.scanlines);
+    // Same authoritative setting as the Settings screen's Fullscreen checkbox;
+    // toggling here goes through ActivateSettingsSelection() -> ApplyFullscreenMode().
+    drawQuickCheck(quickInner.y + 152.0f, "Fullscreen", settings_.start_fullscreen);
 
     // Drop-down lists are drawn last so they sit above the normal Quick Settings controls.
     if (openDropdown_ == 3)
     {
         RefreshInstalledBiosFiles();
         const float itemH = 25.0f;
-        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 51.0f, quickInner.w - 20.0f,
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 51.0f, (quickInner.w - 20.0f) * 0.75f,
             itemH * static_cast<float>(installedBiosFiles_.size())};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
         DrawSunkenFrame(renderer_, popup);
@@ -1389,7 +1953,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     else if (openDropdown_ == 1)
     {
         const char* items[] = {"AUTO", "PAL", "NTSC"}; const float itemH = 25.0f;
-        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 104.0f, quickInner.w - 20.0f, itemH * 3.0f};
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 104.0f, (quickInner.w - 20.0f) * 0.75f, itemH * 3.0f};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
         DrawSunkenFrame(renderer_, popup);
         const int selectedRegion = settings_.region_mode == RegionMode::Auto ? 0 : (settings_.region_mode == RegionMode::PAL ? 1 : 2);
@@ -1405,9 +1969,11 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
 
     // Favorites are read from the live library state and sorted alphabetically.
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, favoritesFrame.x + 10.0f, favoritesFrame.y + 7.0f, 1.05f, "FAVORITES");
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     const SDL_FRect favInner{favoritesFrame.x + 5.0f, favoritesFrame.y + 28.0f, favoritesFrame.w - 10.0f, favoritesFrame.h - 33.0f};
     Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
     SDL_RenderFillRect(renderer_, &favInner);
 
     std::vector<const GameInfo*> favorites;
@@ -1418,16 +1984,23 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         return a->title < b->title;
     });
 
-    const int maximumRows = (std::max)(1, static_cast<int>((favInner.h - 12.0f) / 24.0f));
+    const FavoritesScrollGeom scrollGeom =
+        FavoritesScrollMetrics(favInner, favorites.size());
+    const int maximumRows = scrollGeom.visibleRows;
+    const bool hasScrollbar = scrollGeom.maxScroll > 0;
+    const float listWidth = hasScrollbar ? favInner.w - 17.0f : favInner.w;
+    const int first = favoritesScroll_;
+    const int shown = (std::min)(maximumRows,
+        static_cast<int>(favorites.size()) - first);
     float favY = favInner.y + 13.0f;
-    const int shown = (std::min)(maximumRows, static_cast<int>(favorites.size()));
     for (int i = 0; i < shown; ++i)
     {
-        const GameInfo& favorite = *favorites[static_cast<std::size_t>(i)];
+        const GameInfo& favorite =
+            *favorites[static_cast<std::size_t>(first + i)];
         if (game && favorite.filename == game->filename)
         {
-            SDL_SetRenderDrawColor(renderer_, 185, 35, 35, 255);
-            const SDL_FRect highlight{favInner.x + 5.0f, favY - 4.0f, favInner.w - 10.0f, 22.0f};
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::SelectedItem);
+            const SDL_FRect highlight{favInner.x + 5.0f, favY - 4.0f, listWidth - 10.0f, 22.0f};
             SDL_RenderFillRect(renderer_, &highlight);
             SDL_SetRenderDrawColor(renderer_, 255, 255, 255, 255);
         }
@@ -1439,7 +2012,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         std::string favLine = favoriteCatalogId.empty() ? "--" : favoriteCatalogId;
         favLine += "  " + favorite.title;
         DrawText(renderer_, favInner.x + 12.0f, favY, 0.84f,
-            fitText(favLine, favInner.w - 24.0f, 0.84f));
+            fitText(favLine, listWidth - 24.0f, 0.84f));
         favY += 24.0f;
     }
     if (favorites.empty())
@@ -1447,16 +2020,67 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
         DrawText(renderer_, favInner.x + 12.0f, favY, 0.84f, "No favorites added");
     }
-    else if (static_cast<int>(favorites.size()) > shown)
+
+    // Win95 vertical scrollbar (right side), only when the list overflows.
+    // Same raised-edge idiom as the rest of the dashboard controls.
+    if (hasScrollbar)
     {
-        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-        DrawText(renderer_, favInner.x + 12.0f, favInner.y + favInner.h - 20.0f,
-            0.72f, "+ " + std::to_string(favorites.size() - static_cast<std::size_t>(shown)) + " more");
+        const auto drawArrowButton = [&](const SDL_FRect& rect, bool up)
+        {
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+            SDL_RenderFillRect(renderer_, &rect);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+            SDL_RenderLine(renderer_, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+            SDL_RenderLine(renderer_, rect.x, rect.y + rect.h - 1.0f,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            SDL_RenderLine(renderer_, rect.x + rect.w - 1.0f, rect.y,
+                rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+            const float cx = rect.x + rect.w * 0.5f;
+            const float cy = up ? rect.y + rect.h * 0.5f - 1.5f
+                                : rect.y + rect.h * 0.5f + 1.5f;
+            for (int k = 0; k < 4; ++k)
+            {
+                const float half = static_cast<float>(k);
+                const float yy = up ? cy - 1.5f + static_cast<float>(k)
+                                    : cy + 1.5f - static_cast<float>(k);
+                SDL_RenderLine(renderer_, cx - half, yy, cx + half, yy);
+            }
+        };
+        drawArrowButton(scrollGeom.upArrow, true);
+        drawArrowButton(scrollGeom.downArrow, false);
+
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &scrollGeom.track);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderLine(renderer_, scrollGeom.track.x, scrollGeom.track.y,
+            scrollGeom.track.x, scrollGeom.track.y + scrollGeom.track.h - 1.0f);
+        SDL_RenderLine(renderer_, scrollGeom.track.x, scrollGeom.track.y,
+            scrollGeom.track.x + scrollGeom.track.w - 1.0f, scrollGeom.track.y);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_RenderLine(renderer_, scrollGeom.track.x + scrollGeom.track.w - 1.0f, scrollGeom.track.y,
+            scrollGeom.track.x + scrollGeom.track.w - 1.0f, scrollGeom.track.y + scrollGeom.track.h - 1.0f);
+        SDL_RenderLine(renderer_, scrollGeom.track.x, scrollGeom.track.y + scrollGeom.track.h - 1.0f,
+            scrollGeom.track.x + scrollGeom.track.w - 1.0f, scrollGeom.track.y + scrollGeom.track.h - 1.0f);
+
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &scrollGeom.thumb);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_RenderLine(renderer_, scrollGeom.thumb.x, scrollGeom.thumb.y,
+            scrollGeom.thumb.x + scrollGeom.thumb.w - 1.0f, scrollGeom.thumb.y);
+        SDL_RenderLine(renderer_, scrollGeom.thumb.x, scrollGeom.thumb.y,
+            scrollGeom.thumb.x, scrollGeom.thumb.y + scrollGeom.thumb.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderLine(renderer_, scrollGeom.thumb.x, scrollGeom.thumb.y + scrollGeom.thumb.h - 1.0f,
+            scrollGeom.thumb.x + scrollGeom.thumb.w - 1.0f, scrollGeom.thumb.y + scrollGeom.thumb.h - 1.0f);
+        SDL_RenderLine(renderer_, scrollGeom.thumb.x + scrollGeom.thumb.w - 1.0f, scrollGeom.thumb.y,
+            scrollGeom.thumb.x + scrollGeom.thumb.w - 1.0f, scrollGeom.thumb.y + scrollGeom.thumb.h - 1.0f);
     }
 
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, descriptionFrame.x + 10.0f, descriptionFrame.y + 7.0f,
-        1.05f, "GAME DESCRIPTION  (wheel: scroll | E/double-click: edit)");
+
 
     const SDL_FRect textArea{
         descriptionFrame.x + 8.0f,
@@ -1622,10 +2246,6 @@ void FrontendApp::DrawActiveTab(const SDL_FRect& content)
         DrawImportCenter(content);
         break;
 
-    case FrontendTab::Screenshot:
-        FrontendScreenshot_Draw(renderer_, content, GetSelectedGame());
-        break;
-
     case FrontendTab::Manual:
         DrawManualTab(content);
         break;
@@ -1673,25 +2293,540 @@ void FrontendApp::EditLibraryDescription()
     redraw_ = true;
 }
 
+SDL_FRect FrontendApp::QuickComboRect(const SDL_FRect& inner, float y, float h) const
+{
+    // 75% of the original combo width, left-aligned; shared by the draw code
+    // and the hit tests so the visible BIOS/REGION controls and their click
+    // targets can never drift apart.
+    return SDL_FRect{inner.x + 10.0f, y, (inner.w - 20.0f) * 0.75f, h};
+}
+
+SDL_FRect FrontendApp::LibraryCoverMediaRect(const SDL_FRect& coverPanel) const
+{
+    // The media viewer area inside the Cover / Media panel; leaves room at
+    // the bottom for the Box Art / Screenshots buttons and Scale Image.
+    return SDL_FRect{
+        coverPanel.x + 5.0f,
+        coverPanel.y + 28.0f,
+        coverPanel.w - 10.0f,
+        coverPanel.h - 100.0f};
+}
+
+void FrontendApp::LibraryMediaButtonRects(const SDL_FRect& coverPanel,
+    SDL_FRect& boxArt, SDL_FRect& screenshots) const
+{
+    const SDL_FRect viewer = LibraryCoverMediaRect(coverPanel);
+    const float buttonY = viewer.y + viewer.h + 6.0f;
+    const float buttonWidth = 118.0f;
+    boxArt = {viewer.x + 8.0f, buttonY, buttonWidth, 26.0f};
+    screenshots = {viewer.x + viewer.w - buttonWidth - 8.0f, buttonY,
+        buttonWidth, 26.0f};
+}
+
+SDL_FRect FrontendApp::LibraryBoxArtDeleteRect(const SDL_FRect& coverPanel) const
+{
+    // Box Art mode's DELETE sits centered between the Box Art and Screenshots
+    // toggle buttons, same row/height; deletes only the displayed cover file.
+    const SDL_FRect viewer = LibraryCoverMediaRect(coverPanel);
+    const float buttonY = viewer.y + viewer.h + 6.0f;
+    constexpr float buttonWidth = 90.0f;
+    return {viewer.x + (viewer.w - buttonWidth) * 0.5f, buttonY,
+        buttonWidth, 26.0f};
+}
+
+bool FrontendApp::TryLibraryMediaControlAt(float x, float y)
+{
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
+    const FrontendPanelLayout panels = FrontendPanels_Calculate(windowWidth, windowHeight);
+    const auto layout = Dashboard(panels.rightContent);
+
+    SDL_FRect boxArt{}, screenshots{};
+    LibraryMediaButtonRects(layout.cover, boxArt, screenshots);
+    const auto contains = [](const SDL_FRect& r, float px, float py)
+    {
+        return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+    };
+
+    if (contains(boxArt, x, y))
+    {
+        if (libraryMediaMode_ != LibraryMediaMode::BoxArt)
+        {
+            // Screenshots -> Box Art: stop GIF/MP4 playback cleanly.
+            FrontendScreenshot_ResetView();
+            libraryMediaMode_ = LibraryMediaMode::BoxArt;
+        }
+        redraw_ = true;
+        return true;
+    }
+    if (contains(screenshots, x, y))
+    {
+        if (libraryMediaMode_ != LibraryMediaMode::Screenshots)
+        {
+            libraryMediaMode_ = LibraryMediaMode::Screenshots;
+        }
+        redraw_ = true;
+        return true;
+    }
+
+    if (libraryMediaMode_ == LibraryMediaMode::Screenshots)
+    {
+        const GameInfo* game = GetSelectedGame();
+        const SDL_FRect viewer = LibraryCoverMediaRect(layout.cover);
+        // Per-item DELETE first: deletes only the currently displayed file
+        // (RunDelete resolves the path and asks for confirmation).
+        if (game && !game->screenshots.empty() &&
+            FrontendScreenshot_DeleteHitTest(viewer, game, x, y, true))
+        {
+            RunDelete(ImportAssetType::Screenshot);
+            return true;
+        }
+        if (FrontendScreenshot_HitTest(viewer, game, x, y, true))
+        {
+            // The tab path repainted explicitly after HitTest; keep that
+            // contract here (Move changes the index but does not redraw).
+            redraw_ = true;
+            return true;
+        }
+        return false;
+    }
+
+    // Box Art mode: DELETE removes only the displayed cover file. Refresh,
+    // empty-state handling and texture invalidation all live in RunDelete.
+    const GameInfo* game = GetSelectedGame();
+    if (game && !game->boxArt.empty())
+    {
+        const SDL_FRect deleteButton = LibraryBoxArtDeleteRect(layout.cover);
+        if (deleteButton.x <= x && x < deleteButton.x + deleteButton.w &&
+            deleteButton.y <= y && y < deleteButton.y + deleteButton.h)
+        {
+            RunDelete(ImportAssetType::Cover);
+            return true;
+        }
+    }
+    return false;
+}
+
+void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
+{
+    if (event.button != SDL_BUTTON_LEFT)
+        return;
+    // Game Data push buttons: on release inside the same rect, run the
+    // button's existing action; otherwise just restore the raised state.
+    if (metadataButtonPressed_ >= 0)
+    {
+        const int pressed = metadataButtonPressed_;
+        metadataButtonPressed_ = -1;
+        redraw_ = true;
+        if (activeTab_ != FrontendTab::Cartridge)
+            return;
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(window_, &width, &height);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(width, height);
+        const SDL_FRect c = panels.rightContent;
+        const SDL_FRect inner{c.x + 18.0f, c.y + 18.0f, c.w - 36.0f, c.h - 36.0f};
+        const SDL_FRect button = MetadataButtonRect(inner, pressed);
+        if (event.x >= button.x && event.x < button.x + button.w &&
+            event.y >= button.y && event.y < button.y + button.h)
+        {
+            switch (pressed)
+            {
+            case 0: BeginMetadataEdit(); break;
+            case 1: SaveMetadataEdit(); break;
+            case 2: CancelMetadataEdit(); break;
+            case 3: DeleteGameDataForSelectedGame(); break;
+            }
+        }
+        return;
+    }
+    if (folderOpenPressed_ >= 0)
+    {
+        const int pressed = folderOpenPressed_;
+        folderOpenPressed_ = -1;
+        redraw_ = true;
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(window_, &width, &height);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(width, height);
+        const DashboardLayout& layout = Dashboard(panels.rightContent);
+        if (layout.hasRightColumn)
+        {
+            const SDL_FRect button = LibraryOpenButtonRect(layout.folders, pressed);
+            if (event.x >= button.x && event.x < button.x + button.w &&
+                event.y >= button.y && event.y < button.y + button.h)
+            {
+                const std::filesystem::path folder = LibraryFolderPath(pressed);
+                std::error_code error;
+                if (!folder.empty() && std::filesystem::is_directory(folder, error) && !error)
+                {
+                    ShellExecuteW(nullptr, L"open", folder.wstring().c_str(),
+                        nullptr, nullptr, SW_SHOWNORMAL);
+                }
+            }
+        }
+        return;
+    }
+    if (quickAddPressed_ >= 0)
+    {
+        const int pressed = quickAddPressed_;
+        quickAddPressed_ = -1;
+        redraw_ = true;
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(window_, &width, &height);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(width, height);
+        const SDL_FRect button = QuickAddButtonRect(
+            Dashboard(panels.rightContent).imports, pressed);
+        if (event.x >= button.x && event.x < button.x + button.w &&
+            event.y >= button.y && event.y < button.y + button.h)
+        {
+            const ImportAssetType types[] = {
+                ImportAssetType::Rom, ImportAssetType::Cover, ImportAssetType::Manual};
+            RunImport(types[pressed]);
+        }
+        return;
+    }
+
+    // Game Library scrollbar thumb drag: commit the final scroll position
+    // even if released outside the panel (Win95 behavior).
+    if (libraryListScrollDrag_)
+    {
+        libraryListScrollDrag_ = false;
+        redraw_ = true;
+    }
+
+    // Favorites scrollbar thumb drag: while held, the thumb follows the
+    // cursor vertically (Win95 behavior) regardless of where it moves.
+    if (favoritesScrollDrag_)
+    {
+        favoritesScrollDrag_ = false;
+        if (activeTab_ == FrontendTab::Library)
+        {
+            int w = 0;
+            int h = 0;
+            SDL_GetWindowSize(window_, &w, &h);
+            const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
+            const SDL_FRect favInner{
+                Dashboard(panels.rightContent).favorites.x + 5.0f,
+                Dashboard(panels.rightContent).favorites.y + 28.0f,
+                Dashboard(panels.rightContent).favorites.w - 10.0f,
+                Dashboard(panels.rightContent).favorites.h - 33.0f
+            };
+            std::size_t favoriteCount = 0;
+            for (const GameInfo& candidate : library_.Games())
+                if (candidate.favorite) ++favoriteCount;
+            const FavoritesScrollGeom geom =
+                FavoritesScrollMetrics(favInner, favoriteCount);
+            const float offset = (std::clamp)(event.y - favoritesScrollDragGrab_,
+                geom.track.y, geom.track.y + geom.track.h - geom.thumb.h);
+            const float freeH = (std::max)(1.0f, geom.track.h - geom.thumb.h);
+            favoritesScroll_ = (std::clamp)(
+                static_cast<int>((offset - geom.track.y) * static_cast<float>(geom.maxScroll) / freeH + 0.5f),
+                0, geom.maxScroll);
+            redraw_ = true;
+        }
+    }
+}
+
+void FrontendApp::HandleMouseMotion(const SDL_MouseMotionEvent& event)
+{
+    // Live thumb dragging: recompute the scroll position from the cursor's
+    // offset inside the thumb, clamped to the live favorite count.
+    if (favoritesScrollDrag_ && activeTab_ == FrontendTab::Library)
+    {
+
+        int w = 0;
+        int h = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
+        const SDL_FRect favInner{
+            Dashboard(panels.rightContent).favorites.x + 5.0f,
+            Dashboard(panels.rightContent).favorites.y + 28.0f,
+            Dashboard(panels.rightContent).favorites.w - 10.0f,
+            Dashboard(panels.rightContent).favorites.h - 33.0f
+        };
+        std::size_t favoriteCount = 0;
+        for (const GameInfo& candidate : library_.Games())
+            if (candidate.favorite) ++favoriteCount;
+        const FavoritesScrollGeom geom = FavoritesScrollMetrics(favInner, favoriteCount);
+        const float offset = (std::clamp)(event.y - favoritesScrollDragGrab_,
+            geom.track.y, geom.track.y + geom.track.h - geom.thumb.h);
+        const float freeH = (std::max)(1.0f, geom.track.h - geom.thumb.h);
+        favoritesScroll_ = (std::clamp)(
+            static_cast<int>((offset - geom.track.y) * static_cast<float>(geom.maxScroll) / freeH + 0.5f),
+            0, geom.maxScroll);
+        redraw_ = true;
+    }
+
+    // Game Library thumb drag: same Win95 semantics as the Favorites thumb.
+    if (libraryListScrollDrag_ && activeTab_ == FrontendTab::Library)
+    {
+        int w = 0;
+        int h = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
+        const SDL_FRect listRect = LibraryListRect(panels.leftContent);
+        const int itemCount = static_cast<int>(collections_.Count());
+        const FavoritesScrollGeom geom = LibraryListScrollMetrics(listRect, itemCount);
+        const float offset = (std::clamp)(event.y - libraryListScrollDragGrab_,
+            geom.track.y, geom.track.y + geom.track.h - geom.thumb.h);
+        const float freeH = (std::max)(1.0f, geom.track.h - geom.thumb.h);
+        libraryListScroll_ = (std::clamp)(
+            static_cast<int>((offset - geom.track.y) * static_cast<float>(geom.maxScroll) / freeH + 0.5f),
+            0, geom.maxScroll);
+        redraw_ = true;
+    }
+}
+
+SDL_FRect FrontendApp::QuickAddButtonRect(const SDL_FRect& importsPanel, int index) const
+{
+    // 70% of the original panel width, left-aligned; shared by the draw code
+    // and the hit tests so the visible button and its click target can never
+    // drift apart.
+    return SDL_FRect{
+        importsPanel.x + 10.0f,
+        importsPanel.y + 29.0f + static_cast<float>(index) * 32.0f,
+        (importsPanel.w - 20.0f) * 0.7f,
+        27.0f};
+}
+
+SDL_FRect FrontendApp::LibraryOpenButtonRect(const SDL_FRect& foldersPanel, int index) const
+{
+    // Shared by the draw code and the hit paths so the visible OPEN button and
+    // its click target can never drift apart (same convention as QuickAddButtonRect).
+    return SDL_FRect{
+        foldersPanel.x + foldersPanel.w - 74.0f,
+        foldersPanel.y + 30.0f + static_cast<float>(index) * 34.0f,
+        64.0f,
+        26.0f};
+}
+
+std::filesystem::path FrontendApp::LibraryFolderPath(int index) const
+{
+    // Existing O2EM-NG runtime folder conventions, anchored at the runtime
+    // base path owned by AssetManager (no second folder scheme, no absolute
+    // development paths).
+    const std::filesystem::path base = assetManager_.BasePath();
+    static const char* const folders[] = {
+        "ROMS", "BOXART", "SCREENSHOTS", "MANUALS", "BIOS"};
+    return index >= 0 && index < 5 ? base / folders[index]
+                                   : std::filesystem::path{};
+}
+
+FrontendApp::FavoritesScrollGeom FrontendApp::FavoritesScrollMetrics(
+    const SDL_FRect& favInner, std::size_t favoriteCount)
+{
+    FavoritesScrollGeom geom;
+    const int visibleRows = (std::max)(1, static_cast<int>((favInner.h - 12.0f) / 24.0f));
+    const int maxScroll = static_cast<int>(favoriteCount) > visibleRows
+        ? static_cast<int>(favoriteCount) - visibleRows
+        : 0;
+    // Clamp/reset whenever the favorite list shrinks (unfavorite, game
+    // removal): the stored scroll may not exceed the live maximum.
+    favoritesScroll_ = (std::clamp)(favoritesScroll_, 0, maxScroll);
+    geom.visibleRows = visibleRows;
+    geom.maxScroll = maxScroll;
+    if (maxScroll <= 0)
+        return geom; // everything fits: no scrollbar geometry at all
+
+    // Win95 metrics: 17 px scrollbar column, 17 px arrows, sunken track.
+    constexpr float kBarWidth = 17.0f;
+    const float trackTop = favInner.y + 17.0f;
+    const float trackBottom = favInner.y + favInner.h - 17.0f;
+    geom.track = {favInner.x + favInner.w - kBarWidth, trackTop,
+        kBarWidth, trackBottom - trackTop};
+    geom.upArrow = {geom.track.x, favInner.y, kBarWidth, 17.0f};
+    geom.downArrow = {geom.track.x, trackBottom, kBarWidth, 17.0f};
+
+    // Proportional thumb, minimum one arrow tall, with the free space
+    // distributed between the arrows (Win95-like behavior).
+    const float trackH = geom.track.h;
+    const float ratio = static_cast<float>(visibleRows) /
+        static_cast<float>(visibleRows + maxScroll);
+    const float thumbH = (std::max)(17.0f, trackH * ratio);
+    const float freeH = (std::max)(0.0f, trackH - thumbH);
+    const float thumbY = geom.track.y + (maxScroll > 0
+        ? freeH * static_cast<float>(favoritesScroll_) / static_cast<float>(maxScroll)
+        : 0.0f);
+    geom.thumb = {geom.track.x, thumbY, geom.track.w, thumbH};
+    return geom;
+}
+
+int FrontendApp::FavoritesScrollPartAt(float x, float y,
+    const SDL_FRect& favInner, std::size_t favoriteCount)
+{
+    const FavoritesScrollGeom geom = FavoritesScrollMetrics(favInner, favoriteCount);
+    if (geom.maxScroll <= 0)
+        return 0;
+    const auto contains = [](const SDL_FRect& r, float px, float py)
+    {
+        return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+    };
+    if (contains(geom.upArrow, x, y)) return 1;
+    if (contains(geom.downArrow, x, y)) return 2;
+    if (contains(geom.track, x, y))
+    {
+        // Thumb containment first would be ambiguous at the thumb's edges;
+        // explicit thumb rect keeps arrow/track/thumb disjoint.
+        if (contains(geom.thumb, x, y)) return 5;
+        return y < geom.thumb.y ? 3 : 4;
+    }
+    return 0;
+}
+
+bool FrontendApp::HandleFavoritesScrollbarAt(float x, float y,
+    const SDL_FRect& favInner, std::size_t favoriteCount)
+{
+    const int part = FavoritesScrollPartAt(x, y, favInner, favoriteCount);
+    if (part == 0)
+        return false;
+    const FavoritesScrollGeom geom = FavoritesScrollMetrics(favInner, favoriteCount);
+    switch (part)
+    {
+    case 1: --favoritesScroll_; break;                      // up arrow
+    case 2: ++favoritesScroll_; break;                      // down arrow
+    case 3: favoritesScroll_ -= geom.visibleRows; break;    // page up
+    case 4: favoritesScroll_ += geom.visibleRows; break;    // page down
+    case 5: // thumb: begin drag, remember grab offset inside the thumb
+        favoritesScrollDrag_ = true;
+        favoritesScrollDragGrab_ = y - geom.thumb.y;
+        break;
+    default: break;
+    }
+    favoritesScroll_ = (std::clamp)(favoritesScroll_, 0, geom.maxScroll);
+    redraw_ = true;
+    return true;
+}
+
+// Game Library list viewport: same Win95 scrollbar idiom as Favorites, but
+// with the list's 28 px rows and its own scroll state.
+SDL_FRect FrontendApp::LibraryListRect(const SDL_FRect& content) const
+{
+    // Rows run from below the column header (content.y + 82) down to a small
+    // inset above the panel bottom; derived entirely from the responsive
+    // panel layout so windowed and fullscreen behave identically.
+    return SDL_FRect{
+        content.x + 10.0f,
+        content.y + 82.0f,
+        content.w - 20.0f,
+        content.h - 92.0f};
+}
+
+FrontendApp::FavoritesScrollGeom FrontendApp::LibraryListScrollMetrics(
+    const SDL_FRect& listRect, int itemCount)
+{
+    FavoritesScrollGeom geom;
+    const int visibleRows = (std::max)(1,
+        static_cast<int>(listRect.h / 28.0f));
+    const int maxScroll = itemCount > visibleRows
+        ? itemCount - visibleRows
+        : 0;
+    // Clamp/reset whenever the collection or view shrinks: the stored
+    // scroll may not exceed the live maximum.
+    libraryListScroll_ = (std::clamp)(libraryListScroll_, 0, maxScroll);
+    geom.visibleRows = visibleRows;
+    geom.maxScroll = maxScroll;
+    if (maxScroll <= 0)
+        return geom; // everything fits: no scrollbar geometry at all
+
+    // Same Win95 metrics as the Favorites scrollbar: 17 px column, 17 px
+    // arrows, sunken track, proportional thumb (minimum one arrow tall).
+    constexpr float kBarWidth = 17.0f;
+    const float trackTop = listRect.y + 17.0f;
+    const float trackBottom = listRect.y + listRect.h - 17.0f;
+    geom.track = {listRect.x + listRect.w - kBarWidth, trackTop,
+        kBarWidth, trackBottom - trackTop};
+    geom.upArrow = {geom.track.x, listRect.y, kBarWidth, 17.0f};
+    geom.downArrow = {geom.track.x, trackBottom, kBarWidth, 17.0f};
+
+    const float trackH = geom.track.h;
+    const float ratio = static_cast<float>(visibleRows) /
+        static_cast<float>(visibleRows + maxScroll);
+    const float thumbH = (std::max)(17.0f, trackH * ratio);
+    const float freeH = (std::max)(0.0f, trackH - thumbH);
+    const float thumbY = geom.track.y + (maxScroll > 0
+        ? freeH * static_cast<float>(libraryListScroll_) / static_cast<float>(maxScroll)
+        : 0.0f);
+    geom.thumb = {geom.track.x, thumbY, geom.track.w, thumbH};
+    return geom;
+}
+
+int FrontendApp::LibraryListScrollPartAt(float x, float y,
+    const SDL_FRect& listRect, int itemCount)
+{
+    const FavoritesScrollGeom geom = LibraryListScrollMetrics(listRect, itemCount);
+    if (geom.maxScroll <= 0)
+        return 0;
+    const auto contains = [](const SDL_FRect& r, float px, float py)
+    {
+        return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+    };
+    if (contains(geom.upArrow, x, y)) return 1;
+    if (contains(geom.downArrow, x, y)) return 2;
+    if (contains(geom.track, x, y))
+    {
+        if (contains(geom.thumb, x, y)) return 5;
+        return y < geom.thumb.y ? 3 : 4;
+    }
+    return 0;
+}
+
+bool FrontendApp::HandleLibraryListScrollbarAt(float x, float y,
+    const SDL_FRect& listRect, int itemCount)
+{
+    const int part = LibraryListScrollPartAt(x, y, listRect, itemCount);
+    if (part == 0)
+        return false;
+    const FavoritesScrollGeom geom = LibraryListScrollMetrics(listRect, itemCount);
+    switch (part)
+    {
+    case 1: --libraryListScroll_; break;                    // up arrow
+    case 2: ++libraryListScroll_; break;                    // down arrow
+    case 3: libraryListScroll_ -= geom.visibleRows; break;  // page up
+    case 4: libraryListScroll_ += geom.visibleRows; break;  // page down
+    case 5: // thumb: begin drag, remember grab offset inside the thumb
+        libraryListScrollDrag_ = true;
+        libraryListScrollDragGrab_ = y - geom.thumb.y;
+        break;
+    default: break;
+    }
+    libraryListScroll_ = (std::clamp)(libraryListScroll_, 0, geom.maxScroll);
+    redraw_ = true;
+    return true;
+}
+
+void FrontendApp::KeepLibrarySelectionVisible()
+{
+    int w = 0;
+    int h = 0;
+    SDL_GetWindowSize(window_, &w, &h);
+    const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
+    const SDL_FRect listRect = LibraryListRect(panels.leftContent);
+    const int itemCount = static_cast<int>(collections_.Count());
+    const FavoritesScrollGeom geom = LibraryListScrollMetrics(listRect, itemCount);
+    if (geom.maxScroll <= 0)
+    {
+        libraryListScroll_ = 0;
+        return;
+    }
+    const int selected = static_cast<int>(collections_.CurrentPosition());
+    if (selected < libraryListScroll_)
+        libraryListScroll_ = selected;
+    else if (selected >= libraryListScroll_ + geom.visibleRows)
+        libraryListScroll_ = selected - geom.visibleRows + 1;
+    libraryListScroll_ = (std::clamp)(libraryListScroll_, 0, geom.maxScroll);
+}
+
 bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
 {
     int w = 0;
     int h = 0;
     SDL_GetWindowSize(window_, &w, &h);
     const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
-    const float margin = 12.0f;
-    const float gap = 10.0f;
-    const float topHeight = (std::max)(250.0f, panels.rightContent.h * 0.61f);
-    const float sideWidth = (std::clamp)(panels.rightContent.w * 0.22f, 210.0f, 285.0f);
-    const float infoWidth = (std::clamp)(panels.rightContent.w * 0.30f, 270.0f, 370.0f);
-    const float coverWidth = panels.rightContent.w - infoWidth - sideWidth -
-        margin * 2.0f - gap * 2.0f;
-    const SDL_FRect quickFrame{
-        panels.rightContent.x + margin + coverWidth + gap + infoWidth + gap,
-        panels.rightContent.y + margin,
-        sideWidth,
-        (topHeight - margin) * 0.52f
-    };
+    const auto layout=Dashboard(panels.rightContent);
+    const auto& quickFrame=layout.quick;
     const SDL_FRect inner{
         quickFrame.x + 5.0f,
         quickFrame.y + 28.0f,
@@ -1705,15 +2840,22 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     // windowed and fullscreen layouts behave identically.
     const SDL_FRect biosHit{
         inner.x + 4.0f, inner.y + 5.0f,
-        inner.w - 8.0f, 49.0f
+        (inner.w - 8.0f) * 0.75f, 49.0f
     };
     const SDL_FRect regionHit{
         inner.x + 4.0f, inner.y + 58.0f,
-        inner.w - 8.0f, 49.0f
+        (inner.w - 8.0f) * 0.75f, 49.0f
     };
     const SDL_FRect scanlinesHit{
         inner.x + 4.0f, inner.y + 112.0f,
         inner.w - 8.0f, 37.0f
+    };
+    // Fullscreen checkbox row, directly below Scanlines (drawn at
+    // quickInner.y + 152). Same authoritative setting as the Settings screen:
+    // toggled via ActivateSettingsSelection() so both UIs stay in sync.
+    const SDL_FRect fullscreenHit{
+        inner.x + 4.0f, inner.y + 150.0f,
+        inner.w - 8.0f, 30.0f
     };
 
     const auto contains = [x, y](const SDL_FRect& rect)
@@ -1728,7 +2870,7 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
         RefreshInstalledBiosFiles();
         const float itemH = 25.0f;
         const SDL_FRect popup{inner.x + 10.0f, inner.y + 51.0f,
-            inner.w - 20.0f, itemH * static_cast<float>(installedBiosFiles_.size())};
+            (inner.w - 20.0f) * 0.75f, itemH * static_cast<float>(installedBiosFiles_.size())};
         if (contains(popup) && !installedBiosFiles_.empty())
         {
             const int item = static_cast<int>((y - popup.y) / itemH);
@@ -1743,7 +2885,7 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     else if (openDropdown_ == 1)
     {
         const float itemH = 25.0f;
-        const SDL_FRect popup{inner.x + 10.0f, inner.y + 104.0f, inner.w - 20.0f, itemH * 3.0f};
+        const SDL_FRect popup{inner.x + 10.0f, inner.y + 104.0f, (inner.w - 20.0f) * 0.75f, itemH * 3.0f};
         if (contains(popup))
         {
             const int item = static_cast<int>((y - popup.y) / itemH);
@@ -1755,12 +2897,47 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
         return true;
     }
 
+    const SDL_FRect scaleHit{layout.cover.x+5,layout.cover.y+layout.cover.h-31,layout.cover.w-10,28};    if (contains(scaleHit)) { scaleCoverImage_=!scaleCoverImage_; redraw_=true; return true; }
+    for(int i=0;i<3;++i)
+    {
+        const SDL_FRect button=QuickAddButtonRect(layout.imports,i);
+        if(contains(button))
+        {
+            quickAddPressed_ = i;
+            redraw_ = true;
+            return true;
+        }
+    }
+    // Library Folders OPEN buttons: arm the pressed state on mouse-down;
+    // HandleMouseButtonUp performs the action on release inside the rect.
+    {
+        const auto dashboardLayout=Dashboard(panels.rightContent);
+        if(dashboardLayout.hasRightColumn)
+        {
+            for(int i=0;i<5;++i)
+            {
+                if(contains(LibraryOpenButtonRect(dashboardLayout.folders,i)))
+                {
+                    folderOpenPressed_ = i;
+                    redraw_ = true;
+                    return true;
+                }
+            }
+        }
+    }
     if (contains(biosHit)) { settingsSelected_ = 3; openDropdown_ = 3; redraw_ = true; return true; }
     if (contains(regionHit)) { settingsSelected_ = 1; openDropdown_ = 1; redraw_ = true; return true; }
 
     if (contains(scanlinesHit))
     {
         settingsSelected_ = 2;
+        ActivateSettingsSelection();
+        return true;
+    }
+
+    if (contains(fullscreenHit))
+    {
+        settingsSelected_ = 0;
         ActivateSettingsSelection();
         return true;
     }
@@ -1774,26 +2951,10 @@ bool FrontendApp::TryLibraryFavoriteAt(float x, float y, bool activate)
     int h = 0;
     SDL_GetWindowSize(window_, &w, &h);
     const FrontendPanelLayout panels = FrontendPanels_Calculate(w, h);
-    const float margin = 12.0f;
-    const float gap = 10.0f;
-    const float topHeight = (std::max)(250.0f, panels.rightContent.h * 0.61f);
-    const float sideWidth = (std::clamp)(panels.rightContent.w * 0.22f, 210.0f, 285.0f);
-    const float infoWidth = (std::clamp)(panels.rightContent.w * 0.30f, 270.0f, 370.0f);
-    const float coverWidth = panels.rightContent.w - infoWidth - sideWidth -
-        margin * 2.0f - gap * 2.0f;
-    const SDL_FRect sideFrame{
-        panels.rightContent.x + margin + coverWidth + gap + infoWidth + gap,
-        panels.rightContent.y + margin,
-        sideWidth,
-        topHeight - margin
-    };
-    const float quickHeight = sideFrame.h * 0.52f;
-    const SDL_FRect favoritesFrame{
-        sideFrame.x,
-        sideFrame.y + quickHeight + gap,
-        sideFrame.w,
-        sideFrame.h - quickHeight - gap
-    };
+    const auto layout=Dashboard(panels.rightContent);
+    const bool recentHit=x>=layout.recent.x && x<layout.recent.x+layout.recent.w &&
+        y>=layout.recent.y && y<layout.recent.y+layout.recent.h;
+    const auto& favoritesFrame=recentHit ? layout.recent : layout.favorites;
     const SDL_FRect inner{
         favoritesFrame.x + 5.0f,
         favoritesFrame.y + 28.0f,
@@ -1807,20 +2968,48 @@ bool FrontendApp::TryLibraryFavoriteAt(float x, float y, bool activate)
 
     std::vector<const GameInfo*> favorites;
     for (const GameInfo& candidate : library_.Games())
-        if (candidate.favorite) favorites.push_back(&candidate);
-    std::stable_sort(favorites.begin(), favorites.end(), [](const GameInfo* a, const GameInfo* b)
+        if (recentHit ? candidate.lastPlayed>0 : candidate.favorite) favorites.push_back(&candidate);
+    std::stable_sort(favorites.begin(), favorites.end(), [recentHit](const GameInfo* a, const GameInfo* b)
     {
-        return a->title < b->title;
+        return recentHit ? a->lastPlayed > b->lastPlayed : a->title < b->title;
     });
 
-    const int maximumRows = (std::max)(1, static_cast<int>((inner.h - 12.0f) / 24.0f));
-    const int row = static_cast<int>((y - (inner.y + 9.0f)) / 24.0f);
-    const int shown = (std::min)(maximumRows, static_cast<int>(favorites.size()));
-    if (row < 0 || row >= shown)
-        return false;
-
-    if (!collections_.SelectFilename(favorites[static_cast<std::size_t>(row)]->filename))
-        return false;
+    if (recentHit)
+    {
+        const int maximumRows = 4;
+        const float rowTop = favoritesFrame.y + 28.0f;
+        if (y < rowTop) return false;
+        const int row = static_cast<int>((y - rowTop) / 24.0f);
+        const int shown = (std::min)(maximumRows, static_cast<int>(favorites.size()));
+        if (row < 0 || row >= shown)
+            return false;
+        if (!collections_.SelectFilename(favorites[static_cast<std::size_t>(row)]->filename))
+            return false;
+    }
+    else
+    {
+        // Scrollbar column: let the scrollbar handlers own clicks there.
+        // While a thumb drag is in progress the mouse may hover anywhere -
+        // row picking must not swallow the motion-driven updates.
+        if (!favoritesScrollDrag_ &&
+            FavoritesScrollPartAt(x, y, inner, favorites.size()) != 0)
+        {
+            return HandleFavoritesScrollbarAt(x, y, inner, favorites.size());
+        }
+        const FavoritesScrollGeom geom =
+            FavoritesScrollMetrics(inner, favorites.size());
+        const float rowTop = inner.y + 9.0f;
+        if (y < rowTop) return false;
+        const int row = static_cast<int>((y - rowTop) / 24.0f);
+        const int first = favoritesScroll_;
+        const int shown = (std::min)(geom.visibleRows,
+            static_cast<int>(favorites.size()) - first);
+        if (row < 0 || row >= shown)
+            return false;
+        if (!collections_.SelectFilename(
+                favorites[static_cast<std::size_t>(first + row)]->filename))
+            return false;
+    }
 
     libraryDescriptionScroll_ = 0;
     redraw_ = true;
@@ -1837,15 +3026,7 @@ bool FrontendApp::TryEditLibraryDescriptionAt(float x, float y)
     const FrontendPanelLayout panels =
         FrontendPanels_Calculate(windowWidth, windowHeight);
 
-    const float margin = 12.0f;
-    const float gap = 12.0f;
-    const float topHeight = (std::max)(220.0f, panels.rightContent.h * 0.61f);
-    const SDL_FRect descriptionFrame{
-        panels.rightContent.x + margin,
-        panels.rightContent.y + topHeight + gap,
-        panels.rightContent.w - margin * 2.0f,
-        panels.rightContent.h - topHeight - gap - margin
-    };
+    const auto descriptionFrame=Dashboard(panels.rightContent).description;
 
     if (x < descriptionFrame.x ||
         x >= descriptionFrame.x + descriptionFrame.w ||
@@ -1916,6 +3097,99 @@ void FrontendApp::CancelMetadataEdit()
     if (metadataTextInput_) SDL_StopTextInput(window_);
     metadataTextInput_ = false;
     metadataEditMode_ = false;
+    redraw_ = true;
+}
+
+namespace
+{
+    std::wstring CatalogUtf8ToWide(const std::string& text)
+    {
+        if (text.empty()) return {};
+        const int count = MultiByteToWideChar(CP_UTF8, 0, text.c_str(),
+            static_cast<int>(text.size()), nullptr, 0);
+        std::wstring wide(static_cast<std::size_t>((std::max)(0, count)), L'\0');
+        if (!wide.empty())
+            MultiByteToWideChar(CP_UTF8, 0, text.c_str(),
+                static_cast<int>(text.size()), wide.data(), count);
+        return wide;
+    }
+}
+
+// Manual DELETE GAME DATA (Patch 0031): a scalpel for genuinely unwanted
+// database/catalogue entries. Deletes EXACTLY the selected entry's database
+// row (by its exact rom_filename key, so 59 and 59+ stay independent) plus
+// a suppression marker so catalogue seeding cannot silently recreate the
+// entry. It NEVER deletes ROM files, BIOS/firmware, covers/box art,
+// screenshots/GIF/MP4, manuals or any media directory - files are not
+// touched at all. Counterpart entries (N vs N+) are unaffected.
+void FrontendApp::DeleteGameDataForSelectedGame()
+{
+    const GameInfo* game = GetSelectedGame();
+    if (!game || game->filename.empty())
+        return;
+
+    const std::string idText = DisplayCatalogId(game);
+    const std::string nameText = game->title.empty() ? game->filename : game->title;
+    const bool romInstalled = !game->romPath.empty() || !game->rom.path.empty();
+    std::wstring message =
+        L"Delete game data for catalogue entry " +
+        CatalogUtf8ToWide(idText.empty() ? nameText : idText) +
+        L" (" + CatalogUtf8ToWide(nameText) + L")?\n\n"
+        L"This removes the database entry only.\n"
+        L"ROM files and media will NOT be deleted.";
+    if (romInstalled)
+        message +=
+            L"\n\nNote: the installed ROM stays in the library as a basic entry "
+            L"with default data.";
+    const int choice = MessageBoxW(nullptr, message.c_str(),
+        L"O2EM-NG - Delete Game Data",
+        MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+    if (choice != IDYES)
+        return;
+
+    const std::string deletedFilename = game->filename;
+    const std::size_t deletedPosition = collections_.CurrentPosition();
+    const bool rowDeleted = gameDatabase_.DeleteGameRecord(deletedFilename);
+    const bool suppressed = gameDatabase_.SuppressCatalogEntry(deletedFilename);
+
+    if (rowDeleted || suppressed)
+    {
+        importStatus_ = "Game Data deleted: " + deletedFilename;
+
+        // Rebuild from the authoritative ROM directory (same sequence as the
+        // ROM-deletion path). The suppression marker keeps the entry out of
+        // catalogue seeding; installed ROMs are unaffected.
+        const std::vector<RomEntry> installedRoms =
+            LoadRoms((importManager_.BasePath() / "ROMS").string());
+        library_.SetGames(installedRoms);
+        metadataEngine_.Populate(library_);
+        gameDatabase_.InitializeAndPopulate(library_);
+        for (GameInfo& remainingGame : library_.Games())
+            ApplyCatalogFallbacks(remainingGame);
+        assetManager_.Populate(library_);
+        collections_.Attach(&library_);
+
+        // Keep the selection valid near where the deleted entry was.
+        if (collections_.Count() == 0)
+        {
+            libraryListScroll_ = 0;
+        }
+        else
+        {
+            const std::size_t clamped =
+                (std::min)(deletedPosition, collections_.Count() - 1);
+            collections_.SelectPosition(clamped);
+            KeepLibrarySelectionVisible();
+        }
+
+        FrontendBoxArt_Shutdown();
+        ManualPreview_Shutdown();
+        FrontendScreenshot_Invalidate();
+    }
+    else
+    {
+        importStatus_ = "Could not delete Game Data for " + deletedFilename;
+    }
     redraw_ = true;
 }
 
@@ -2079,6 +3353,86 @@ void FrontendApp::ToggleMetadataTextInput()
     redraw_ = true;
 }
 
+SDL_FRect FrontendApp::MetadataButtonRect(const SDL_FRect& inner, int index) const
+{
+    // Shared by the draw and hit paths so hitboxes always match what is
+    // rendered. index 0 = EDIT GAME DATA (view mode, bottom right);
+    // index 1 = SAVE, 2 = CANCEL (edit mode, bottom left);
+    // index 3 = DELETE GAME DATA (view mode, bottom left).
+    const float buttonY = inner.y + inner.h - 44.0f;
+    const float buttonH = 32.0f;
+    switch (index)
+    {
+    case 0:
+        return {inner.x + inner.w - 192.0f, buttonY, 178.0f, buttonH};
+    case 1:
+        return {inner.x + 24.0f, buttonY, 96.0f, buttonH};
+    case 3:
+        // DELETE GAME DATA (view mode, bottom left).
+        return {inner.x + 24.0f, buttonY, 168.0f, buttonH};
+    default:
+        return {inner.x + 132.0f, buttonY, 96.0f, buttonH};
+    }
+}
+
+void FrontendApp::DrawWin95Button(const SDL_FRect& rect, const char* label,
+    bool pressed)
+{
+    if (!pressed)
+    {
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        const SDL_FRect buttonShadow{rect.x + 3.0f, rect.y + 3.0f, rect.w, rect.h};
+        SDL_RenderFillRect(renderer_, &buttonShadow);
+    }
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+    SDL_RenderFillRect(renderer_, &rect);
+    if (pressed)
+    {
+        // Same pressed-edge idiom as the Quick Add buttons: dark top/left,
+        // bright bottom/right.
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::DarkShadow);
+        SDL_RenderLine(renderer_, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+        SDL_RenderLine(renderer_, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_RenderLine(renderer_, rect.x, rect.y + rect.h - 1.0f,
+            rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+        SDL_RenderLine(renderer_, rect.x + rect.w - 1.0f, rect.y,
+            rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+    }
+    else
+    {
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Highlight);
+        SDL_RenderLine(renderer_, rect.x, rect.y, rect.x + rect.w - 1.0f, rect.y);
+        SDL_RenderLine(renderer_, rect.x, rect.y, rect.x, rect.y + rect.h - 1.0f);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderLine(renderer_, rect.x, rect.y + rect.h - 1.0f,
+            rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+        SDL_RenderLine(renderer_, rect.x + rect.w - 1.0f, rect.y,
+            rect.x + rect.w - 1.0f, rect.y + rect.h - 1.0f);
+    }
+    // ~8px per character at 0.95 scale (the same estimate the caret math
+    // uses); centers short labels without a text-measurement API.
+    const float pressOffset = pressed ? 2.0f : 0.0f;
+    const float textScale = 0.95f;
+    const float textWidth = 8.0f * textScale * static_cast<float>(std::strlen(label));
+    // The label of an active Win95 push button is always black. The raised
+    // -edge drawing above leaves Shadow as the current color, which made the
+    // label inherit grey and read as disabled (OPEN buttons). Explicitly
+    // restore WindowText here so every button using this helper (Game Data,
+    // DELETE GAME DATA, Library OPEN) renders with active-button text.
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+    DrawText(renderer_,
+        rect.x + (std::max)(2.0f, (rect.w - textWidth) * 0.5f) + pressOffset,
+        rect.y + (rect.h - 16.0f) * 0.5f + pressOffset,
+        textScale, label);
+}
+
+void FrontendApp::DrawMetadataButton(const SDL_FRect& rect, int index,
+    const char* label)
+{
+    DrawWin95Button(rect, label, metadataButtonPressed_ == index);
+}
+
 void FrontendApp::OpenSelectedManual()
 {
     const GameInfo* game = GetSelectedGame();
@@ -2105,8 +3459,22 @@ bool FrontendApp::TryMetadataControlAt(float x, float y)
     const SDL_FRect c=panels.rightContent;
     if (!metadataEditMode_)
     {
-        if (x>=c.x+c.w-190 && x<c.x+c.w-30 && y>=c.y+c.h-58 && y<c.y+c.h-24)
-        { BeginMetadataEdit(); return true; }
+        // EDIT GAME DATA / DELETE GAME DATA buttons: arm the pressed state
+        // on mouse-down; the action fires on mouse-up inside the same rect
+        // (Win95 push button). Same frame/inner math as DrawGameInformationTab
+        // (margin 14 + 4).
+        const SDL_FRect inner{c.x + 18.0f, c.y + 18.0f, c.w - 36.0f, c.h - 36.0f};
+        for (const int index : {3, 0})
+        {
+            const SDL_FRect button = MetadataButtonRect(inner, index);
+            if (x >= button.x && x < button.x + button.w &&
+                y >= button.y && y < button.y + button.h)
+            {
+                metadataButtonPressed_ = index;
+                redraw_ = true;
+                return true;
+            }
+        }
         return false;
     }
     const float firstY=c.y+58.0f;
@@ -2116,10 +3484,21 @@ bool FrontendApp::TryMetadataControlAt(float x, float y)
         if(x>=c.x+20 && x<c.x+c.w-20 && y>=ry-5 && y<ry+22)
         { metadataSelected_=i; redraw_=true; if(i!=14) EditCurrentMetadataField(); return true; }
     }
-    if(y>=c.y+c.h-58 && y<c.y+c.h-24)
+    // SAVE (1) / CANCEL (2) push buttons: arm on mouse-down, confirm on
+    // mouse-up inside the same rect. Same inner math as the draw path.
     {
-        if(x>=c.x+25 && x<c.x+155) { SaveMetadataEdit(); return true; }
-        if(x>=c.x+170 && x<c.x+300) { CancelMetadataEdit(); return true; }
+        const SDL_FRect inner{c.x + 18.0f, c.y + 18.0f, c.w - 36.0f, c.h - 36.0f};
+        for (int index = 1; index <= 2; ++index)
+        {
+            const SDL_FRect button = MetadataButtonRect(inner, index);
+            if (x >= button.x && x < button.x + button.w &&
+                y >= button.y && y < button.y + button.h)
+            {
+                metadataButtonPressed_ = index;
+                redraw_ = true;
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -2275,6 +3654,8 @@ void FrontendApp::RunDelete(ImportAssetType type)
         type == ImportAssetType::Screenshot
         ? FrontendScreenshot_CurrentPath(game)
         : std::filesystem::path{};
+
+    if (type == ImportAssetType::Screenshot) FrontendScreenshot_Invalidate();
 
     const ImportResult result = type == ImportAssetType::Bios
         ? importManager_.DeleteBios()
@@ -2621,7 +4002,7 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
     {
         if (metadataEditMode_ && index == metadataSelected_)
         {
-            SDL_SetRenderDrawColor(renderer_, 185, 35, 35, 255);
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::SelectedItem);
             const SDL_FRect highlight{
                 inner.x + 14.0f,
                 y - 4.0f,
@@ -2664,12 +4045,16 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
 
     if (metadataEditMode_)
     {
+        DrawMetadataButton(MetadataButtonRect(inner, 1), 1, "SAVE");
+        DrawMetadataButton(MetadataButtonRect(inner, 2), 2, "CANCEL");
+        // ENTER toggles in-place typing; pressing ENTER again on the long
+        // Description/Trivia fields opens the popup full editor.
         DrawText(
             renderer_,
-            inner.x + 24.0f,
+            inner.x + 242.0f,
             inner.y + inner.h - 38.0f,
             1.1f,
-            "[ SAVE ]   [ CANCEL ]   ENTER: edit field   Description/Trivia: full editor");
+            "ENTER: Edit selected field   Description / Trivia: ENTER opens full editor");
         if (metadataTextInput_)
         {
             DrawText(
@@ -2682,12 +4067,8 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
     }
     else
     {
-        DrawText(
-            renderer_,
-            inner.x + inner.w - 175.0f,
-            inner.y + inner.h - 38.0f,
-            1.1f,
-            "[ EDIT GAME DATA ]");
+        DrawMetadataButton(MetadataButtonRect(inner, 3), 3, "DELETE GAME DATA");
+        DrawMetadataButton(MetadataButtonRect(inner, 0), 0, "EDIT GAME DATA");
     }
 }
 

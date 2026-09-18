@@ -48,6 +48,14 @@ public:
     bool ClearUserMetadata(const std::string& romFilename) const;
     bool DeleteGameRecord(const std::string& romFilename) const;
 
+    // Manual "DELETE GAME DATA" support: persistently hides one exact
+    // catalogue entry (by its exact ROM filename key, including any "+")
+    // from catalogue seeding and from the permanent Game Library, without
+    // touching ROM files or media.
+    bool SuppressCatalogEntry(const std::string& romFilename) const;
+    bool IsCatalogEntrySuppressed(const std::string& romFilename) const;
+    std::vector<std::string> LoadSuppressedCatalogEntries() const;
+
     bool InitializeProjectPages() const;
     std::vector<ProjectPage> LoadProjectPages() const;
     bool SaveProjectPage(const ProjectPage& page) const;
