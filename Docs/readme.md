@@ -5,9 +5,9 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Upcoming release: v0.31.0-beta - Beta 4.**
+**Upcoming release: v0.31.0-beta - Beta 3.**
 The latest published release is [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
-Beta 4 is being prepared for community testing; this README is not a publication announcement.
+Beta 3 is being prepared for community testing; this README is not a publication announcement.
 
 [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
 [Quick start](Beta_4_v0.31.0_Quick%20start%20guide.md) |
@@ -82,7 +82,7 @@ Please test longer chess games, captures, castling, en passant, promotion, both
 colours and console configurations. Ordinary-game regression testing is also welcome.
 Earlier releases were tested with games including Gunfighter, Atlantis, Golf,
 Munchkin and Bowling-Basketball; this is not a fresh compatibility certification
-for every title in Beta 4. Four in 1 Row remains a previously recorded issue pending retest.
+for every title in Beta 3. Four in 1 Row remains a previously recorded issue pending retest.
 
 Reports should include version, Windows version, game/ROM name, console BIOS,
 region, startup choices, exact moves or reproduction steps, and screenshots/video.
