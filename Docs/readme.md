@@ -14,7 +14,7 @@ Beta 4 is being prepared for community testing; this README is not a publication
 [Changelog](CHANGELOG.md) |
 [Project notes](Project.md)
 
-## What's new in Beta 4
+## What's new in Beta 3
 
 - C7010 Chess with a separate NSC800/Z80-compatible module and firmware support.
 - Corrected move-coordinate handling: the wrong source square is no longer cleared
