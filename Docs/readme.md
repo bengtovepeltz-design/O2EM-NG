@@ -5,7 +5,7 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Upcoming release: v0.31.0-beta - Beta 3.**
+**Upcoming release: v0.31.0-beta - Beta 4.**
 The latest published release is [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
 Beta 3 is being prepared for community testing; this README is not a publication announcement.
 
@@ -14,7 +14,7 @@ Beta 3 is being prepared for community testing; this README is not a publication
 [Changelog](CHANGELOG.md) |
 [Project notes](Project.md)
 
-## What's new in Beta 3
+## What's new in Beta 4
 
 - C7010 Chess with a separate NSC800/Z80-compatible module and firmware support.
 - Corrected move-coordinate handling: the wrong source square is no longer cleared
@@ -46,7 +46,7 @@ Media appears when the user supplies matching files.
 3. Run `O2EM-NG.exe`, select the console BIOS in Settings and choose a game.
 4. Add optional artwork, manuals and screenshots through the Import Center.
 
-The portable Beta 3 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
+The portable Beta 4 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
 required Microsoft C++ runtime DLLs beside the executable. Windows system runtime
 components are still required. Keep the whole extracted folder together.
 
