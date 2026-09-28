@@ -46,7 +46,7 @@ Media appears when the user supplies matching files.
 3. Run `O2EM-NG.exe`, select the console BIOS in Settings and choose a game.
 4. Add optional artwork, manuals and screenshots through the Import Center.
 
-The portable Beta 4 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
+The portable Beta 3 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
 required Microsoft C++ runtime DLLs beside the executable. Windows system runtime
 components are still required. Keep the whole extracted folder together.
 
