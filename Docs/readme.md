@@ -5,9 +5,8 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Upcoming release: v0.31.0-beta - Beta 4.**
-The latest published release is [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
-Beta 4 is being prepared for community testing; this README is not a publication announcement.
+**Current release: v0.31.0-beta - Beta 4.**
+The previous release was [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
 
 [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
 [Quick start](Beta_4_v0.31.0_Quick%20start%20guide.md) |

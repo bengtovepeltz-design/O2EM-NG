@@ -17,8 +17,8 @@ as it applied to the version described there.
 |------|-------|
 | Version | v0.31.0-beta |
 | Release name | Beta 4 |
-| Release state | Unreleased; in preparation |
-| Latest published version | v0.30.0-beta (Beta 3) |
+| Release state | Published (current release) |
+| Previous published version | v0.30.0-beta (Beta 3) |
 | Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
 | Author | Bengt-Ove Peltz |
 
@@ -46,7 +46,7 @@ The most recent completed work in the working tree is:
   `src/frontend/frontend_screenshot.cpp`): paths are converted to UTF-8 before
   SDL image calls, fixing file names containing non-ASCII characters. This is a
   narrow SDL-facing fix and not a whole-architecture UTF-8 migration.
-- **Earlier unreleased Beta 4 work**: self-updater Phase 1 (central
+- **Earlier Beta 4 work**: self-updater Phase 1 (central
   `src/version.h`) and Phase 2 (CHECK UPDATES / VIEW RELEASE) with reliability
   fixes; Library Folders and Collection Statistics; the integrated Cover / Media
   viewer; the full-height scrollable Game Library; DELETE GAME DATA with
@@ -82,8 +82,8 @@ current working tree, so treat them as open until a fresh check is done.
   interface. The legacy `cpu.cpp` is still the active production CPU, pinned by
   the standalone conformance harness in `tests/mcs48/` (4/4 positive controls,
   12/12 expected legacy failures). Research notes live in `Development/`.
-- **Beta 4 release preparation**: packaging, installer and clean-PC testing.
-- Ongoing compatibility testing and community feedback.
+- **Beta 4 is published**: v0.31.0-beta is the current public release.
+- Ongoing compatibility testing, follow-up fixes and community feedback.
 
 ---
 

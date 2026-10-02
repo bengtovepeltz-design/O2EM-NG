@@ -1,6 +1,6 @@
 # O2EM-NG Beta 4 - v0.31.0-beta Quick Start Guide
 
-This guide is for the upcoming Beta 4 community test. It is not a publication notice.
+This guide covers the published v0.31.0-beta (Beta 4) release.
 Beta 4 adds C7010 Chess support and fixes the misplaced/disappearing pieces and
 flickering board seen during development. Longer games still need community testing.
 It also adds a Windows 95-style window, a personal **My Collection** page, and a
@@ -8,7 +8,7 @@ media-loading fix for file names that contain non-ASCII characters.
 
 ## Installation
 
-1. Install the Beta 4 package or extract its portable ZIP when available.
+1. Install the Beta 4 package or extract its portable ZIP.
 2. Place your compatible, legally obtained console BIOS in the **BIOS** folder.
 3. Place your game ROMs in **ROMS** and select the matching console BIOS in Settings.
 4. Run **O2EM-NG.exe**. The frontend creates its local database and lists your games.

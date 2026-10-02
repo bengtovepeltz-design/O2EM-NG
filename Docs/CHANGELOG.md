@@ -1,9 +1,8 @@
 # Changelog
 
-## 0.31.0-beta "Beta 4" - Unreleased
+## 0.31.0-beta "Beta 4" - Released
 
-Beta 4 has not been published yet. Everything in this section is development
-toward the unreleased 0.31.0-beta; the most recent work is listed first.
+Beta 4 is the current published release. The most recent work is listed first.
 
 ### Win95 window chrome and framed banner
 
@@ -58,7 +57,7 @@ toward the unreleased 0.31.0-beta; the most recent work is listed first.
   and SDL-facing (`frontend_boxart.cpp`, `src/frontend/frontend_screenshot.cpp`);
   it is not a migration of the database, library or path architecture to UTF-8.
 
-### Earlier unreleased Beta 4 work
+### Earlier Beta 4 work
 
 
 - Self-updater Phase 1 centralized the application version: src/version.h is
