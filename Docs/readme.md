@@ -16,6 +16,17 @@ Beta 4 is being prepared for community testing; this README is not a publication
 
 ## What's new in Beta 4
 
+- **My Collection**: a separate page for your own physical Videopac games, with
+  its own database that is kept apart from the main game catalogue. Add, edit
+  and remove entries, mark titles as *Wanted*, search, sort, track separate
+  cartridge / box / manual conditions, and export the list to CSV. Linked
+  entries reuse the existing library title, catalogue number and box art
+  read-only - nothing is copied.
+- **Windows 95-style window**: a custom title bar with minimize / maximize /
+  close, a File / Library / Settings / Tools / Help menu bar, and the O2EM-NG
+  banner framed inside the UI instead of spanning edge to edge.
+- **UTF-8 media paths**: media files whose names contain non-ASCII characters
+  (for example an EM DASH) now load correctly from SDL.
 - C7010 Chess with a separate NSC800/Z80-compatible module and firmware support.
 - Corrected move-coordinate handling: the wrong source square is no longer cleared
   in the reproduced E2-E4 case.
@@ -28,13 +39,26 @@ Beta 4 is being prepared for community testing; this README is not a publication
 
 ## Features
 
+- Windows 95-style frontend: custom title bar and menu bar, framed banner,
+  beveled gray panels and classic 3D buttons.
 - Game Library, launcher, favorites and editable game information.
+- **My Collection**: a separate page and database for your own physical Videopac
+  games, with per-component conditions (cartridge / box / manual), a wanted
+  list, search, sorting and CSV export.
+- Library side panels: Library Folders (open the ROMs, Box Art, Screenshots,
+  Manuals and BIOS folders) and live Collection Statistics.
+- Integrated Cover / Media viewer with still images, animated GIF and silent
+  looping MP4 playback, and per-item media deletion to the Recycle Bin.
 - Supplied SQLite game catalogue with titles, descriptions and metadata. Recognized
-  ROMs such as `vp_01.bin` populate the library with the matching information.
+  ROMs such as `vp_01.bin` populate the library with the matching information,
+  and the Videopac number shows whether the ROM is installed.
 - Import Center for user-supplied ROMs, box art, PDF manuals and screenshots.
 - SDL3 video, audio, keyboard, mouse and Xbox-compatible controller support.
 - Fullscreen/windowed operation, Settings, Auto/PAL/NTSC region selection.
 - Two-controller gameplay and in-game controller-port swapping.
+
+Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About and
+My Collection.
 
 The catalogue is included; game ROMs, BIOS/firmware and cover/media files are not.
 Media appears when the user supplies matching files.

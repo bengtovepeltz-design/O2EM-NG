@@ -6,13 +6,17 @@
 #include <vector>
 
 #include "frontend_tabs.h"
+#include "frontend_collection.h"
+#include "frontend_chrome.h"
 #include "settings.h"
 #include "src/library/game_library.h"
 #include "src/database/game_database.h"
 #include "src/collection/collection_manager.h"
+#include "src/collection/collection_database.h"
 #include "src/media/asset_manager.h"
 #include "src/import/import_manager.h"
 #include "src/metadata/metadata_engine.h"
+#include "src/update_check.h"
 
 class FrontendApp
 {
@@ -49,11 +53,28 @@ private:
     bool c7420FirmwareInstalled_ = false;
     MetadataEngine metadataEngine_;
 
+    // My Collection: a fully separate page/database owned by CollectionPage.
+    // Never merged into gameDatabase_/library_.
+    CollectionPage collectionPage_;
+
     int settingsSelected_ = 0;
     int openDropdown_ = -1; // -1 none, 1 region, 3 BIOS
     FrontendTab activeTab_ = FrontendTab::Library;
     bool running_ = true;
     bool redraw_ = true;
+    // Custom Win95 chrome: borderless window dragging state.
+    bool windowDragActive_ = false;
+    float windowDragOffsetX_ = 0.0f;
+    float windowDragOffsetY_ = 0.0f;
+    // Manual edge-resize state for the borderless window (bitmask:
+    // 1 left, 2 right, 4 top, 8 bottom).
+    int windowResizeEdges_ = 0;
+    float resizeStartMouseX_ = 0.0f;
+    float resizeStartMouseY_ = 0.0f;
+    int resizeStartX_ = 0;
+    int resizeStartY_ = 0;
+    int resizeStartW_ = 0;
+    int resizeStartH_ = 0;
     bool stickUpHeld_ = false;
     bool stickDownHeld_ = false;
     bool stickLeftHeld_ = false;
@@ -84,6 +105,12 @@ private:
     std::vector<ProjectPage> projectPages_;
     int projectPageIndex_ = 0;
     int projectPageScroll_ = 0;
+    // Phase 2 update check (manual only): state polled from the worker via
+    // UpdateCheck's mutex-protected snapshot.
+    UpdateCheck updateCheck_;
+    bool updateCheckPressed_ = false;  // CHECK UPDATES button held down
+    bool viewReleasePressed_ = false;  // VIEW RELEASE button held down
+    UpdateCheck::State updateCheckLastSeenState_ = UpdateCheck::State::Idle;
     bool haveWindowedBounds_ = false;
     int windowedX_ = 0;
     int windowedY_ = 0;
@@ -194,6 +221,10 @@ private:
     bool TryLibraryFavoriteAt(float x, float y, bool activate);
     bool TryProjectControlAt(float x, float y);
     bool TryExitButtonAt(float x, float y);
+    // Custom Win95 title bar / menu bar input (window drag + controls).
+    bool TryChromeControlAt(float x, float y, int clicks);
+    bool BeginWindowResizeAt(float x, float y, int windowWidth, int windowHeight);
+    void ToggleWindowMaximize();
     bool TryImportControlAt(float x, float y);
     void RunImport(ImportAssetType type);
     void RunDelete(ImportAssetType type);
@@ -214,4 +245,5 @@ private:
     void DrawSettingsTab(const SDL_FRect& content);
     void DrawPlaceholderTab(const SDL_FRect& content, const char* title, const char* message);
     void DrawImportCenter(const SDL_FRect& content);
+    bool TrySettingsUpdateControlAt(float x, float y);
 };

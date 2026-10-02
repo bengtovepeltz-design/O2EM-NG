@@ -6,6 +6,7 @@
 #include <SDL3_image/SDL_image.h>
 #include <algorithm>
 #include <cstddef>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <cctype>
@@ -29,6 +30,16 @@ namespace
     float gCompactFooter = 0.0f;
     std::size_t gCompactRestoreIndex = 0;
     bool gCompactRestoreValid = false;
+
+    // SDL3 expects UTF-8 file paths. std::filesystem::path::string() converts
+    // through the Windows ANSI code page (e.g. U+2014 becomes the lone byte
+    // 0x97), which is not valid UTF-8 and makes SDL's file open fail. Convert
+    // the path to its UTF-8 byte representation before handing it to SDL.
+    std::string PathToUtf8(const std::filesystem::path& path)
+    {
+        const auto utf8 = path.u8string();
+        return std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size());
+    }
 
     void DrawText(SDL_Renderer* renderer, float x, float y, float scale,
         const std::string& text)
@@ -148,7 +159,7 @@ namespace
         }
         if (extension == ".gif")
         {
-            gAnimation = IMG_LoadAnimation(path.string().c_str());
+            gAnimation = IMG_LoadAnimation(PathToUtf8(path).c_str());
             if (gAnimation && gAnimation->count > 0 && gAnimation->frames && gAnimation->delays)
             {
                 Uint64 total = 0;
@@ -163,7 +174,7 @@ namespace
             }
             DestroyTexture();
         }
-        gTexture = IMG_LoadTexture(renderer, path.string().c_str());
+        gTexture = IMG_LoadTexture(renderer, PathToUtf8(path).c_str());
     }
 
     void ButtonRects(const SDL_FRect& rightContent, SDL_FRect& previous,

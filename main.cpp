@@ -1,6 +1,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 #include <string>
+#include "src/mcs48/legacy_observation.h"
+#include "src/mcs48/vbl_timing_probe.h"
 
 #include "src/frontend/frontend_app.h"
 
@@ -12,6 +14,10 @@ namespace
 
 int main(int argc, char* argv[])
 {
+    int fixtureResult = 0;
+    if (mcs48::observation::RunFixtureIfRequested(fixtureResult)) return fixtureResult;
+    int vblProbeResult = 0;
+    if (mcs48::RunVblTimingProbeIfRequested(vblProbeResult)) return vblProbeResult;
     (void)argc;
     (void)argv;
 
@@ -33,11 +39,16 @@ int main(int argc, char* argv[])
         initialWidth = SDL_min(initialWidth, workArea.w - 40);
         initialHeight = SDL_min(initialHeight, workArea.h - 60);
     }
+    // Borderless SDL window: the frontend draws its own classic Win95 title
+    // bar + menu bar (frontend_chrome.*), so the modern native frame is
+    // replaced instead of duplicated. The window stays resizable and all
+    // move / minimize / maximize / close / fullscreen behaviour is provided
+    // by the custom chrome and the SDL window API.
     SDL_Window* window = SDL_CreateWindow(
         "O2EM-NG",
         initialWidth,
         initialHeight,
-        SDL_WINDOW_RESIZABLE);
+        SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS);
 
     if (!window)
     {

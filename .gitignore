@@ -100,3 +100,19 @@ BIOS/**/*.rom
 *.db.backup-*
 import-folders.ini
 !Gamedata/o2em-ng.db
+
+# --------------------------------------------------------------------
+# Temporary development notes (project root only)
+# --------------------------------------------------------------------
+# Incremental patch/rollback working notes produced during development.
+# These are not project documentation; permanent docs live under Docs/.
+/README_Patch_*.txt
+/README_Rollback_*.txt
+/README_00*.txt
+/PATCH_*_README.txt
+
+# Local tool / workspace state
+/.freebuff/
+
+# Debug audio diagnostic output (see Docs/Development/Core Development Notes.md)
+/sound_output_*.raw

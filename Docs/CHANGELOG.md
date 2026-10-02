@@ -1,6 +1,87 @@
 # Changelog
 
-## Unreleased fixes after Beta 4
+## 0.31.0-beta "Beta 4" - Unreleased
+
+Beta 4 has not been published yet. Everything in this section is development
+toward the unreleased 0.31.0-beta; the most recent work is listed first.
+
+### Win95 window chrome and framed banner
+
+- The SDL window is now borderless and presented as a classic Windows 95
+  window. The frontend draws a custom client-side title bar (application icon,
+  white title text, minimize / maximize / close buttons) and a gray menu bar
+  with File, Library, Settings, Tools and Help. The menu bar is a visual shell;
+  its entries are not wired to actions yet.
+- Normal window behavior is preserved on the borderless window: dragging the
+  title bar moves the window, double-clicking it toggles maximize/restore, the
+  three title-bar buttons minimize / maximize / close, and the window edges
+  resize it. Fullscreen continues to work. There is no duplicate native title
+  bar.
+- The layout now reserves a 26 px title bar and a 22 px menu bar (48 px total).
+  The existing `assets/O2EM-NG_Header.png` artwork is unchanged; it is now
+  framed inside the UI with a 6 px gray margin at 110 px high instead of
+  spanning edge to edge. The navigation row and content area moved down to
+  match. See `frontend_chrome.h/.cpp`, `frontend_layout.cpp`, `frontend_tabs.cpp`
+  and `frontend_panels.cpp`.
+
+### My Collection - personal physical collection
+
+- New dedicated page for the user's own physical Videopac collection, backed by
+  its own database `GAMEDATA/mycollection.db`. It is logically separate from the
+  main preservation database; the main DB is read only and never receives
+  collection data.
+- Add Entry, Edit Entry, Remove (with confirmation), Mark Wanted / Unmark Wanted,
+  search, sortable columns, quantity and duplicate handling, collection
+  statistics, and UTF-8 CSV export.
+- Wanted state is visible as a dedicated "Wanted" column in the main table and
+  as a compact "W" status box in the Library summary panel.
+- Reference linking resolves a collection entry back to a main-library game so
+  the existing title, catalogue number and box art are reused read-only. No
+  cover art or metadata is copied into the collection database.
+- Cartridge, box and manual condition are tracked separately with a shared
+  controlled vocabulary (Mint, Near Mint, Excellent, Very Good, Good, Fair,
+  Poor, Damaged, plus blank). A component that is not present stores no
+  condition.
+- The Notes field is a real multiline editor: one-line-height caret, UTF-8 safe
+  Backspace/Delete, arrow and line navigation, Enter for new lines, scrolling,
+  and mouse caret placement. Every editable field supports Ctrl+A/C/X/V with
+  UTF-8 clipboard handling.
+- The Library dashboard gained a compact "My Collection" summary panel with
+  # / Title / Cart / Box / Manual / W columns and Owned / Boxed / Manuals totals.
+
+### UTF-8 SDL media paths
+
+- Media loading now converts `std::filesystem::path` values to UTF-8 before
+  passing them to SDL. Previously `path::string()` produced an ANSI string while
+  the SDL image APIs expect UTF-8, so files whose names contained non-ASCII
+  characters (for example U+2014 EM DASH) failed to load. The change is narrow
+  and SDL-facing (`frontend_boxart.cpp`, `src/frontend/frontend_screenshot.cpp`);
+  it is not a migration of the database, library or path architecture to UTF-8.
+
+### Earlier unreleased Beta 4 work
+
+
+- Self-updater Phase 1 centralized the application version: src/version.h is
+  now the single authoritative definition, feeding the Windows VERSIONINFO
+  resource (numeric 0.31.0.0), the About page and the Settings "Current
+  version: v0.31.0-beta" line. The product version string is 0.31.0-beta.
+
+- Self-updater Phase 2 added a manual update check to the Settings screen:
+  the CHECK UPDATES button queries the GitHub releases API on a background
+  worker thread and the status line reports Checking..., Up to date, a new
+  available version, or Could not check for updates, without blocking the
+  UI. VIEW RELEASE opens the public GitHub release page in the browser;
+  nothing is downloaded, extracted or installed.
+
+- Phase 2 reliability fixes (human QA approved): a repeat CHECK UPDATES
+  press no longer terminates the process - a completed-but-still-joinable
+  worker is moved under the update mutex and joined outside it before a new
+  one starts, and a running worker is never joined. Release tags are now
+  parsed strictly (optional v, required MAJOR.MINOR.PATCH, optional
+  -suffix or +suffix), so malformed tags report "Unexpected GitHub version
+  format" and "Could not check for updates" instead of silently comparing
+  as 0.0.0. Repeated checks verified with no crash, abort, deadlock or
+  freeze; Phase 3 (automatic checks or downloads) has not started.
 
 - Two new Win95 panels use the unused Library space right of Emulator
   Settings. Library Folders lists the runtime ROMs, Box Art, Screenshots /
@@ -88,7 +169,7 @@
   3 KiB program mapping and bounded MOVX access to the full 4 KiB cartridge.
   Includes the French VP40 variant. Gameplay verification pending.
 
-## 0.31.0-beta "Beta 4" - Unreleased
+### Initial Beta 4 preparation (13 September 2026; baseline 0030AD)
 
 Prepared 13 September 2026; development baseline 0030AD, retaining 0030AC fixes.
 

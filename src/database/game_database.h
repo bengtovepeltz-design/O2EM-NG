@@ -28,6 +28,15 @@ struct GameDatabaseResult
     std::string message;
 };
 
+// Read-only identity pair for the main preservation catalogue. Used by My
+// Collection to store/resolve an optional reference without ever writing to
+// o2em-ng.db. rom_filename remains the stable key; the id is a convenience.
+struct GameIdentity
+{
+    long long id = 0;
+    std::string romFilename;
+};
+
 class GameDatabase
 {
 public:
@@ -59,6 +68,11 @@ public:
     bool InitializeProjectPages() const;
     std::vector<ProjectPage> LoadProjectPages() const;
     bool SaveProjectPage(const ProjectPage& page) const;
+
+    // READ-ONLY: returns (id, rom_filename) for every game row. My Collection
+    // uses this to link to the main catalogue and to reuse its metadata/box
+    // art. This never modifies o2em-ng.db.
+    std::vector<GameIdentity> LoadGameIdentityMap() const;
 
 private:
     std::filesystem::path basePath_;

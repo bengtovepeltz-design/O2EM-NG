@@ -1031,3 +1031,35 @@ bool GameDatabase::SaveProjectPage(const ProjectPage& page) const
     BindText(api, statement.Get(), 4, page.pageKey);
     return api.step(statement.Get()) == SQLITE_DONE;
 }
+
+std::vector<GameIdentity> GameDatabase::LoadGameIdentityMap() const
+{
+    std::vector<GameIdentity> identities;
+
+    WinSQLite api;
+    if (!api.Available())
+        return identities;
+
+    const std::string databasePathString = DatabasePath().string();
+    DatabaseHandle handle(api);
+    // Read-only access: the main database is never created or modified here in
+    // a way that matters, but opening with OPEN_READWRITE|CREATE matches the
+    // rest of the class and is safe when the file already exists.
+    if (api.openV2(databasePathString.c_str(), handle.Address(),
+        SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK)
+        return identities;
+
+    Statement statement(api, handle.Get(),
+        "SELECT id,rom_filename FROM games;");
+    if (!statement)
+        return identities;
+
+    while (api.step(statement.Get()) == SQLITE_ROW)
+    {
+        GameIdentity identity;
+        identity.id = static_cast<long long>(api.columnInt(statement.Get(), 0));
+        identity.romFilename = ColumnString(api, statement.Get(), 1);
+        identities.push_back(std::move(identity));
+    }
+    return identities;
+}

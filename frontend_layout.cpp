@@ -1,4 +1,6 @@
 #include "frontend_layout.h"
+#include "frontend_chrome.h"
+#include "theme_win95.h"
 
 #include <SDL3_image/SDL_image.h>
 
@@ -67,13 +69,42 @@ void FrontendLayout_DrawHeader(SDL_Window* window, SDL_Renderer* renderer)
     SDL_GetWindowSize(window, &windowW, &windowH);
     (void)windowH;
 
-    constexpr float headerHeight = 142.0f;
-    EnsureHeaderTexture(renderer);
+    const float margin = FrontendChrome::BannerMargin;
+    const float bx = margin;
+    const float by = FrontendChrome::BannerTop;
+    const float bw = static_cast<float>(windowW) - margin * 2.0f;
+    const float bh = FrontendChrome::BannerHeight;
+    if (bw <= 8.0f)
+        return;
 
+    // Gray application background between the chrome and the banner frame.
+    Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
+    const SDL_FRect background{
+        0.0f, FrontendChrome::ChromeHeight,
+        static_cast<float>(windowW),
+        (by + bh + margin) - FrontendChrome::ChromeHeight };
+    SDL_RenderFillRect(renderer, &background);
+
+    // Classic Win95 raised bevel around the banner.
+    const SDL_FRect frame{ bx, by, bw, bh };
+    Win95Theme::SetRenderColor(renderer, Win95Theme::Face);
+    SDL_RenderFillRect(renderer, &frame);
+    Win95Theme::SetRenderColor(renderer, Win95Theme::Highlight);
+    SDL_RenderLine(renderer, frame.x, frame.y, frame.x + frame.w - 1.0f, frame.y);
+    SDL_RenderLine(renderer, frame.x, frame.y, frame.x, frame.y + frame.h - 1.0f);
+    Win95Theme::SetRenderColor(renderer, Win95Theme::DarkShadow);
+    SDL_RenderLine(renderer, frame.x, frame.y + frame.h - 1.0f,
+        frame.x + frame.w - 1.0f, frame.y + frame.h - 1.0f);
+    SDL_RenderLine(renderer, frame.x + frame.w - 1.0f, frame.y,
+        frame.x + frame.w - 1.0f, frame.y + frame.h - 1.0f);
+
+    // Inner media area (black) so the artwork blends into the frame.
+    const SDL_FRect inner{ frame.x + 3.0f, frame.y + 3.0f,
+        frame.w - 6.0f, frame.h - 6.0f };
     SDL_SetRenderDrawColor(renderer, 4, 8, 12, 255);
-    const SDL_FRect header{ 0.0f, 0.0f, static_cast<float>(windowW), headerHeight };
-    SDL_RenderFillRect(renderer, &header);
+    SDL_RenderFillRect(renderer, &inner);
 
+    EnsureHeaderTexture(renderer);
     if (gHeaderTexture)
     {
         float textureW = 0.0f;
@@ -82,22 +113,16 @@ void FrontendLayout_DrawHeader(SDL_Window* window, SDL_Renderer* renderer)
             textureW > 0.0f && textureH > 0.0f)
         {
             // The supplied artwork is a complete banner composition. Stretch
-            // it to the responsive header rectangle so no logo or text is cropped
-            // when switching between windowed and fullscreen modes. The area
-            // behind it remains pure black, so the artwork blends into the GUI.
-            const SDL_FRect destination{
-                0.0f,
-                0.0f,
-                static_cast<float>(windowW),
-                headerHeight
-            };
+            // it to the framed inner rectangle so no logo or text is cropped
+            // when switching between windowed and fullscreen modes.
+            const SDL_FRect destination = inner;
             SDL_RenderTexture(renderer, gHeaderTexture, nullptr, &destination);
 
             // The original low banner contains a legacy/garbled label after
             // the final word PRESERVATION. Keep the original artwork intact
             // and cover only that obsolete label at render time. Coordinates
-            // are proportional to the source artwork, so this works in both
-            // windowed and fullscreen modes without clipping PRESERVATION.
+            // are proportional to the source artwork, so this works at any
+            // banner size without clipping PRESERVATION.
             constexpr float sourceWidth = 1496.0f;
             constexpr float sourceHeight = 179.0f;
             constexpr float maskSourceX = 1068.0f;
@@ -122,13 +147,12 @@ void FrontendLayout_DrawHeader(SDL_Window* window, SDL_Renderer* renderer)
     {
         // Safe fallback when the optional artwork cannot be loaded.
         SDL_SetRenderDrawColor(renderer, 20, 55, 112, 255);
-        SDL_RenderFillRect(renderer, &header);
+        SDL_RenderFillRect(renderer, &inner);
         SDL_SetRenderDrawColor(renderer, 245, 245, 245, 255);
-        DrawHeaderText(renderer, 30.0f, 30.0f, 2.2f, "O2EM-NG");
-        DrawHeaderText(renderer, 30.0f, 72.0f, 1.25f,
+        DrawHeaderText(renderer, inner.x + 20.0f, inner.y + 22.0f, 2.2f, "O2EM-NG");
+        DrawHeaderText(renderer, inner.x + 20.0f, inner.y + 64.0f, 1.25f,
             "PHILIPS VIDEOPAC G7000 - CLASSIC GAMING COLLECTION");
     }
-
 }
 
 void FrontendLayout_Shutdown()

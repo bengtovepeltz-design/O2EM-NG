@@ -116,7 +116,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib;winhttp.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
     </Link>
     <Manifest>
@@ -144,7 +144,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib</AdditionalDependencies>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);SDL3.lib;SDL3_ttf.lib;SDL3_image.lib;Comdlg32.lib;Shell32.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;ole32.lib;winhttp.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>d:\Librarys\SDL3-3.4.10\lib\x64;d:\Librarys\SDL3_image-3.4.4\lib\x64</AdditionalLibraryDirectories>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
@@ -160,6 +160,12 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\mcs48\vp61_trace_fixture.cpp" />
+    <ClCompile Include="src\mcs48\vbl_timing_probe.cpp" />
+    <ClInclude Include="src\mcs48\legacy_observation.h" />
+    <ClInclude Include="src\mcs48\vbl_timing_probe.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="audio8245.cpp" />
     <ClCompile Include="c7010.cpp" />
     <ClCompile Include="audio_sdl.cpp" />
@@ -172,6 +178,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClCompile Include="src\media\video_preview.cpp" />
     <ClCompile Include="src\frontend\frontend_screenshot.cpp" />
     <ClCompile Include="frontend_layout.cpp" />
+    <ClCompile Include="frontend_chrome.cpp" />
     <ClCompile Include="frontend_panels.cpp" />
     <ClCompile Include="frontend_statusbar.cpp" />
     <ClCompile Include="frontend_tabs.cpp" />
@@ -186,6 +193,9 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClCompile Include="rom_browser.cpp" />
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="src\frontend\frontend_app.cpp" />
+    <ClCompile Include="src\frontend\frontend_collection.cpp" />
+    <ClCompile Include="src\update_check.cpp" />
+    <ClCompile Include="src\mcs48\cpu_adapter.cpp" />
     <ClCompile Include="src\frontend\metadata_text_editor.cpp" />
     <ClCompile Include="src\database\library_view.cpp" />
     <ClCompile Include="src\database\rom_classifier.cpp" />
@@ -208,9 +218,15 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClCompile Include="src\metadata\metadata_engine.cpp" />
     <ClCompile Include="src\database\game_database.cpp" />
     <ClCompile Include="src\collection\collection_manager.cpp" />
+    <ClCompile Include="src\collection\collection_database.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\o2em\vdc.h" />
+    <ClInclude Include="src\version.h" />
+    <ClInclude Include="src\update_check.h" />
+    <ClInclude Include="src\mcs48\cpu_adapter.h" />
+    <ClInclude Include="src\mcs48\trace_record.h" />
+    <ClInclude Include="src\mcs48\input_schedule.h" />
     <ClInclude Include="audio.h" />
     <ClInclude Include="c7010.h" />
     <ClInclude Include="audio8245.h" />
@@ -223,6 +239,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="src\media\video_preview.h" />
     <ClInclude Include="src\frontend\frontend_screenshot.h" />
     <ClInclude Include="frontend_layout.h" />
+    <ClInclude Include="frontend_chrome.h" />
     <ClInclude Include="frontend_panels.h" />
     <ClInclude Include="frontend_statusbar.h" />
     <ClInclude Include="frontend_tabs.h" />
@@ -236,6 +253,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="rom_browser.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="src\frontend\frontend_app.h" />
+    <ClInclude Include="src\frontend\frontend_collection.h" />
     <ClInclude Include="src\frontend\metadata_text_editor.h" />
     <ClInclude Include="src\database\library_view.h" />
     <ClInclude Include="src\database\rom_classifier.h" />
@@ -258,6 +276,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="src\metadata\metadata_engine.h" />
     <ClInclude Include="src\database\game_database.h" />
     <ClInclude Include="src\collection\collection_manager.h" />
+    <ClInclude Include="src\collection\collection_database.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="tools\get_pdfium.ps1" />
@@ -277,21 +296,6 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
   <ItemGroup>
     <None Include="assets\O2EM-NG_Header.png" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="README_Patch_0030Q_Enter_Communication_Trace.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="README_Patch_0030R_C7010_Write_Routing.txt" />
-  </ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030S_C7010_Interleave.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030T_Input_Response_Trace.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030U_Move_Validation_Trace.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030V_Video_Regions.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030W_Lower_Board_Trace.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030X_Pending_Timer_IRQ.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030Y_C7010_Raster_Scale.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030Z_Board_Transfer_Trace.txt" /></ItemGroup>
-  <ItemGroup><None Include="README_Patch_0030AA_Filtered_Board_Trace.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AB_JR_Displacement_Fix.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AC_Character_Snapshot.txt" /></ItemGroup>  <ItemGroup><None Include="README_Patch_0030AD_Beta_Baseline.txt" /></ItemGroup>
   <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /></ItemGroup>
   <Target Name="PackageRelease" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(DesignTimeBuild)' != 'true' and '$(SkipReleasePackaging)' != 'true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\package-release.ps1&quot; -ProjectDir &quot;$(ProjectDir).&quot; -TargetPath &quot;$(TargetPath)&quot; -RedistDir &quot;$(VCInstallDir)Redist\MSVC&quot;" />

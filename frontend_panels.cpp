@@ -1,4 +1,5 @@
 #include "frontend_panels.h"
+#include "frontend_chrome.h"
 #include "theme_win95.h"
 
 #include <algorithm>
@@ -109,7 +110,7 @@ FrontendPanelLayout FrontendPanels_Calculate(
     const float gap =
         10.0f;
 
-    const float top = 196.0f;
+    const float top = FrontendChrome::ContentTop;
     const float bottom = 48.0f;
 
     const float usableWidth = width - (margin * 2.0f) - gap;

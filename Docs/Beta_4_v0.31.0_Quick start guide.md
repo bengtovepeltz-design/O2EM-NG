@@ -3,6 +3,8 @@
 This guide is for the upcoming Beta 4 community test. It is not a publication notice.
 Beta 4 adds C7010 Chess support and fixes the misplaced/disappearing pieces and
 flickering board seen during development. Longer games still need community testing.
+It also adds a Windows 95-style window, a personal **My Collection** page, and a
+media-loading fix for file names that contain non-ASCII characters.
 
 ## Installation
 
@@ -23,6 +25,28 @@ The Import Center can add box art, PDF manuals and screenshots. Descriptive name
 help keep media organized: for example `vp_01.bin`, `01.jpg` and `01_manual.pdf`.
 Check the selected game's information after importing; naming alone is not a
 guarantee that every file will be identified correctly.
+
+## Window and My Collection
+
+The main window uses a Windows 95-style title bar (with minimize, maximize/restore
+and close) and a File / Library / Settings / Tools / Help menu bar. You can drag
+the title bar to move the window, double-click it to maximize or restore, and drag
+the window edges to resize. Those menu entries are a visual shell in this beta and
+are not wired to actions yet.
+
+**My Collection** is a separate page for your own physical Videopac games. It uses
+its own database, kept apart from the main game catalogue, which stays read-only.
+From this page you can:
+
+- Add, edit and remove entries.
+- Mark a title as **Wanted**.
+- Search and sort, and track quantity and duplicates.
+- Record separate **cartridge, box and manual** conditions.
+- Link an entry to a library game so its title, number and box art are reused.
+- Export the list as a CSV file.
+
+Nothing from My Collection is written into the main catalogue, and no cover or
+metadata is copied into it.
 
 ## C7010 Chess setup
 

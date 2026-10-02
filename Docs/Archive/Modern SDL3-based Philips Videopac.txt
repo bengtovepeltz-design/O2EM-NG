@@ -1,0 +1,1 @@
+Modern SDL3-based Philips Videopac G7000 / Magnavox Odyssey² emulator for Windows, with a built-in ROM browser, gamepad support, and configurable region settings.

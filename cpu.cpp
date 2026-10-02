@@ -24,6 +24,7 @@
 #include "vdc.h"
 #include "vpp.h"
 #include "cpu.h"
+#include "src/mcs48/legacy_observation.h"
 #include "c7010.h"
 #include <SDL3/SDL.h>
 
@@ -109,6 +110,8 @@ void init_cpu(void){
 
 
 void ext_IRQ(void){
+    struct ObserveExit { ~ObserveExit() { mcs48::observation::Event(7, 0, irq_ex); } } observeExit;
+	mcs48::observation::Event(14, 0, 0);
 	int_clk = 5; /* length of pulse on /INT */
 	if (xirq_en && !irq_ex) {
 		irq_ex=1;
@@ -126,6 +129,7 @@ void ext_IRQ(void){
 
 
 void tim_IRQ(void){
+    struct ObserveExit { ~ObserveExit() { mcs48::observation::Event(7, 1, irq_ex); } } observeExit;
     // 0030X: retain an enabled timer/counter overflow while an IRQ is active.
     // The existing pending-IRQ check services it after RETR; do not nest IRQs.
     if (tirq_en && irq_ex) {
@@ -199,6 +203,8 @@ void cpu_exec(void) {
                 dumped = true;
             }
         }
+		mcs48::observation::Before(pc, ROM(pc));
+		if (mcs48::observation::Stop()) return;
 		lastpc=pc;
 		op=ROM(pc++);
 
@@ -534,6 +540,7 @@ void cpu_exec(void) {
 			case 0x3A: /* OUTL P2,A */
 				clk+=2;
 				p2=acc;
+                mcs48::observation::Event(6, 2, p2);
 				break;
 			case 0x3B: /* ILL */
 				clk++;
@@ -1039,6 +1046,7 @@ void cpu_exec(void) {
 				break;
 			case 0x8A: /* ORL Pp,#data */
 				p2 = p2 | ROM(pc++);
+                mcs48::observation::Event(6, 2, p2);
 				clk+=2;
 				break;
 			case 0x8B: /* ILL */
@@ -1135,6 +1143,7 @@ void cpu_exec(void) {
 				break;
 			case 0x9A: /* ANL Pp,#data */
 				p2 = p2 & ROM(pc++);
+                mcs48::observation::Event(6, 2, p2);
 				clk+=2;
 				break;
 			case 0x9B: /* ILL */
@@ -1662,6 +1671,7 @@ void cpu_exec(void) {
 
 
 		// 0030S: allow the coprocessor to run between 8048 instructions.
+        mcs48::observation::Advance(static_cast<unsigned int>(clk));
         C7010_Run8048Cycles(static_cast<unsigned int>(clk), static_cast<unsigned int>(evblclk));
         master_clk+=clk;
 		h_clk+=clk;
@@ -1670,16 +1680,18 @@ void cpu_exec(void) {
 		/* flag for JNI */
 		if (int_clk > clk)
 			int_clk -= clk;
-		else
+		else {
+            if (int_clk) mcs48::observation::Event(17, 0, int_clk);
 			int_clk = 0;
+        }
 
 		/* pending IRQs */
-		if (xirq_pend) ext_IRQ();
+		if (xirq_pend) { mcs48::observation::Event(13, 4, 0); ext_IRQ(); }
 		if (tirq_pend) tim_IRQ();
 
 		if (h_clk > LINECNT-1) {
 			h_clk-=LINECNT;
-			if (enahirq && (VDCwrite[0xA0] & 0x01)) ext_IRQ();
+			if (enahirq && (VDCwrite[0xA0] & 0x01)) { mcs48::observation::Event(13, 3, 0); ext_IRQ(); }
 			if (count_on && mstate == 0) {
 				itimer++;
 				if (itimer == 0) {

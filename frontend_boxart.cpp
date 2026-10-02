@@ -34,6 +34,16 @@ namespace
         }
     }
 
+    // SDL3 expects UTF-8 file paths. std::filesystem::path::string() converts
+    // through the Windows ANSI code page (e.g. U+2014 becomes the lone byte
+    // 0x97), which is not valid UTF-8 and makes SDL's file open fail. Convert
+    // the path to its UTF-8 byte representation before handing it to SDL.
+    std::string PathToUtf8(const std::filesystem::path& path)
+    {
+        const auto utf8 = path.u8string();
+        return std::string(reinterpret_cast<const char*>(utf8.data()), utf8.size());
+    }
+
     void EnsureTexture(SDL_Renderer* renderer, const GameInfo* game)
     {
         if (renderer != gRenderer)
@@ -46,7 +56,7 @@ namespace
         // Include the resolved artwork path in the cache key. A cover can be
         // added/removed while the ROM path stays unchanged.
         const std::string newKey = game
-            ? game->romPath.string() + "|" + game->boxArt.string()
+            ? PathToUtf8(game->romPath) + "|" + PathToUtf8(game->boxArt)
             : std::string();
         if (newKey == gGameKey)
             return;
@@ -57,7 +67,7 @@ namespace
         if (!game || game->boxArt.empty())
             return;
 
-        const std::string imagePath = game->boxArt.string();
+        const std::string imagePath = PathToUtf8(game->boxArt);
         gTexture = IMG_LoadTexture(renderer, imagePath.c_str());
     }
 

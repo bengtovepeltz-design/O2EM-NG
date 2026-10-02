@@ -24,6 +24,7 @@
 #include <cstring>
 
 #include "cpu.h"
+#include "src/mcs48/legacy_observation.h"
 #include "types.h"
 #include "config.h"
 #include "vmachine.h"
@@ -330,7 +331,7 @@ static void audio_hblank_tick(int control, int scanline)
     {
         sound_IRQ = 1;
         if (VDCwrite[0xA0] & 0x04)
-            ext_IRQ();
+            { mcs48::observation::Event(13, 2, 0); ext_IRQ(); }
     }
 #else
     // Clock the free-running HBLANK prescaler. A selected boundary marks a
@@ -373,7 +374,7 @@ static void audio_hblank_tick(int control, int scanline)
             gSoundShiftCount = 0;
             sound_IRQ = 1;
             if (VDCwrite[0xA0] & 0x04)
-                ext_IRQ();
+                { mcs48::observation::Event(13, 2, 0); ext_IRQ(); }
         }
 
 #ifndef NDEBUG

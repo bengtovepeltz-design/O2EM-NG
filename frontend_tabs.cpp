@@ -1,4 +1,5 @@
 #include "frontend_tabs.h"
+#include "frontend_chrome.h"
 #include "theme_win95.h"
 #include "ui_font.h"
 
@@ -8,7 +9,7 @@ namespace
 {
     constexpr std::array<const char*, static_cast<size_t>(FrontendTab::Count)> Tabs = {
         "Library", "Edit Game Data", "Import Center",
-        "Manual", "Settings", "About", "Credits"
+        "Manual", "Settings", "About", "My Collection"
     };
 
     void DrawRaisedEdge(SDL_Renderer* renderer, const SDL_FRect& rect)
@@ -53,8 +54,8 @@ void FrontendTabs_Draw(SDL_Renderer* renderer, int windowWidth, FrontendTab acti
     if (!renderer || windowWidth <= 0)
         return;
 
-    const float barY = 142.0f;
-    const float barH = 42.0f;
+    const float barY = FrontendChrome::TabsTop;
+    const float barH = FrontendChrome::TabsHeight;
     const float marginX = 18.0f;
     const float gap = 2.0f;
     const float availableWidth = static_cast<float>(windowWidth) - marginX * 2.0f -

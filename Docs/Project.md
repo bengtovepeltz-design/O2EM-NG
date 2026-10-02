@@ -1,3 +1,146 @@
+# O2EM-NG Project Notes
+
+This file is organised so the present state is easy to separate from history:
+
+- **CURRENT STATE** - the present working tree (2 October 2026).
+- **CURRENT KNOWN ISSUES**.
+- **CURRENT DEVELOPMENT**.
+- Historical checkpoints and earlier development, kept for provenance.
+- Archived earlier release information.
+
+The current working tree is authoritative; older sections below use "current"
+as it applied to the version described there.
+
+## CURRENT STATE - 2 October 2026
+
+| Item | Value |
+|------|-------|
+| Version | v0.31.0-beta |
+| Release name | Beta 4 |
+| Release state | Unreleased; in preparation |
+| Latest published version | v0.30.0-beta (Beta 3) |
+| Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
+| Author | Bengt-Ove Peltz |
+
+The most recent completed work in the working tree is:
+
+- **Win95 window chrome** (`frontend_chrome.h/.cpp`): the SDL window is
+  borderless and the frontend draws a custom client-side title bar (application
+  icon, white title text, minimize / maximize / close) and a gray menu bar
+  (File, Library, Settings, Tools, Help - a visual shell whose entries are not
+  yet wired to actions). Dragging the title bar moves the window, double-click
+  toggles maximize/restore, the buttons minimize / maximize / close, and the
+  edges resize the window. Fullscreen still works and there is no duplicate
+  native title bar. Layout constants: title bar 26 px, menu bar 22 px (48 px
+  chrome), banner margin 6 px, banner height 110 px, `TabsTop = 170`,
+  `ContentTop = 224`. The banner artwork is unchanged and now framed.
+- **My Collection** (`src/collection/collection_database.*`,
+  `src/frontend/frontend_collection.*`): a dedicated physical-collection page and
+  database `GAMEDATA/mycollection.db`, independent of `o2em-ng.db` (the main
+  database is read-only). Add / Edit / Remove, Mark / Unmark Wanted, search,
+  sorting, quantity and duplicates, statistics, UTF-8 CSV export, separate
+  cartridge / box / manual conditions, a UTF-8 multiline Notes editor with
+  clipboard support, and a compact Library summary panel with a Wanted (W)
+  column.
+- **UTF-8 SDL media paths** (`frontend_boxart.cpp`,
+  `src/frontend/frontend_screenshot.cpp`): paths are converted to UTF-8 before
+  SDL image calls, fixing file names containing non-ASCII characters. This is a
+  narrow SDL-facing fix and not a whole-architecture UTF-8 migration.
+- **Earlier unreleased Beta 4 work**: self-updater Phase 1 (central
+  `src/version.h`) and Phase 2 (CHECK UPDATES / VIEW RELEASE) with reliability
+  fixes; Library Folders and Collection Statistics; the integrated Cover / Media
+  viewer; the full-height scrollable Game Library; DELETE GAME DATA with
+  `suppressed_catalog_entries`; N / N+ catalogue identity separation; and the
+  VP31 / VP40 XROM work. See `CHANGELOG.md` for the itemised list.
+
+Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About,
+My Collection.
+
+## CURRENT KNOWN ISSUES
+
+Carried over from earlier testing. Most have not been re-validated against the
+current working tree, so treat them as open until a fresh check is done.
+
+- Library stale / phantom media texture issue.
+- VP48 Backgammon rendering / timing / flicker (flicker persisted despite the
+  confirmed final PAL timing).
+- VP59+ Helicopter Rescue regression / freeze.
+- G7400 / Videopac+ specific issues.
+- VP61 Interpol rendering differs from MAME.
+- AUTO PAL/NTSC behavior is not verified (the explicit PAL/NTSC override is
+  confirmed working).
+- C7010 relies on an approximate NSC800 instruction budget; exact hardware
+  timing is not established.
+- Audio reconstructs chip progression at frame end and does not fully timestamp
+  register events (see the MCS48 Phase 1 analysis under `Development/`).
+- One isolated 0030AB launch hang was reported; a rebuilt test ran and it has
+  not been reproduced since.
+
+## CURRENT DEVELOPMENT
+
+- **MCS48-NG**: a possible replacement CPU is under study behind a controlled
+  interface. The legacy `cpu.cpp` is still the active production CPU, pinned by
+  the standalone conformance harness in `tests/mcs48/` (4/4 positive controls,
+  12/12 expected legacy failures). Research notes live in `Development/`.
+- **Beta 4 release preparation**: packaging, installer and clean-PC testing.
+- Ongoing compatibility testing and community feedback.
+
+---
+
+## Updater checkpoint - 20 September 2026 (self-updater Phases 1 and 2)
+
+Self-updater Phase 1 centralized the application version in src/version.h,
+the single authoritative definition (currently v0.31.0-beta). The Windows
+VERSIONINFO resource in O2EM-NG.rc is generated from it, the About page
+displays it and Settings shows "Current version: v0.31.0-beta". The
+executable carries numeric version 0.31.0.0 and product version string
+0.31.0-beta.
+
+Self-updater Phase 2 added a manual CHECK UPDATES button to the Settings
+Updates section. Pressing it runs a GitHub release/version check on a
+background worker thread and the status line reports Checking..., Up to
+date, a new available version, or Could not check for updates, without
+blocking the UI. VIEW RELEASE opens the public GitHub release page in the
+browser; nothing is downloaded, extracted or installed. Phase 2 stays
+LOOK / COMPARE / REPORT only - Phase 3 (automatic checks, downloads,
+staging or file replacement) has not started.
+
+Two Phase 2 corrections were human-QA tested and approved:
+
+- Repeat-check crash: a completed-but-still-joinable worker thread made a
+  second CHECK UPDATES press terminate the process (std::terminate over a
+  joinable thread). StartCheck() now moves the finished worker under the
+  update mutex and joins it outside the mutex before creating a new one; a
+  currently running worker is never joined. Repeated checks run with no
+  crash, abort, deadlock or freeze.
+- Strict release-tag parsing: optional v/V, required numeric
+  MAJOR.MINOR.PATCH, optional -suffix or +suffix. Malformed GitHub tags
+  report "Unexpected GitHub version format" followed by "Could not check
+  for updates" instead of silently comparing as 0.0.0.
+
+The visible button label is CHECK UPDATES; the human-approved Settings
+layout (button size and position, Updates section, status line) is
+unchanged.
+
+At the time of that checkpoint the working tree also carried temporary
+O2EM-NG REGION TRACE printf logging in the frontend, launcher, emulator core
+and vmachine, as diagnostic-only instrumentation for the PAL/NTSC region
+investigation. That tracing has since been removed from the current tree; it
+is not present in the working files now. The investigation established that an
+explicit PAL selection propagates correctly through frontend -> launcher ->
+emulator core -> region override -> init_system, and the final active emulation
+mode is PAL (50 FPS, evblclk = 7259); the initial NTSC setvideomode call is
+subsequently overridden by the explicit PAL setting. The explicit PAL/NTSC
+override is working as designed. VP48 Backgammon still flickers despite the
+confirmed final PAL timing and remains unresolved. Whether AUTO mode behaves
+correctly remains a separate, still-open question and has not been verified.
+
+Still unresolved, unchanged: the recurring Library stale/phantom media
+texture issue, the VP48 Backgammon rendering/timing issue, the VP59+
+Helicopter Rescue regression/freeze, known G7400/Videopac+ issues, and
+VP61 Interpol rendering incorrectly in O2EM-NG while MAME renders it
+correctly.
+
 ## UI checkpoint - 17 September 2026 (Library side panels)
 
 The unused space right of Emulator Settings now holds two Win95 group
@@ -57,9 +200,11 @@ retained. Next: assess windowed/fullscreen screenshots with Bengt against the
 July 22 reference, then plan media tabs, thumbnail gallery and search. No
 release published for these changes.
 
-# O2EM-NG Project Notes
+## Beta 4 status - 13 September 2026 (historical checkpoint)
 
-## Current status - 13 September 2026
+The table and notes below are the Beta 4 baseline as of 13 September 2026
+(development baseline 0030AD). They are kept for provenance; the CURRENT STATE
+section at the top of this file takes precedence.
 
 | Item | Status |
 | --- | --- |
@@ -134,6 +279,11 @@ to those earlier versions, not to Beta 4. The status above takes precedence.
 
 ---
 
+# HISTORICAL DEVELOPMENT AND ARCHIVED NOTES
+
+The material from here on is historical. It is preserved for provenance and may
+describe earlier versions, old file names or completed release tests.
+
 # Archived project notes through Beta 3
 
 ## Project Information
@@ -193,7 +343,7 @@ The main project principle is:
 
 ---
 
-# Current Version
+# Version (Beta 3 era - historical)
 
 ## v0.30.0-beta
 
@@ -228,7 +378,7 @@ The feature has been tested successfully in:
 
 ---
 
-# Current Status
+# Status (Beta 3 era - historical)
 
 O2EM-NG has reached public Beta status.
 
@@ -280,7 +430,7 @@ Current development focus:
 
 ---
 
-# Current User Experience
+# User Experience (Beta 3 era - historical)
 
 O2EM-NG is designed to behave more like a dedicated living-room console
 frontend than a traditional command-line emulator.
@@ -1694,6 +1844,8 @@ This became the first update following the public Beta release and community fee
 
 ---
 
+# ARCHIVED EARLIER RELEASE INFORMATION
+
 # Release History
 
 ## v0.22.0-beta – Living Room Beta
@@ -1895,7 +2047,7 @@ Completed:
 
 ---
 
-# Current Architecture
+# Architecture (historical)
 
 High-level architecture:
 
@@ -2500,7 +2652,7 @@ environment into a broader compatibility effort.
 
 ---
 
-# Current Questions
+# Open Questions (historical)
 
 The project has moved beyond:
 

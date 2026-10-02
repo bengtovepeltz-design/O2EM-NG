@@ -1,1 +1,42 @@
+// O2EM-NG.rc - application resources
+//
+// VERSIONINFO is generated from src/version.h (single authoritative version
+// source). Windows numeric FILEVERSION/PRODUCTVERSION carry major.minor.patch
+// as 0.31.0; the descriptive channel text ("-beta") lives in the string
+// block only.
+
+#include "src/version.h"
+
+#define O2EM_STRINGIFY_IMPL(x) #x
+#define O2EM_STRINGIFY(x) O2EM_STRINGIFY_IMPL(x)
+
+#define O2EM_VERSION_NUMBERS O2EM_VERSION_MAJOR.O2EM_VERSION_MINOR.O2EM_VERSION_PATCH
+#define O2EM_VERSION_TEXT O2EM_STRINGIFY(O2EM_VERSION_NUMBERS) O2EM_VERSION_SUFFIX
+
 101 ICON "assets/O2EM-NG.ico"
+
+1 VERSIONINFO
+FILEVERSION O2EM_VERSION_MAJOR,O2EM_VERSION_MINOR,O2EM_VERSION_PATCH,0
+PRODUCTVERSION O2EM_VERSION_MAJOR,O2EM_VERSION_MINOR,O2EM_VERSION_PATCH,0
+FILEOS 0x40004L
+FILETYPE 0x1L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "Bengt-Ove Peltz"
+            VALUE "FileDescription",  "O2EM-NG Videopac / Magnavox Odyssey 2 emulator frontend"
+            VALUE "FileVersion",      O2EM_VERSION_TEXT
+            VALUE "InternalName",     "O2EM-NG"
+            VALUE "LegalCopyright",   "Copyright (C) 2026 Bengt-Ove Peltz"
+            VALUE "OriginalFilename", "O2EM-NG.exe"
+            VALUE "ProductName",      "O2EM-NG"
+            VALUE "ProductVersion",   O2EM_VERSION_TEXT
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0
+    END
+END

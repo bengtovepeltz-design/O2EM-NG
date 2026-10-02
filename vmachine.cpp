@@ -19,6 +19,7 @@
 #include "audio.h"
 #include "types.h"
 #include "cpu.h"
+#include "src/mcs48/legacy_observation.h"
 #include "keyboard.h"
 #include "config.h"
 #include "debug.h" 
@@ -172,6 +173,7 @@ void handle_vbl(void)
     }
 
     draw_region();
+    mcs48::observation::Event(13, 1, 0);
     ext_IRQ();
     mstate = 1;
 }
@@ -362,6 +364,7 @@ void write_p1(Byte d)
             ColorVector[i] = (VDCwrite[0xA3] & 0x7f) | (d & 0x80);
     }
 
+    mcs48::observation::Event(5, 1, d);
     p1 = d;
     C7010_WriteP1(d);
 
@@ -432,6 +435,9 @@ static Byte ext_read_impl(ADDRESS adr);
 Byte ext_read(ADDRESS adr)
 {
     const Byte value = ext_read_impl(adr);
+    mcs48::observation::Event(2, adr, value);
+    if (!(p1 & 0x08) && !(p1 & 0x40))
+        mcs48::observation::Event(8, adr, value);
     static const bool traceVp31 = getenv("O2EM_TRACE_VP31") != nullptr;
     static unsigned samples = 0;
     if (traceVp31 && app_data.crc == 0xAFB23F89 && pc == 0x280 && samples < 24)
@@ -471,6 +477,7 @@ static Byte ext_read_impl(ADDRESS adr)
                 d = d | 0x01;
             if (sound_IRQ)
                 d = d | 0x04;
+            mcs48::observation::Event(15, 0xA1, d);
             sound_IRQ = 0;
             return d;
         case 0xA2:
@@ -563,7 +570,15 @@ static Byte ext_read_impl(ADDRESS adr)
     return 0;
 }
 
+static Byte in_bus_observed_impl(void);
 Byte in_bus(void)
+{
+    const Byte value = in_bus_observed_impl();
+    mcs48::observation::Event(11, 0, value);
+    return value;
+}
+
+static Byte in_bus_observed_impl(void)
 {
     Byte si = 0, d = 0, mode = 0, jn = 0;
 
@@ -599,6 +614,7 @@ Byte in_bus(void)
 
 void ext_write(Byte dat, ADDRESS adr)
 {
+    mcs48::observation::Event(3, adr, dat);
     // Patch 0030K: observe the real 8048 MOVX write before C7010/VDC routing.
     C7010_Trace8048ExternalAccess(true, adr, dat);
 
@@ -611,6 +627,7 @@ void ext_write(Byte dat, ADDRESS adr)
 
     if (!(p1 & 0x08)) {
         /* Handle VDC Write */
+        mcs48::observation::Event(9, adr, dat);
 
         // Original O2EM/VDC behaviour:
         // while foreground-object display is enabled (A0 bit 5), writes to

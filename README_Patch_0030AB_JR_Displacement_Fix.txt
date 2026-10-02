@@ -1,1 +1,0 @@
-0030AB: fetch JR displacement before reading the updated PC, in normal and prefix execution paths. Previously the MSVC build jumped one byte early. Real firmware at 1D08 reproduced E2 converted to F4 (G2 source) instead of F2. After correction E2 produces F2. Preserves raster correction and diagnostics. Test E2-E4 then C2-C4; remaining visual clipping needs separate validation.

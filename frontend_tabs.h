@@ -10,7 +10,10 @@ enum class FrontendTab
     Manual,
     Settings,
     About,
-    Credits,
+    // "Credits" is no longer a top-level tab: About already owns the internal
+    // About / Credits / Special Thanks / Roadmap / Release Notes pages. The
+    // freed top-level slot now opens the dedicated My Collection page.
+    MyCollection,
     Count
 };
 

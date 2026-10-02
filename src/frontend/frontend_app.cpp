@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cmath>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -15,6 +16,7 @@
 #include <shellapi.h>
 
 #include "frontend_boxart.h"
+#include "src/version.h"
 #include "src/frontend/frontend_screenshot.h"
 #include "frontend_layout.h"
 #include "frontend_panels.h"
@@ -24,6 +26,7 @@
 #include "launcher.h"
 #include "src/database/library_view.h"
 #include "src/media/manual_preview.h"
+#include "src/update_check.h"
 #include "theme_win95.h"
 #include "ui_font.h"
 #include "videopac_font.h"
@@ -39,9 +42,11 @@ namespace
     {
         SDL_FRect cover, info, description, quick, system, imports, recent,
             favorites, welcome;
-        // Optional far-right column, present only when the media panel's
-        // aspect cap leaves unused space right of Emulator Settings.
-        SDL_FRect folders{}, stats{};
+        // Far-right column (present only when the media panel's aspect cap
+        // leaves unused space right of Emulator Settings): Folders on top,
+        // Collection Statistics in the middle and the My Collection summary at
+        // the bottom, matching the approved Library design.
+        SDL_FRect folders{}, stats{}, collection{};
         bool hasRightColumn = false;
         // Minimum-content fallback state: the column exists but is narrow.
         bool compactFolders = false;
@@ -49,7 +54,8 @@ namespace
     DashboardLayout Dashboard(const SDL_FRect& c)
     {
         const float gap=10, margin=12;
-        const float topH=c.h-174;
+        // Left/center top area (Cover / Game Information / Description).
+        const float topH=c.h-190;
         const float sideW=(std::clamp)(c.w*0.22f,210.0f,285.0f);
         const float infoW=(std::clamp)(c.w*0.32f,270.0f,400.0f);
         const float coverW=(std::min)(c.w-infoW-sideW-44,(topH-33)*0.75f+10);
@@ -57,23 +63,61 @@ namespace
         d.cover={c.x+margin,c.y+margin,coverW,topH};
         d.info={d.cover.x+coverW+gap,d.cover.y,infoW,360};
         d.description={d.info.x,d.info.y+370,infoW,topH-370};
-        d.quick={d.info.x+infoW+gap,d.cover.y,sideW,220};
-        d.system={d.quick.x,d.quick.y+230,sideW,topH-230};
-        const float bottomY=c.y+c.h-150;
-        const float column=(c.w-24-30)/4;
-        d.imports={c.x+margin,bottomY,column,138};
-        d.recent={d.imports.x+column+gap,bottomY,column,138};
-        d.favorites={d.recent.x+column+gap,bottomY,column,138};
-        d.welcome={d.favorites.x+column+gap,bottomY,column,138};
-        // Far-right column: uses only the space left over when the media
-        // panel is capped by the cover aspect ratio, so nothing else moves.
-        const float extraRight=c.x+c.w-margin-(d.system.x+sideW);
+
+        // Right-hand side: a compact 2x2 grid on top, then a TALL My
+        // Collection panel that fills the entire lower-right area down to the
+        // same baseline as the bottom strip (no dead space).
+        const float right1X=d.info.x+infoW+gap;        // left sub-column
+        const float rightEdge=c.x+c.w-margin;
+        const float extraRight=rightEdge-(right1X+sideW);
+        const float bottomY=c.y+c.h-166;
+        const float bottomBottom=c.y+c.h-12;
+        const float bottomH=bottomBottom-bottomY;
+
         if(extraRight>=170.0f)
         {
             d.hasRightColumn=true;
             d.compactFolders=extraRight<kFoldersComfortWidth;
-            d.folders={d.system.x+sideW+gap,d.cover.y,extraRight-gap,240};
-            d.stats={d.system.x+sideW+gap,d.folders.y+250,extraRight-gap,topH-250};
+            const float farW=extraRight-gap;
+            const float right2X=right1X+sideW+gap;      // right sub-column
+            const float rightSideW=rightEdge-right1X;
+
+            // Compact upper grid: fully reclaims the height for My Collection.
+            const float row1H=195.0f;                   // Emulator Settings | Folders
+            const float row2H=198.0f;                   // System Information | Statistics
+            d.quick  ={right1X,d.cover.y,sideW,row1H};
+            d.folders={right2X,d.cover.y,farW,row1H};
+            const float row2Top=d.cover.y+row1H+gap;
+            d.system={right1X,row2Top,sideW,row2H};
+            d.stats ={right2X,row2Top,farW,row2H};
+
+            const float collectionTop=row2Top+row2H+gap;
+            d.collection={right1X,collectionTop,rightSideW,
+                (std::max)(140.0f,bottomBottom-collectionTop)};
+            d.welcome=d.collection;   // alias for any legacy caller
+
+            // Bottom strip stops before My Collection: Quick Add / Recently
+            // Played / Favorites only span the left-hand columns.
+            const float bottomLeft=c.x+margin;
+            const float bottomRight=right1X-gap;
+            const float bottomW=(std::max)(200.0f,bottomRight-bottomLeft);
+            const float column=(bottomW-gap*2.0f)/3.0f;
+            d.imports={bottomLeft,bottomY,column,bottomH};
+            d.recent={d.imports.x+column+gap,bottomY,column,bottomH};
+            d.favorites={d.recent.x+column+gap,bottomY,column,bottomH};
+        }
+        else
+        {
+            // No right column: keep a compact Emulator Settings / System
+            // Information stack and a four-panel bottom strip.
+            d.quick={right1X,d.cover.y,sideW,220};
+            d.system={right1X,d.quick.y+230,sideW,topH-230};
+            const float column=(c.w-24-30)/4;
+            d.imports={c.x+margin,bottomY,column,bottomH};
+            d.recent={d.imports.x+column+gap,bottomY,column,bottomH};
+            d.favorites={d.recent.x+column+gap,bottomY,column,bottomH};
+            d.welcome={d.favorites.x+column+gap,bottomY,column,bottomH};
+            d.collection=d.welcome;
         }
         return d;
     }
@@ -257,6 +301,7 @@ namespace
             rect.x + rect.w - 1.0f,
             rect.y + rect.h - 1.0f);
     }
+
 }
 
 FrontendApp::FrontendApp(SDL_Window* window)
@@ -266,10 +311,12 @@ FrontendApp::FrontendApp(SDL_Window* window)
 
 FrontendApp::~FrontendApp()
 {
+    // updateCheck_ joins its worker in its own destructor (member teardown).
     FrontendBoxArt_Shutdown();
     FrontendScreenshot_Shutdown();
     ManualPreview_Shutdown();
     FrontendLayout_Shutdown();
+    FrontendChrome::Shutdown();
     UiFont_Shutdown();
 }
 
@@ -379,6 +426,11 @@ bool FrontendApp::Initialize()
 
     collections_.Attach(&library_);
 
+    // My Collection: fully owned by CollectionPage. It creates and reads its
+    // own database GAMEDATA/mycollection.db and only reads the main library
+    // for reference metadata / cover reuse. The main DB is never modified.
+    collectionPage_.Initialize(baseFolder, &library_, &gameDatabase_, window_);
+
     settingsSelected_ = 0;
     activeTab_ = FrontendTab::Library;
     running_ = true;
@@ -448,6 +500,37 @@ void FrontendApp::Draw()
             activeTab_ == FrontendTab::Library &&
             libraryMediaMode_ == LibraryMediaMode::Screenshots))
         redraw_ = true;
+    // Redraw when the background update check changes state (Checking ->
+    // Up to date / New version available / failure) so the status line
+    // updates without waiting for other input.
+    {
+        const UpdateCheck::State state = updateCheck_.GetState();
+        if (state != updateCheckLastSeenState_)
+        {
+            updateCheckLastSeenState_ = state;
+            redraw_ = true;
+            switch (state)
+            {
+            case UpdateCheck::State::Checking:
+                std::printf("O2EM-NG: update check started.\n");
+                break;
+            case UpdateCheck::State::UpToDate:
+                std::printf("O2EM-NG: update check result: up to date (%s).\n",
+                    O2emVersion::kAppVersion);
+                break;
+            case UpdateCheck::State::UpdateAvailable:
+                std::printf("O2EM-NG: update check result: new version available (%s).\n",
+                    updateCheck_.GetLatestVersion().c_str());
+                break;
+            case UpdateCheck::State::Error:
+                std::printf("O2EM-NG: update check failed: %s\n",
+                    updateCheck_.GetErrorMessage().c_str());
+                break;
+            default:
+                break;
+            }
+        }
+    }
     if (!redraw_ || !renderer_)
         return;
 
@@ -560,7 +643,10 @@ void FrontendApp::SetActiveTab(FrontendTab tab)
     // tab keeps the Game Library limited to ROMs that are actually installed.
     collections_.SetShowUninstalled(tab == FrontendTab::Extras);
     if (tab == FrontendTab::About) SelectProjectPage(0);
-    else if (tab == FrontendTab::Credits) SelectProjectPage(1);
+    // My Collection is a fully separate page, not an About project page. It
+    // reloads its own database so the table always reflects disk state.
+    if (tab == FrontendTab::MyCollection) collectionPage_.Refresh();
+    else collectionPage_.Deactivate(window_);
     redraw_ = true;
 
     std::printf(
@@ -582,9 +668,16 @@ void FrontendApp::ActivateSelection()
         return;
     }
 
-    if (activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits)
+    if (activeTab_ == FrontendTab::About)
     {
         EditCurrentProjectPage();
+        return;
+    }
+
+    // Enter/A on My Collection edits the selected entry (Phase B).
+    if (activeTab_ == FrontendTab::MyCollection)
+    {
+        collectionPage_.ActivateSelected();
         return;
     }
 
@@ -864,6 +957,18 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
         if (event.key == SDLK_RETURN) { EditCurrentMetadataField(); return; }
     }
 
+    // My Collection owns its own keyboard handling: search editing, row
+    // navigation, dialogs. Keys it declines (Escape with nothing open,
+    // Tab, Left/Right, shortcuts) fall through to the global handling.
+    // The page edits state in place, so request a repaint whenever it
+    // consumes a key (otherwise in-place edits such as Backspace would not
+    // be shown until some other event triggered a redraw).
+    if (activeTab_ == FrontendTab::MyCollection && collectionPage_.HandleKeyDown(event))
+    {
+        redraw_ = true;
+        return;
+    }
+
     if (event.key == SDLK_ESCAPE && openDropdown_ != -1)
     {
         openDropdown_ = -1;
@@ -889,7 +994,7 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
     case SDLK_E:
         if (activeTab_ == FrontendTab::Cartridge) BeginMetadataEdit();
         else if (activeTab_ == FrontendTab::Library) EditLibraryDescription();
-        else if (activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits) EditCurrentProjectPage();
+        else if (activeTab_ == FrontendTab::About) EditCurrentProjectPage();
         break;
     case SDLK_F: ToggleFavorite(); break;
     case SDLK_1: if (activeTab_ == FrontendTab::Extras) RunImport(ImportAssetType::Rom); break;
@@ -904,7 +1009,7 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
             FrontendScreenshot_Move(GetSelectedGame(), -1);
             redraw_ = true;
         }
-        else if (activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits)
+        else if (activeTab_ == FrontendTab::About)
             SelectProjectPage(projectPageIndex_ - 1);
         else
             CycleCollectionView(-1);
@@ -916,7 +1021,7 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
             FrontendScreenshot_Move(GetSelectedGame(), 1);
             redraw_ = true;
         }
-        else if (activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits)
+        else if (activeTab_ == FrontendTab::About)
             SelectProjectPage(projectPageIndex_ + 1);
         else
             CycleCollectionView(1);
@@ -927,6 +1032,12 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
 
 void FrontendApp::HandleTextInput(const SDL_TextInputEvent& event)
 {
+    if (activeTab_ == FrontendTab::MyCollection)
+    {
+        if (collectionPage_.HandleTextInput(event))
+            redraw_ = true;
+        return;
+    }
     if (!metadataEditMode_ || !metadataTextInput_)
         return;
     std::string* field = CurrentMetadataField();
@@ -942,6 +1053,33 @@ void FrontendApp::HandleTextInput(const SDL_TextInputEvent& event)
 void FrontendApp::HandleGamepadButtonDown(
     const SDL_GamepadButtonEvent& event)
 {
+    // My Collection: D-pad navigates rows, A edits, B closes/back.
+    if (activeTab_ == FrontendTab::MyCollection)
+    {
+        switch (event.button)
+        {
+        case SDL_GAMEPAD_BUTTON_DPAD_UP:
+            collectionPage_.MoveSelection(-1);
+            redraw_ = true;
+            return;
+        case SDL_GAMEPAD_BUTTON_DPAD_DOWN:
+            collectionPage_.MoveSelection(1);
+            redraw_ = true;
+            return;
+        case SDL_GAMEPAD_BUTTON_SOUTH:
+            collectionPage_.ActivateSelected();
+            redraw_ = true;
+            return;
+        case SDL_GAMEPAD_BUTTON_EAST:
+            if (!collectionPage_.CancelOrBack())
+                GoBack();
+            redraw_ = true;
+            return;
+        default:
+            break;
+        }
+    }
+
     switch (event.button)
     {
     case SDL_GAMEPAD_BUTTON_DPAD_LEFT:
@@ -1066,10 +1204,18 @@ void FrontendApp::HandleMouseButtonDown(const SDL_MouseButtonEvent& event)
 {
     if (event.button != SDL_BUTTON_LEFT)
         return;
+    // Custom Win95 chrome first: title bar (drag / buttons) and menu bar.
+    if (TryChromeControlAt(event.x, event.y, event.clicks)) return;
     if (TryExitButtonAt(event.x, event.y)) return;
     if (TrySelectTabAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Manual && TryActivateManualAt(event.x, event.y)) return;
-    if ((activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits) && TryProjectControlAt(event.x, event.y)) return;
+    if (activeTab_ == FrontendTab::About && TryProjectControlAt(event.x, event.y)) return;
+    if (activeTab_ == FrontendTab::MyCollection &&
+        collectionPage_.HandleMouseDown(event.x, event.y, event.clicks))
+    {
+        redraw_ = true;
+        return;
+    }
     if (activeTab_ == FrontendTab::Extras && TryImportControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Cartridge && TryMetadataControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryFavoriteAt(event.x, event.y, event.clicks >= 2)) return;
@@ -1093,11 +1239,21 @@ void FrontendApp::HandleMouseWheel(const SDL_MouseWheelEvent& event)
         return;
     }
 
-    if (activeTab_ == FrontendTab::About || activeTab_ == FrontendTab::Credits)
+    if (activeTab_ == FrontendTab::About)
     {
         projectPageScroll_ += event.y > 0.0f ? -3 : 3;
         projectPageScroll_ = (std::max)(0, projectPageScroll_);
         redraw_ = true;
+        return;
+    }
+
+    if (activeTab_ == FrontendTab::MyCollection)
+    {
+        float mouseX = 0.0f;
+        float mouseY = 0.0f;
+        SDL_GetMouseState(&mouseX, &mouseY);
+        if (collectionPage_.HandleMouseWheel(mouseX, mouseY, event.y))
+            redraw_ = true;
         return;
     }
 
@@ -1114,6 +1270,15 @@ void FrontendApp::HandleMouseWheel(const SDL_MouseWheelEvent& event)
             FrontendPanels_Calculate(windowWidth, windowHeight);
 
         const auto layout = Dashboard(panels.rightContent);
+
+        // Library front-page My Collection summary panel: wheel scrolls its
+        // compact list (Phase B).
+        if (collectionPage_.HandleLibrarySummaryWheel(layout.collection,
+                mouseX, mouseY, event.y))
+        {
+            redraw_ = true;
+            return;
+        }
 
         // Favorites panel: scroll the favorites list, only while it overflows.
         const SDL_FRect favInner{
@@ -1185,10 +1350,118 @@ bool FrontendApp::TryExitButtonAt(float x, float y)
     return true;
 }
 
+void FrontendApp::ToggleWindowMaximize()
+{
+    const SDL_WindowFlags flags = SDL_GetWindowFlags(window_);
+    if (flags & SDL_WINDOW_MAXIMIZED)
+        SDL_RestoreWindow(window_);
+    else
+        SDL_MaximizeWindow(window_);
+    redraw_ = true;
+}
+
+bool FrontendApp::BeginWindowResizeAt(float x, float y, int windowWidth,
+    int windowHeight)
+{
+    if (!window_)
+        return false;
+
+    // Maximized / fullscreen windows are not edge-resized.
+    const SDL_WindowFlags flags = SDL_GetWindowFlags(window_);
+    if (flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN))
+        return false;
+
+    constexpr float edge = 6.0f;
+    int edges = 0;
+    if (x <= edge)
+        edges |= 1; // left
+    if (x >= static_cast<float>(windowWidth) - edge)
+        edges |= 2; // right
+    if (y <= edge)
+        edges |= 4; // top
+    if (y >= static_cast<float>(windowHeight) - edge)
+        edges |= 8; // bottom
+    if (edges == 0)
+        return false;
+
+    float globalX = 0.0f;
+    float globalY = 0.0f;
+    SDL_GetGlobalMouseState(&globalX, &globalY);
+    resizeStartMouseX_ = globalX;
+    resizeStartMouseY_ = globalY;
+    SDL_GetWindowPosition(window_, &resizeStartX_, &resizeStartY_);
+    SDL_GetWindowSize(window_, &resizeStartW_, &resizeStartH_);
+    windowResizeEdges_ = edges;
+    return true;
+}
+
+bool FrontendApp::TryChromeControlAt(float x, float y, int clicks)
+{
+    if (!window_)
+        return false;
+
+    int windowWidth = 0;
+    int windowHeight = 0;
+    SDL_GetWindowSize(window_, &windowWidth, &windowHeight);
+    (void)windowHeight;
+
+    switch (FrontendChrome::HitTestWindowButton(windowWidth, x, y))
+    {
+    case FrontendChrome::WindowButton::Minimize:
+        SDL_MinimizeWindow(window_);
+        return true;
+    case FrontendChrome::WindowButton::Maximize:
+        ToggleWindowMaximize();
+        return true;
+    case FrontendChrome::WindowButton::Close:
+        running_ = false;
+        return true;
+    default:
+        break;
+    }
+
+    // Borderless window edge resize (before the title bar drag so the top
+    // edge resizes while the title bar still moves the window).
+    if (BeginWindowResizeAt(x, y, windowWidth, windowHeight))
+        return true;
+
+    if (FrontendChrome::IsInTitleBar(x, y))
+    {
+        // Title bar drag moves the borderless window. Maximized / fullscreen
+        // windows are not dragged (classic Windows behaviour).
+        const SDL_WindowFlags flags = SDL_GetWindowFlags(window_);
+        if (clicks >= 2)
+        {
+            ToggleWindowMaximize();
+            return true;
+        }
+        if (!(flags & (SDL_WINDOW_MAXIMIZED | SDL_WINDOW_FULLSCREEN)))
+        {
+            float globalX = 0.0f;
+            float globalY = 0.0f;
+            SDL_GetGlobalMouseState(&globalX, &globalY);
+            int windowX = 0;
+            int windowY = 0;
+            SDL_GetWindowPosition(window_, &windowX, &windowY);
+            windowDragOffsetX_ = globalX - static_cast<float>(windowX);
+            windowDragOffsetY_ = globalY - static_cast<float>(windowY);
+            windowDragActive_ = true;
+        }
+        return true;
+    }
+
+    // Menu bar is a visual shell for now; consume clicks so they never fall
+    // through to the content underneath.
+    if (FrontendChrome::MenuItemAt(windowWidth, x, y) >= 0)
+        return true;
+
+    return false;
+}
+
 bool FrontendApp::TrySelectTabAt(float x, float y)
 {
-    constexpr float barY = 142.0f;
-    constexpr float barH = 42.0f;
+    const float barY = FrontendChrome::TabsTop;
+    const float barH = FrontendChrome::TabsHeight;
     constexpr float marginX = 22.0f;
     constexpr float gap = 6.0f;
 
@@ -1279,6 +1552,45 @@ bool FrontendApp::TrySelectSettingsRowAt(float x, float y, bool activate)
     if(inside(region)){settingsSelected_=1; openDropdown_=1; redraw_=true; return true;}
     if(inside(scan)){settingsSelected_=2; ActivateSettingsSelection(); return true;}
     if(inside(bios)){settingsSelected_=3; openDropdown_=3; redraw_=true; return true;}
+    return TrySettingsUpdateControlAt(x, y);
+}
+
+// Phase 2 update-check controls (manual only). Mouse-down arms the CHECK
+// FOR UPDATES pressed state; HandleMouseButtonUp performs the action on
+// release inside the same rect, matching the Library OPEN buttons. VIEW
+// RELEASE opens the public GitHub release page in the user's browser via
+// the existing ShellExecuteW pattern - it never downloads anything.
+bool FrontendApp::TrySettingsUpdateControlAt(float x, float y)
+{
+    if (activeTab_ != FrontendTab::Settings)
+        return false;
+    int ww = 0, wh = 0;
+    SDL_GetWindowSize(window_, &ww, &wh);
+    const auto panels = FrontendPanels_Calculate(ww, wh);
+    const float innerX = panels.rightContent.x + 18.0f;
+    const float innerY = panels.rightContent.y + 18.0f;
+    const float controlX = innerX + 34.0f;
+    const auto inside = [x, y](const SDL_FRect& r)
+    {
+        return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+    };
+    const SDL_FRect updatesButton{controlX, innerY + 412.0f, 170.0f, 32.0f};
+    if (inside(updatesButton))
+    {
+        updateCheckPressed_ = true;
+        redraw_ = true;
+        return true;
+    }
+    if (updateCheck_.GetState() == UpdateCheck::State::UpdateAvailable)
+    {
+        const SDL_FRect viewRelease{controlX + 190.0f, innerY + 412.0f, 150.0f, 32.0f};
+        if (inside(viewRelease))
+        {
+            viewReleasePressed_ = true;
+            redraw_ = true;
+            return true;
+        }
+    }
     return false;
 }
 
@@ -1294,6 +1606,10 @@ void FrontendApp::DrawFrontend()
     Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
     SDL_RenderClear(renderer_);
 
+    // Classic Win95 window chrome: title bar + menu bar are drawn inside the
+    // borderless client area, then the framed banner and navigation row.
+    FrontendChrome::Draw(window_, renderer_,
+        "O2EM-NG - Philips Videopac G7000 - Classic Gaming Collection - \xC2\xA9 2026 Bengt-Ove Peltz");
     FrontendLayout_DrawHeader(window_, renderer_);
     FrontendTabs_Draw(renderer_, windowWidth, activeTab_);
 
@@ -1306,7 +1622,11 @@ void FrontendApp::DrawFrontend()
 
     std::string status = "Tab: ";
     status += FrontendTabs_GetName(activeTab_);
-    if (activeTab_ == FrontendTab::Extras)
+    if (activeTab_ == FrontendTab::MyCollection)
+    {
+        status += collectionPage_.StatusText(library_);
+    }
+    else if (activeTab_ == FrontendTab::Extras)
     {
         status += "  |  Catalog: ALL TITLES  |  Select a title and use ADD to install media";
     }
@@ -1502,7 +1822,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     drawGroup(layout.system, "System Information");
     drawGroup(layout.imports, "Library Quick Add");
     drawGroup(layout.recent, "Recently Played");
-    drawGroup(layout.welcome, "O2EM-NG");
+    drawGroup(layout.collection, "My Collection");
     if(layout.hasRightColumn)
     {
         drawGroup(layout.folders,
@@ -1632,24 +1952,24 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
         DrawText(renderer_,r.x+10,r.y+offset,0.84f,fitText(text,r.w-20,0.84f));
     };
-    smallLine(layout.system,30,"BIOS: "+(settings_.bios_file.empty() ? std::string("Not selected") : settings_.bios_file));
-    smallLine(layout.system,55,"Region setting: "+RegionModeToString(settings_.region_mode));
-    smallLine(layout.system,80,"Frontend: SDL3 / Windows");
+    smallLine(layout.system,24,"BIOS: "+(settings_.bios_file.empty() ? std::string("Not selected") : settings_.bios_file));
+    smallLine(layout.system,48,"Region setting: "+RegionModeToString(settings_.region_mode));
+    smallLine(layout.system,72,"Frontend: SDL3 / Windows");
 #ifdef _WIN64
-    smallLine(layout.system,105,"Architecture: x64");
+    smallLine(layout.system,96,"Architecture: x64");
 #else
-    smallLine(layout.system,105,"Architecture: x86");
+    smallLine(layout.system,96,"Architecture: x86");
 #endif
 #ifdef _DEBUG
-    smallLine(layout.system,130,"Build: Debug");
+    smallLine(layout.system,120,"Build: Debug");
 #else
-    smallLine(layout.system,130,"Build: Release");
+    smallLine(layout.system,120,"Build: Release");
 #endif
     // C7010/C7420 NSC800 expansion firmware status, from the same detection
     // the Settings screen reports (RefreshInstalledBiosFiles). One authoritative
     // source; no duplicated state. The compact wording keeps the narrow panel clean.
-    smallLine(layout.system,155,"C7010 NSC800: "+std::string(c7010FirmwareInstalled_ ? "Installed" : "Not found"));
-    smallLine(layout.system,180,"C7420 NSC800: "+std::string(c7420FirmwareInstalled_ ? "Installed" : "Not found"));
+    smallLine(layout.system,144,"C7010 NSC800: "+std::string(c7010FirmwareInstalled_ ? "Installed" : "Not found"));
+    smallLine(layout.system,168,"C7420 NSC800: "+std::string(c7420FirmwareInstalled_ ? "Installed" : "Not found"));
     const char* importLabels[]={"Import ROM...","Import Cover...","Import Manual..."};
     for(int i=0;i<3;++i)
     {
@@ -1734,9 +2054,10 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     for(std::size_t i=0;i<recent.size() && i<4;++i)
         smallLine(layout.recent,30+24.0f*static_cast<float>(i),DisplayCatalogId(recent[i])+" "+recent[i]->title);
     if(recent.empty()) smallLine(layout.recent,30,"No games played yet");
-    smallLine(layout.welcome,30,"Welcome to O2EM-NG");
-    smallLine(layout.welcome,55,"The Videopac Experience");
-    smallLine(layout.welcome,80,"Preserve. Play. Enjoy.");
+    // Library front-page My Collection summary (Phase B): compact list of
+    // collection entries plus owned/boxed/manuals counts. The group frame and
+    // caption are drawn by drawGroup above.
+    collectionPage_.DrawLibrarySummary(renderer_, layout.collection);
 
     // Far-right Library Folders / Collection Statistics groups (drawn only
     // when the responsive layout provides the optional column).
@@ -1754,7 +2075,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         for(int i=0;i<5;++i)
         {
             Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
-            DrawText(renderer_,layout.folders.x+10,layout.folders.y+34+i*34,0.84f,
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+29+i*28,0.84f,
                 layout.compactFolders
                     ? fitText(rowLabels[i],layout.folders.w-86.0f,0.84f)
                     : std::string(rowLabels[i]));
@@ -1768,9 +2089,9 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         if(!layout.compactFolders)
         {
             Win95Theme::SetRenderColor(renderer_,Win95Theme::WindowText);
-            DrawText(renderer_,layout.folders.x+10,layout.folders.y+206,0.72f,
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+166,0.72f,
                 "Folder access:");
-            DrawText(renderer_,layout.folders.x+10,layout.folders.y+222,0.72f,
+            DrawText(renderer_,layout.folders.x+10,layout.folders.y+180,0.72f,
                 "Opens in Windows Explorer");
         }
 
@@ -1803,14 +2124,14 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
             DrawText(renderer_,layout.stats.x+10,layout.stats.y+offset,0.84f,
                 fitText(text,layout.stats.w-20,0.84f));
         };
-        statCaption(34,"Library");
-        statLine(58,"Games: "+std::to_string(library_.Count()));
-        statLine(82,"Favorites: "+std::to_string(favoritesCount));
-        statCaption(110,"Media");
-        statLine(134,"Box Art: "+std::to_string(boxArtCount));
-        statLine(158,"Screenshots: "+std::to_string(screenshotCount));
-        statLine(182,"Videos: "+std::to_string(videoCount));
-        statLine(206,"Manuals: "+std::to_string(manualCount));
+        statCaption(22,"Library");
+        statLine(42,"Games: "+std::to_string(library_.Count()));
+        statLine(62,"Favorites: "+std::to_string(favoritesCount));
+        statCaption(84,"Media");
+        statLine(104,"Box Art: "+std::to_string(boxArtCount));
+        statLine(124,"Screenshots: "+std::to_string(screenshotCount));
+        statLine(144,"Videos: "+std::to_string(videoCount));
+        statLine(164,"Manuals: "+std::to_string(manualCount));
     }
 
     const std::string catalogId = DisplayCatalogId(game);
@@ -1904,12 +2225,12 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         DrawText(renderer_, arrowButton.x + 5.0f, arrowButton.y + 1.0f, 0.80f, "v");
     };
 
-    drawCombo(quickInner.y + 9.0f, "BIOS",
+    drawCombo(quickInner.y + 4.0f, "BIOS",
         settings_.bios_file.empty() ? "No BIOS installed" : settings_.bios_file);
     std::string regionText = RegionModeToString(settings_.region_mode);
     std::transform(regionText.begin(), regionText.end(), regionText.begin(),
         [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
-    drawCombo(quickInner.y + 62.0f, "REGION", regionText);
+    drawCombo(quickInner.y + 50.0f, "REGION", regionText);
 
     const auto drawQuickCheck = [&](float yPos, const char* label, bool checked)
     {
@@ -1926,17 +2247,17 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
         DrawText(renderer_, box.x + 25.0f, yPos - 1.0f, 0.86f, label);
     };
-    drawQuickCheck(quickInner.y + 122.0f, "Scanlines", settings_.scanlines);
+    drawQuickCheck(quickInner.y + 98.0f, "Scanlines", settings_.scanlines);
     // Same authoritative setting as the Settings screen's Fullscreen checkbox;
     // toggling here goes through ActivateSettingsSelection() -> ApplyFullscreenMode().
-    drawQuickCheck(quickInner.y + 152.0f, "Fullscreen", settings_.start_fullscreen);
+    drawQuickCheck(quickInner.y + 122.0f, "Fullscreen", settings_.start_fullscreen);
 
     // Drop-down lists are drawn last so they sit above the normal Quick Settings controls.
     if (openDropdown_ == 3)
     {
         RefreshInstalledBiosFiles();
         const float itemH = 25.0f;
-        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 51.0f, (quickInner.w - 20.0f) * 0.75f,
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 46.0f, (quickInner.w - 20.0f) * 0.75f,
             itemH * static_cast<float>(installedBiosFiles_.size())};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
         DrawSunkenFrame(renderer_, popup);
@@ -1953,7 +2274,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     else if (openDropdown_ == 1)
     {
         const char* items[] = {"AUTO", "PAL", "NTSC"}; const float itemH = 25.0f;
-        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 104.0f, (quickInner.w - 20.0f) * 0.75f, itemH * 3.0f};
+        SDL_FRect popup{quickInner.x + 10.0f, quickInner.y + 92.0f, (quickInner.w - 20.0f) * 0.75f, itemH * 3.0f};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Window); SDL_RenderFillRect(renderer_, &popup);
         DrawSunkenFrame(renderer_, popup);
         const int selectedRegion = settings_.region_mode == RegionMode::Auto ? 0 : (settings_.region_mode == RegionMode::PAL ? 1 : 2);
@@ -2258,8 +2579,8 @@ void FrontendApp::DrawActiveTab(const SDL_FRect& content)
         DrawAboutTab(content);
         break;
 
-    case FrontendTab::Credits:
-        DrawCreditsTab(content);
+    case FrontendTab::MyCollection:
+        collectionPage_.Draw(renderer_, content);
         break;
 
     default:
@@ -2412,6 +2733,16 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
 {
     if (event.button != SDL_BUTTON_LEFT)
         return;
+    if (windowDragActive_)
+    {
+        windowDragActive_ = false;
+        redraw_ = true;
+    }
+    if (windowResizeEdges_ != 0)
+    {
+        windowResizeEdges_ = 0;
+        redraw_ = true;
+    }
     // Game Data push buttons: on release inside the same rect, run the
     // button's existing action; otherwise just restore the raised state.
     if (metadataButtonPressed_ >= 0)
@@ -2468,6 +2799,48 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
         }
         return;
     }
+    // Settings update controls: run the action on release inside the same
+    // rect. CHECK UPDATES starts one background check; VIEW RELEASE
+    // opens the public GitHub release page (browser only, no download).
+    if (updateCheckPressed_ || viewReleasePressed_)
+    {
+        const bool checkPressed = updateCheckPressed_;
+        const bool viewPressed = viewReleasePressed_;
+        updateCheckPressed_ = false;
+        viewReleasePressed_ = false;
+        redraw_ = true;
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(window_, &width, &height);
+        const FrontendPanelLayout panels = FrontendPanels_Calculate(width, height);
+        const SDL_FRect c = panels.rightContent;
+        const float innerX = c.x + 18.0f, innerY = c.y + 18.0f;
+        const float controlX = innerX + 34.0f;
+        const SDL_FRect updatesButton{controlX, innerY + 412.0f, 170.0f, 32.0f};
+        const SDL_FRect viewRelease{controlX + 190.0f, innerY + 412.0f, 150.0f, 32.0f};
+        const auto insideRect = [](const SDL_MouseButtonEvent& e, const SDL_FRect& r)
+        {
+            return e.x >= r.x && e.x < r.x + r.w && e.y >= r.y && e.y < r.y + r.h;
+        };
+        if (checkPressed && insideRect(event, updatesButton) &&
+            updateCheck_.GetState() != UpdateCheck::State::Checking)
+        {
+            updateCheck_.StartCheck(O2emVersion::kAppVersion);
+            redraw_ = true;
+        }
+        else if (viewPressed && insideRect(event, viewRelease) &&
+            updateCheck_.GetState() == UpdateCheck::State::UpdateAvailable)
+        {
+            const std::string url = updateCheck_.GetReleaseUrl();
+            if (!url.empty())
+            {
+                const std::wstring wideUrl(url.begin(), url.end());
+                ShellExecuteW(nullptr, L"open", wideUrl.c_str(),
+                    nullptr, nullptr, SW_SHOWNORMAL);
+            }
+        }
+        return;
+    }
     if (quickAddPressed_ >= 0)
     {
         const int pressed = quickAddPressed_;
@@ -2486,6 +2859,13 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
                 ImportAssetType::Rom, ImportAssetType::Cover, ImportAssetType::Manual};
             RunImport(types[pressed]);
         }
+        return;
+    }
+
+    // My Collection buttons/dialog: release completes the action.
+    if (activeTab_ == FrontendTab::MyCollection && collectionPage_.HandleMouseUp(event.x, event.y))
+    {
+        redraw_ = true;
         return;
     }
 
@@ -2532,6 +2912,52 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
 
 void FrontendApp::HandleMouseMotion(const SDL_MouseMotionEvent& event)
 {
+    // Borderless window drag: while the title bar is held, follow the global
+    // cursor so the window can be moved like a native caption.
+    if (windowDragActive_)
+    {
+        float globalX = 0.0f;
+        float globalY = 0.0f;
+        SDL_GetGlobalMouseState(&globalX, &globalY);
+        SDL_SetWindowPosition(window_,
+            static_cast<int>(globalX - windowDragOffsetX_),
+            static_cast<int>(globalY - windowDragOffsetY_));
+    }
+
+    // Borderless edge resize.
+    if (windowResizeEdges_ != 0)
+    {
+        float globalX = 0.0f;
+        float globalY = 0.0f;
+        SDL_GetGlobalMouseState(&globalX, &globalY);
+        const int dx = static_cast<int>(globalX - resizeStartMouseX_);
+        const int dy = static_cast<int>(globalY - resizeStartMouseY_);
+        int newX = resizeStartX_;
+        int newY = resizeStartY_;
+        int newW = resizeStartW_;
+        int newH = resizeStartH_;
+        constexpr int minW = 640;
+        constexpr int minH = 480;
+        if (windowResizeEdges_ & 1) { newW = resizeStartW_ - dx; newX = resizeStartX_ + dx; }
+        if (windowResizeEdges_ & 2) { newW = resizeStartW_ + dx; }
+        if (windowResizeEdges_ & 4) { newH = resizeStartH_ - dy; newY = resizeStartY_ + dy; }
+        if (windowResizeEdges_ & 8) { newH = resizeStartH_ + dy; }
+        if (newW < minW)
+        {
+            if (windowResizeEdges_ & 1)
+                newX = resizeStartX_ + resizeStartW_ - minW;
+            newW = minW;
+        }
+        if (newH < minH)
+        {
+            if (windowResizeEdges_ & 4)
+                newY = resizeStartY_ + resizeStartH_ - minH;
+            newH = minH;
+        }
+        SDL_SetWindowSize(window_, newW, newH);
+        SDL_SetWindowPosition(window_, newX, newY);
+    }
+
     // Live thumb dragging: recompute the scroll position from the cursor's
     // offset inside the thumb, clamped to the live favorite count.
     if (favoritesScrollDrag_ && activeTab_ == FrontendTab::Library)
@@ -2598,9 +3024,9 @@ SDL_FRect FrontendApp::LibraryOpenButtonRect(const SDL_FRect& foldersPanel, int 
     // its click target can never drift apart (same convention as QuickAddButtonRect).
     return SDL_FRect{
         foldersPanel.x + foldersPanel.w - 74.0f,
-        foldersPanel.y + 30.0f + static_cast<float>(index) * 34.0f,
+        foldersPanel.y + 24.0f + static_cast<float>(index) * 28.0f,
         64.0f,
-        26.0f};
+        24.0f};
 }
 
 std::filesystem::path FrontendApp::LibraryFolderPath(int index) const
@@ -2839,23 +3265,23 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     // It is intentionally based on the same geometry used by DrawLibraryTab so
     // windowed and fullscreen layouts behave identically.
     const SDL_FRect biosHit{
-        inner.x + 4.0f, inner.y + 5.0f,
-        (inner.w - 8.0f) * 0.75f, 49.0f
+        inner.x + 4.0f, inner.y + 2.0f,
+        (inner.w - 8.0f) * 0.75f, 48.0f
     };
     const SDL_FRect regionHit{
-        inner.x + 4.0f, inner.y + 58.0f,
-        (inner.w - 8.0f) * 0.75f, 49.0f
+        inner.x + 4.0f, inner.y + 48.0f,
+        (inner.w - 8.0f) * 0.75f, 48.0f
     };
     const SDL_FRect scanlinesHit{
-        inner.x + 4.0f, inner.y + 112.0f,
-        inner.w - 8.0f, 37.0f
+        inner.x + 4.0f, inner.y + 94.0f,
+        inner.w - 8.0f, 26.0f
     };
     // Fullscreen checkbox row, directly below Scanlines (drawn at
-    // quickInner.y + 152). Same authoritative setting as the Settings screen:
+    // quickInner.y + 122). Same authoritative setting as the Settings screen:
     // toggled via ActivateSettingsSelection() so both UIs stay in sync.
     const SDL_FRect fullscreenHit{
-        inner.x + 4.0f, inner.y + 150.0f,
-        inner.w - 8.0f, 30.0f
+        inner.x + 4.0f, inner.y + 118.0f,
+        inner.w - 8.0f, 28.0f
     };
 
     const auto contains = [x, y](const SDL_FRect& rect)
@@ -2869,7 +3295,7 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     {
         RefreshInstalledBiosFiles();
         const float itemH = 25.0f;
-        const SDL_FRect popup{inner.x + 10.0f, inner.y + 51.0f,
+        const SDL_FRect popup{inner.x + 10.0f, inner.y + 46.0f,
             (inner.w - 20.0f) * 0.75f, itemH * static_cast<float>(installedBiosFiles_.size())};
         if (contains(popup) && !installedBiosFiles_.empty())
         {
@@ -2885,7 +3311,7 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     else if (openDropdown_ == 1)
     {
         const float itemH = 25.0f;
-        const SDL_FRect popup{inner.x + 10.0f, inner.y + 104.0f, (inner.w - 20.0f) * 0.75f, itemH * 3.0f};
+        const SDL_FRect popup{inner.x + 10.0f, inner.y + 92.0f, (inner.w - 20.0f) * 0.75f, itemH * 3.0f};
         if (contains(popup))
         {
             const int item = static_cast<int>((y - popup.y) / itemH);
@@ -4168,6 +4594,17 @@ void FrontendApp::DrawManualTab(const SDL_FRect& content)
 void FrontendApp::DrawAboutTab(const SDL_FRect& content)
 {
     DrawProjectPage(content);
+
+    // Bottom-right version stamp. Fixed UI chrome, independent of the
+    // editable database project pages, so it always shows the compiled-in
+    // application version.
+    const float margin = 14.0f;
+    const SDL_FRect frame{content.x + margin, content.y + margin,
+        content.w - margin * 2.0f, content.h - margin * 2.0f};
+    const SDL_FRect inner{frame.x + 4.0f, frame.y + 4.0f, frame.w - 8.0f, frame.h - 8.0f};
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+    DrawText(renderer_, inner.x + inner.w - 170.0f, inner.y + inner.h - 19.0f, 0.8f,
+        std::string("O2EM-NG ") + O2emVersion::kAppVersion);
 }
 
 void FrontendApp::DrawCreditsTab(const SDL_FRect& content)
@@ -4286,6 +4723,55 @@ void FrontendApp::DrawSettingsTab(const SDL_FRect& content)
     drawCombo(inner.y + 126.0f, "Region Mode", region);
     drawCheck(inner.y + 205.0f, "Scanlines", settings_.scanlines);
     drawCombo(inner.y + 255.0f, "BIOS File", settings_.bios_file.empty()?"No BIOS installed":settings_.bios_file);
+
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+    DrawText(renderer_, x, inner.y + 312.0f, 0.95f,
+        std::string("Current version: ") + O2emVersion::kAppVersion);
+
+    // Updates section (Phase 2: manual check only). The CHECK UPDATES
+    // button reuses DrawWin95Button with a dedicated pressed flag, exactly
+    // like the Library OPEN buttons (arm on down, act on release).
+    {
+        const SDL_FRect updatesButton{x, inner.y + 412.0f, 170.0f, 32.0f};
+        DrawWin95Button(updatesButton, "CHECK UPDATES", updateCheckPressed_);
+        const bool updateAvailableNow =
+            updateCheck_.GetState() == UpdateCheck::State::UpdateAvailable;
+        if (updateAvailableNow)
+        {
+            const SDL_FRect viewRelease{x + 190.0f, inner.y + 412.0f, 150.0f, 32.0f};
+            DrawWin95Button(viewRelease, "VIEW RELEASE", viewReleasePressed_);
+        }
+        const char* statusText = "Not checked";
+        const SDL_Color* statusColor = &Win95Theme::WindowText;
+        std::string statusDetail;
+        switch (updateCheck_.GetState())
+        {
+        case UpdateCheck::State::Idle:
+            statusText = "Not checked";
+            break;
+        case UpdateCheck::State::Checking:
+            statusText = "Checking...";
+            break;
+        case UpdateCheck::State::UpToDate:
+            statusText = "Up to date";
+            break;
+        case UpdateCheck::State::UpdateAvailable:
+            statusText = "New version available";
+            statusDetail = updateCheck_.GetLatestVersion();
+            break;
+        case UpdateCheck::State::Error:
+            statusText = "Could not check for updates";
+            statusDetail = updateCheck_.GetErrorMessage();
+            statusColor = &Win95Theme::Shadow;
+            break;
+        }
+        Win95Theme::SetRenderColor(renderer_, *statusColor);
+        DrawText(renderer_, x, inner.y + 456.0f, 0.95f, statusText);
+        if (!statusDetail.empty())
+            DrawText(renderer_,
+                x + 8.0f * 0.95f * static_cast<float>(std::strlen(statusText)) + 10.0f,
+                inner.y + 456.0f, 0.95f, statusDetail.c_str());
+    }
 
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     DrawText(renderer_, x, inner.y + 345.0f, 1.0f, std::string("C7010 NSC800 BIOS: ") + (c7010FirmwareInstalled_ ? "c7010_z80.bin  [INSTALLED]" : "NOT FOUND"));
