@@ -36,7 +36,7 @@ private:
     static constexpr int VisibleRows = 18;
     static constexpr Sint16 StickDeadzone = 16000;
     static constexpr int SettingsItemCount = 4;
-    static constexpr int MetadataFieldCount = 15;
+    static constexpr int MetadataFieldCount = 14;
 
     SDL_Window* window_ = nullptr;
     SDL_Renderer* renderer_ = nullptr;
@@ -97,6 +97,12 @@ private:
     enum class LibraryMediaMode { BoxArt = 0, Screenshots };
     LibraryMediaMode libraryMediaMode_ = LibraryMediaMode::BoxArt;
     bool scaleCoverImage_ = true;
+    // Personal rating (Game Information): the five star hit rects captured by
+    // the last draw, so mouse hit-testing always matches the rendered layout
+    // across resize/fullscreen. ratingStarsDrawn_ is false when the stars were
+    // not actually drawn (no selected game, another tab, or row scrolled out).
+    SDL_FRect ratingStarRects_[5]{};
+    bool ratingStarsDrawn_ = false;
     // Favorites panel scrolling (Win95-style scrollbar; geometry shared by
     // draw and hit paths via FavoritesScrollMetrics).
     int favoritesScroll_ = 0;
@@ -219,6 +225,9 @@ private:
     // scrolling because it only runs when the selection itself moves.
     void KeepLibrarySelectionVisible();
     bool TryLibraryFavoriteAt(float x, float y, bool activate);
+    // Personal rating stars in the Library Game Information panel.
+    bool TryLibraryRatingAt(float x, float y);
+    void SetSelectedGameUserRating(int rating);
     bool TryProjectControlAt(float x, float y);
     bool TryExitButtonAt(float x, float y);
     // Custom Win95 title bar / menu bar input (window drag + controls).

@@ -400,7 +400,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         "user_description TEXT NOT NULL DEFAULT '',"
         "trivia TEXT NOT NULL DEFAULT '',"
         "manual_path TEXT NOT NULL DEFAULT '',"
-        "user_catalog_id TEXT NOT NULL DEFAULT ''"
+        "user_catalog_id TEXT NOT NULL DEFAULT '',"
+        "user_rating INTEGER NOT NULL DEFAULT 0"
         ");"
         "CREATE INDEX IF NOT EXISTS idx_games_filename ON games(rom_filename);";
 
@@ -425,7 +426,8 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         "ALTER TABLE games ADD COLUMN user_description TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE games ADD COLUMN trivia TEXT NOT NULL DEFAULT '';",
         "ALTER TABLE games ADD COLUMN manual_path TEXT NOT NULL DEFAULT '';",
-        "ALTER TABLE games ADD COLUMN user_catalog_id TEXT NOT NULL DEFAULT '';"
+        "ALTER TABLE games ADD COLUMN user_catalog_id TEXT NOT NULL DEFAULT '';",
+        "ALTER TABLE games ADD COLUMN user_rating INTEGER NOT NULL DEFAULT 0;"
     };
     for (const char* migration : migrations)
     {
@@ -608,7 +610,7 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         "alternate,hack,fixed,favorite,play_count,last_played,"
         "user_title,year,publisher,developer,genre,players,controls,"
         "voice_module,videopac_plus_text,rating,short_description,"
-        "user_description,trivia,manual_path,user_catalog_id "
+        "user_description,trivia,manual_path,user_catalog_id,user_rating "
         "FROM games WHERE rom_filename=? COLLATE NOCASE;");
 
     if (!select)
@@ -685,6 +687,11 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
             if (!manualPath.empty()) game.manual = basePath_ / manualPath;
             const std::string userCatalogId = ColumnString(api, select.Get(), 26);
             game.catalogId = !userCatalogId.empty() ? userCatalogId : ParseVideopacCatalogIdFromFilename(game.filename);
+            // Personal rating: tolerate any stored value outside 0..5 by
+            // treating it as "not rated" rather than showing a broken UI.
+            const int storedUserRating = api.columnInt(select.Get(), 27);
+            game.userRating = (storedUserRating >= 0 && storedUserRating <= 5)
+                ? storedUserRating : 0;
 
             game.favorite = api.columnInt(select.Get(), 9) != 0;
             game.playCount = api.columnInt(select.Get(), 10);
@@ -769,7 +776,8 @@ bool GameDatabase::SaveUserMetadata(const GameInfo& game) const
     Statement statement(api, handle.Get(),
         "UPDATE games SET user_title=?,year=?,publisher=?,developer=?,genre=?,"
         "players=?,controls=?,voice_module=?,videopac_plus_text=?,rating=?,"
-        "short_description=?,user_description=?,trivia=?,manual_path=?,user_catalog_id=? "
+        "short_description=?,user_description=?,trivia=?,manual_path=?,user_catalog_id=?,"
+        "user_rating=? "
         "WHERE rom_filename=? COLLATE NOCASE;");
     if (!statement) return false;
     std::string manualPath;
@@ -783,10 +791,15 @@ bool GameDatabase::SaveUserMetadata(const GameInfo& game) const
         game.title, game.year, game.publisher, game.developer, game.genre,
         game.players, game.controls, game.voiceModule, game.videopacPlus,
         game.rating, game.shortDescription, game.description, game.trivia,
-        manualPath, game.catalogId, game.filename
+        manualPath, game.catalogId
     };
-    for (int index = 0; index < 16; ++index)
+    for (int index = 0; index < 15; ++index)
         if (!BindText(api, statement.Get(), index + 1, values[index])) return false;
+    // games.user_rating is an INTEGER column; clamp defensively before binding.
+    const int safeUserRating = (game.userRating >= 0 && game.userRating <= 5)
+        ? game.userRating : 0;
+    api.bindInt(statement.Get(), 16, safeUserRating);
+    if (!BindText(api, statement.Get(), 17, game.filename)) return false;
     return api.step(statement.Get()) == SQLITE_DONE;
 }
 
@@ -932,7 +945,8 @@ bool GameDatabase::ClearUserMetadata(const std::string& romFilename) const
     Statement statement(api, handle.Get(),
         "UPDATE games SET user_title='',year='',publisher='',developer='',genre='',"
         "players='',controls='',voice_module='',videopac_plus_text='',rating='',"
-        "short_description='',user_description='',trivia='',manual_path='',user_catalog_id='' "
+        "short_description='',user_description='',trivia='',manual_path='',user_catalog_id='',"
+        "user_rating=0 "
         "WHERE rom_filename=? COLLATE NOCASE;");
     if (!statement) return false;
     BindText(api, statement.Get(), 1, romFilename);

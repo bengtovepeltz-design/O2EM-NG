@@ -34,6 +34,39 @@
 
 namespace
 {
+    // Five-point star shared by the Favorites marker and the personal rating.
+    // Vector geometry (SDL_RenderGeometry) so it never depends on a Unicode
+    // star glyph being present in the UI font. The caller supplies the fill and
+    // outline colours: Favorites use gold, rating stars use the frontend blue
+    // (filled) or a neutral grey outline (empty). Geometry stays shared.
+    void DrawFivePointStar(SDL_Renderer* renderer, float cx, float cy, bool filled,
+        SDL_Color fillColor, SDL_Color outlineColor)
+    {
+        const SDL_FPoint points[] = {{0,-8},{2,-3},{8,-3},{4,1},{5,7},
+            {0,4},{-5,7},{-4,1},{-8,-3},{-2,-3}};
+        if (filled)
+        {
+            const SDL_FColor fill{
+                fillColor.r / 255.0f, fillColor.g / 255.0f,
+                fillColor.b / 255.0f, fillColor.a / 255.0f};
+            SDL_Vertex vertices[11]{};
+            vertices[0].position = {cx,cy}; vertices[0].color = fill;
+            int indices[30];
+            for (int i=0;i<10;++i)
+            {
+                vertices[i+1].position = {cx+points[i].x,cy+points[i].y};
+                vertices[i+1].color = fill;
+                indices[i*3]=0; indices[i*3+1]=i+1; indices[i*3+2]=(i+1)%10+1;
+            }
+            SDL_RenderGeometry(renderer,nullptr,vertices,11,indices,30);
+        }
+        SDL_SetRenderDrawColor(renderer,outlineColor.r,outlineColor.g,
+            outlineColor.b,outlineColor.a);
+        for(int i=0;i<10;++i)
+            SDL_RenderLine(renderer,cx+points[i].x,cy+points[i].y,
+                cx+points[(i+1)%10].x,cy+points[(i+1)%10].y);
+    }
+
     // Width at which the far-right folders panel switches to its compact
     // presentation (short labels, no footer note). Below the existing 170px
     // column threshold the panel is folded away entirely.
@@ -1219,6 +1252,7 @@ void FrontendApp::HandleMouseButtonDown(const SDL_MouseButtonEvent& event)
     if (activeTab_ == FrontendTab::Extras && TryImportControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Cartridge && TryMetadataControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryFavoriteAt(event.x, event.y, event.clicks >= 2)) return;
+    if (activeTab_ == FrontendTab::Library && TryLibraryRatingAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryMediaControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && TryLibraryQuickControlAt(event.x, event.y)) return;
     if (activeTab_ == FrontendTab::Library && event.clicks >= 2 &&
@@ -1676,22 +1710,9 @@ void FrontendApp::DrawLibraryList(const SDL_FRect& content)
     // Vector star stays sharp and does not depend on font glyph availability.
     const auto star = [&](float cx, float cy)
     {
-        const SDL_FPoint points[] = {{0,-8},{2,-3},{8,-3},{4,1},{5,7},
-            {0,4},{-5,7},{-4,1},{-8,-3},{-2,-3}};
-        SDL_Vertex vertices[11]{};
-        const SDL_FColor gold{1.0f,0.76f,0.08f,1.0f};
-        vertices[0].position = {cx,cy}; vertices[0].color = gold;
-        int indices[30];
-        for (int i=0;i<10;++i)
-        {
-            vertices[i+1].position = {cx+points[i].x,cy+points[i].y};
-            vertices[i+1].color = gold;
-            indices[i*3]=0; indices[i*3+1]=i+1; indices[i*3+2]=(i+1)%10+1;
-        }
-        SDL_RenderGeometry(renderer_,nullptr,vertices,11,indices,30);
-        SDL_SetRenderDrawColor(renderer_,128,82,0,255);
-        for(int i=0;i<10;++i) SDL_RenderLine(renderer_,cx+points[i].x,cy+points[i].y,
-            cx+points[(i+1)%10].x,cy+points[(i+1)%10].y);
+        // Favorites keep their existing gold star unchanged.
+        DrawFivePointStar(renderer_, cx, cy, true,
+            SDL_Color{255,194,20,255}, SDL_Color{128,82,0,255});
     };
     Win95Theme::SetRenderColor(renderer_,Win95Theme::ActiveTitle);
     DrawText(renderer_,left+3,content.y+12,1.05f,
@@ -1785,6 +1806,9 @@ void FrontendApp::DrawLibraryList(const SDL_FRect& content)
 
 void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
 {
+    // Personal-rating star hit rects are only valid when the stars were
+    // actually drawn this frame; clear before any possible early return.
+    ratingStarsDrawn_ = false;
     const GameInfo* game = GetSelectedGame();
     const auto layout=Dashboard(content);
     const auto& coverFrame=layout.cover;
@@ -2172,6 +2196,11 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
             DrawText(renderer_, drawX, drawY, 1.35f, catalogId);
     }
     float y = infoInner.y + 49.0f;
+    // Rows are drawn top-down. The Rating row is special-cased: it renders the
+    // personal 0-5 user rating as five clickable vector stars (see
+    // TryLibraryRatingAt) instead of a plain text value. Drawn row 9 (zero
+    // based) is "Rating:".
+    constexpr int kRatingRowIndex = 9;
     const std::pair<std::string, std::string> rows[] = {
         {"Title:", game->title},
         {"Publisher:", game->publisher},
@@ -2182,21 +2211,56 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
         {"Controls:", game->controls},
         {"Voice Module:", game->voiceModule},
         {"Videopac+:", game->videopacPlus},
-        {"Rating:", game->rating},
+        {"Rating:", std::string()},
         {"Manual:", game->manual.empty() ? "No" : "Available"},
         {"Images/video:", std::to_string(game->screenshots.size())},
         {"Favorite:", game->favorite ? "Yes" : "No"}
     };
     const float valueX = infoInner.x + 112.0f;
+    // Star hit rects are captured here so mouse hit-testing always matches the
+    // rendered layout (resize / fullscreen safe). Cleared whenever the stars
+    // are not actually drawn.
+    ratingStarsDrawn_ = false;
+    int drawnRow = 0;
     for (const auto& row : rows)
     {
         if (y > infoInner.y + infoInner.h - 20.0f) break;
         Win95Theme::SetRenderColor(renderer_, Win95Theme::ActiveTitle);
         DrawText(renderer_, infoInner.x + 10.0f, y, 0.86f, row.first);
-        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-        DrawText(renderer_, valueX, y, 0.90f,
-            fitText(valueOrDash(row.second), infoInner.x + infoInner.w - valueX - 10.0f, 0.90f));
+        if (drawnRow == kRatingRowIndex)
+        {
+            constexpr float kStarSpacing = 20.0f;
+            constexpr float kStarHitHalf = 9.0f;
+            const float cy = y + 9.0f;
+            for (int i = 0; i < 5; ++i)
+            {
+                const float cx = valueX + kStarHitHalf + static_cast<float>(i) * kStarSpacing;
+                const bool on = i < game->userRating;
+                // Rating stars are the frontend heading blue when filled and a
+                // neutral grey outline when empty, distinct from Favorites.
+                DrawFivePointStar(renderer_, cx, cy, on, Win95Theme::ActiveTitle,
+                    on ? SDL_Color{0,0,64,255} : SDL_Color{120,120,120,255});
+                ratingStarRects_[i] = SDL_FRect{cx - kStarHitHalf, cy - kStarHitHalf,
+                    2.0f * kStarHitHalf, 2.0f * kStarHitHalf};
+            }
+            ratingStarsDrawn_ = true;
+            if (game->userRating <= 0)
+            {
+                const float textX = valueX + 5.0f * kStarSpacing + 2.0f;
+                Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+                DrawText(renderer_, textX, y, 0.90f,
+                    fitText("Not rated",
+                        infoInner.x + infoInner.w - textX - 6.0f, 0.90f));
+            }
+        }
+        else
+        {
+            Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+            DrawText(renderer_, valueX, y, 0.90f,
+                fitText(valueOrDash(row.second), infoInner.x + infoInner.w - valueX - 10.0f, 0.90f));
+        }
         y += 21.0f;
+        ++drawnRow;
     }
 
     // Quick Settings uses familiar Win95-style controls instead of clickable text rows.
@@ -3371,6 +3435,63 @@ bool FrontendApp::TryLibraryQuickControlAt(float x, float y)
     return false;
 }
 
+bool FrontendApp::TryLibraryRatingAt(float x, float y)
+{
+    // Hit-test the five personal-rating stars captured by the last
+    // DrawLibraryDashboard pass. Using the stored rects guarantees the
+    // clickable area matches the rendered layout after resize/fullscreen and
+    // only reacts inside the star row (never on adjacent Game Information rows).
+    if (!ratingStarsDrawn_)
+        return false;
+
+    for (int i = 0; i < 5; ++i)
+    {
+        const SDL_FRect& r = ratingStarRects_[i];
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+        {
+            int next = i + 1;
+            // Clicking the currently selected final star clears to "not rated".
+            const GameInfo* game = GetSelectedGame();
+            if (game && game->userRating == next)
+                next = 0;
+            SetSelectedGameUserRating(next);
+            return true;
+        }
+    }
+    return false;
+}
+
+void FrontendApp::SetSelectedGameUserRating(int rating)
+{
+    GameInfo* game = GetSelectedGame();
+    if (!game)
+        return;
+    if (rating < 0) rating = 0;
+    if (rating > 5) rating = 5;
+    if (game->userRating == rating)
+        return;
+
+    const int previous = game->userRating;
+    game->userRating = rating;
+    // Persist immediately through the established per-game metadata path,
+    // keyed on the stable rom_filename identity (works with or without a ROM
+    // present). SaveUserMetadata writes the current in-memory metadata row, so
+    // unrelated values are not clobbered - they come from the same
+    // authoritative GameInfo object the UI is showing. On failure the in-memory
+    // value is rolled back so the UI never pretends an unsaved rating stuck.
+    if (!gameDatabase_.SaveUserMetadata(*game))
+    {
+        game->userRating = previous;
+        std::printf("O2EM-NG: failed to save personal rating for %s.\n",
+            game->filename.c_str());
+        redraw_ = true;
+        return;
+    }
+    std::printf("O2EM-NG: personal rating for %s set to %d.\n",
+        game->filename.c_str(), game->userRating);
+    redraw_ = true;
+}
+
 bool FrontendApp::TryLibraryFavoriteAt(float x, float y, bool activate)
 {
     int w = 0;
@@ -3486,11 +3607,10 @@ std::string* FrontendApp::CurrentMetadataField()
     case 7: return &metadataWorkingCopy_.controls;
     case 8: return &metadataWorkingCopy_.voiceModule;
     case 9: return &metadataWorkingCopy_.videopacPlus;
-    case 10: return &metadataWorkingCopy_.rating;
-    case 11: return &metadataWorkingCopy_.shortDescription;
-    case 12: return &metadataWorkingCopy_.description;
-    case 13: return &metadataWorkingCopy_.trivia;
-    case 14: return &metadataManualPath_;
+    case 10: return &metadataWorkingCopy_.shortDescription;
+    case 11: return &metadataWorkingCopy_.description;
+    case 12: return &metadataWorkingCopy_.trivia;
+    case 13: return &metadataManualPath_;
     default: return nullptr;
     }
 }
@@ -3499,7 +3619,7 @@ const char* FrontendApp::CurrentMetadataLabel() const
 {
     static const char* labels[MetadataFieldCount] = {
         "Catalog ID", "Title", "Year", "Publisher", "Developer", "Genre", "Players",
-        "Controls", "Voice Module", "Videopac+", "Rating", "Short Description",
+        "Controls", "Voice Module", "Videopac+", "Short Description",
         "Game Description", "Trivia / History", "Manual Path"
     };
     return labels[metadataSelected_];
@@ -3741,7 +3861,7 @@ void FrontendApp::SaveMetadataEdit()
 
 bool FrontendApp::IsLongMetadataField() const noexcept
 {
-    return metadataSelected_ >= 11 && metadataSelected_ <= 13;
+    return metadataSelected_ >= 10 && metadataSelected_ <= 12;
 }
 
 void FrontendApp::EditCurrentMetadataField()
@@ -3908,7 +4028,7 @@ bool FrontendApp::TryMetadataControlAt(float x, float y)
     {
         float ry=firstY+i*29.0f;
         if(x>=c.x+20 && x<c.x+c.w-20 && y>=ry-5 && y<ry+22)
-        { metadataSelected_=i; redraw_=true; if(i!=14) EditCurrentMetadataField(); return true; }
+        { metadataSelected_=i; redraw_=true; if(i!=MetadataFieldCount-1) EditCurrentMetadataField(); return true; }
     }
     // SAVE (1) / CANCEL (2) push buttons: arm on mouse-down, confirm on
     // mouse-up inside the same rect. Same inner math as the draw path.
@@ -4404,7 +4524,6 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
         source->controls,
         source->voiceModule,
         source->videopacPlus,
-        source->rating,
         source->shortDescription,
         source->description,
         source->trivia,
@@ -4413,7 +4532,7 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
 
     static const char* labels[MetadataFieldCount] = {
         "Catalog ID", "Title", "Year", "Publisher", "Developer", "Genre", "Players",
-        "Controls", "Voice Module", "Videopac+", "Rating",
+        "Controls", "Voice Module", "Videopac+",
         "Short Description", "Game Description", "Trivia / History", "Manual Path"
     };
 

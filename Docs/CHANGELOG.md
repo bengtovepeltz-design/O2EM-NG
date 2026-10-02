@@ -1,5 +1,16 @@
 # Changelog
 
+## After v0.31.0-beta (Beta 4) - current development
+
+- Personal 0-5 star rating for each permanent catalogue entry, shown in the
+  Library Game Information panel. Click a star to set the rating (1-5); click
+  the currently selected final star again to clear it to "Not rated" (0). The
+  rating is stored per game and works whether or not the ROM is installed.
+- The legacy free-text "Rating" metadata is preserved unchanged in the
+  database for backward compatibility, but is no longer shown in Edit Game
+  Data; the new personal rating replaces it in Game Information. Existing
+  legacy rating values (for example a stored "Not good") are not modified.
+
 ## 0.31.0-beta "Beta 4" - Released
 
 Beta 4 is the current published release. The most recent work is listed first.

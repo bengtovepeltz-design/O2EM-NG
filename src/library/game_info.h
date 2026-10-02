@@ -28,6 +28,10 @@ struct GameInfo
     std::string voiceModule;
     std::string videopacPlus;
     std::string rating;
+    // Personal user rating: 0 = not rated, 1..5 = stars. Stored in the
+    // separate games.user_rating column; unrelated to the legacy free-text
+    // `rating` metadata field above, which is preserved for compatibility.
+    int userRating = 0;
     std::string shortDescription;
     std::string description;
     std::string trivia;
