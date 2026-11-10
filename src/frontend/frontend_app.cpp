@@ -33,6 +33,7 @@
 #include "videopac_font.h"
 #include "vdc_stub.h"
 #include "startup_splash.h"
+#include "system_project_pages.h"
 
 namespace
 {
@@ -431,8 +432,10 @@ bool FrontendApp::Initialize(StartupSplash* splash)
     const GameDatabaseResult databaseResult =
         gameDatabase_.InitializeAndPopulate(library_);
     std::printf("O2EM-NG: %s\n", databaseResult.message.c_str());
-    if (gameDatabase_.InitializeProjectPages())
-        projectPages_ = gameDatabase_.LoadProjectPages();
+    // Project/About pages are application-owned system content. Legacy
+    // project_pages rows in an existing user database remain untouched but
+    // never override the current Beta 5 system pages.
+    projectPages_ = BuildSystemProjectPages();
     for (const std::string& filename : databaseResult.unmatchedRomFilenames)
         std::printf("O2EM-NG: unmatched ROM: %s\n", filename.c_str());
 
@@ -812,10 +815,7 @@ void FrontendApp::ActivateSelection()
     }
 
     if (activeTab_ == FrontendTab::About)
-    {
-        EditCurrentProjectPage();
-        return;
-    }
+        return; // system-owned project pages are read-only
 
     // Enter/A on My Collection edits the selected entry (Phase B).
     if (activeTab_ == FrontendTab::MyCollection)
@@ -1142,7 +1142,6 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
     case SDLK_E:
         if (activeTab_ == FrontendTab::Cartridge) BeginMetadataEdit();
         else if (activeTab_ == FrontendTab::Library) EditLibraryDescription();
-        else if (activeTab_ == FrontendTab::About) EditCurrentProjectPage();
         break;
     case SDLK_F: ToggleFavorite(); break;
     case SDLK_1: if (activeTab_ == FrontendTab::Extras) RunImport(ImportAssetType::Rom); break;
@@ -2711,19 +2710,6 @@ void FrontendApp::SelectProjectPage(int index)
     redraw_ = true;
 }
 
-void FrontendApp::EditCurrentProjectPage()
-{
-    if (projectPages_.empty()) return;
-    ProjectPage& page = projectPages_[projectPageIndex_];
-    std::string edited = page.content;
-    if (!OpenMetadataTextEditor(page.title.c_str(), true, edited)) return;
-    page.content = edited;
-    if (!gameDatabase_.SaveProjectPage(page))
-        std::printf("O2EM-NG: failed to save project page %s.\n", page.pageKey.c_str());
-    projectPageScroll_ = 0;
-    redraw_ = true;
-}
-
 bool FrontendApp::TryProjectControlAt(float x, float y)
 {
     int windowWidth = 0, windowHeight = 0;
@@ -2741,9 +2727,7 @@ bool FrontendApp::TryProjectControlAt(float x, float y)
         if (x >= button.x && x < button.x + button.w && y >= button.y && y < button.y + button.h)
         { SelectProjectPage(i); return true; }
     }
-    SDL_FRect edit{inner.x + inner.w - 118.0f, inner.y + 57.0f, 92.0f, 30.0f};
-    if (x >= edit.x && x < edit.x + edit.w && y >= edit.y && y < edit.y + edit.h)
-    { EditCurrentProjectPage(); return true; }
+    // System-owned project pages are view-only. No edit control is exposed.
     return false;
 }
 
@@ -4919,22 +4903,13 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     DrawText(renderer_, inner.x + 22.0f, inner.y + 60.0f, 1.55f, page.title);
 
-    // The About page is a fixed product identity, not an editable history
-    // page. Credits, Special Thanks, Roadmap and Release Notes remain editable
-    // project pages.
+    // Every project page is system-owned and view-only. Legacy project_pages
+    // rows in o2em-ng.db are not used by this UI.
     const bool aboutPage = page.pageKey == "about";
     if (!aboutPage)
     {
         DrawText(renderer_, inner.x + 22.0f, inner.y + 94.0f, 0.9f,
-            "Editable project information stored in GAMEDATA/o2em-ng.db");
-
-        SDL_FRect editButton{inner.x + inner.w - 118.0f, inner.y + 57.0f, 92.0f, 30.0f};
-        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
-        SDL_RenderFillRect(renderer_, &editButton);
-        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
-        SDL_RenderRect(renderer_, &editButton);
-        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-        DrawText(renderer_, editButton.x + 20.0f, editButton.y + 7.0f, 0.9f, "Edit...");
+            "System information supplied by the application");
     }
 
     SDL_FRect textFrame{inner.x + 18.0f, inner.y + 126.0f, inner.w - 36.0f, inner.h - 150.0f};

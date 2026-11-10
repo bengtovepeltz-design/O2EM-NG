@@ -217,6 +217,7 @@ copy /Y "$(ProjectDir)assets\audio\reset_sound_g_7000.wav" "$(TargetDir)assets\a
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="src\frontend\frontend_app.cpp" />
     <ClCompile Include="src\frontend\startup_splash.cpp" />
+    <ClCompile Include="src\frontend\system_project_pages.cpp" />
     <ClCompile Include="src\frontend\frontend_collection.cpp" />
     <ClCompile Include="src\update_check.cpp" />
     <ClCompile Include="src\mcs48\cpu_adapter.cpp" />
@@ -254,6 +255,7 @@ copy /Y "$(ProjectDir)assets\audio\reset_sound_g_7000.wav" "$(TargetDir)assets\a
     <ClInclude Include="audio.h" />
     <ClInclude Include="c7010.h" />
     <ClInclude Include="src\ng_host\host_commands.h" />
+    <ClInclude Include="src\frontend\system_project_pages.h" />
     <ClInclude Include="src\core_ng\special\special_hardware.h" />
     <ClInclude Include="c7010_special.h" />
     <ClInclude Include="audio8245.h" />

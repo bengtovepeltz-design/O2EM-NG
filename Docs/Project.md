@@ -37,6 +37,9 @@ NG core:
   remains an explicit A/B override.
 - **Version identity**: `src/version.h` is the single source for `Beta 5` /
   `v5.0.0`; Windows numeric metadata is `5.0.0.0`.
+- **Safe upgrade**: Beta 4 databases are migrated in place with automatic
+  backups; personal data is preserved. System project pages are compiled into
+  the application and are read-only in the public UI.
 
 Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About,
 My Collection.

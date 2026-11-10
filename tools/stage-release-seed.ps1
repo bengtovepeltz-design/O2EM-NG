@@ -13,6 +13,7 @@ $manifest = Get-Content -LiteralPath (Join-Path $root 'tools/release-manifest.js
 $source = Join-Path $root 'Gamedata/o2em-ng.db'
 $destinationDir = Join-Path $OutDir 'GAMEDATA'
 $destination = Join-Path $destinationDir 'o2em-ng.db'
+$catalogueDestination = Join-Path $destinationDir 'catalogue.db'
 if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Approved seed missing: $source" }
 if ([string]::IsNullOrWhiteSpace($manifest.seedSha256)) { throw 'Manifest seedSha256 is required' }
 $sourceHash = Get-Sha256 $source
@@ -26,6 +27,9 @@ if (Test-Path -LiteralPath $destination -PathType Leaf) {
     }
 }
 Copy-Item -LiteralPath $source -Destination $destination -Force
+Copy-Item -LiteralPath $source -Destination $catalogueDestination -Force
 $copiedHash = Get-Sha256 $destination
+$catalogueHash = Get-Sha256 $catalogueDestination
 if ($copiedHash -ne $sourceHash) { throw "Release staging seed verification failed: $copiedHash" }
-Write-Host "Release staging seed: $destination ($copiedHash)"
+if ($catalogueHash -ne $sourceHash) { throw "Release staging catalogue verification failed: $catalogueHash" }
+Write-Host "Release staging seed and migration catalogue: $destination ($copiedHash)"

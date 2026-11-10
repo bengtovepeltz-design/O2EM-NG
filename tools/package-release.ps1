@@ -38,13 +38,17 @@ foreach ($file in $manifest.files) {
 }
 $seedSource = Join-Path $root 'Gamedata/o2em-ng.db'
 $seedDestination = Join-Path $stage 'GAMEDATA/o2em-ng.db'
+$catalogueDestination = Join-Path $stage 'GAMEDATA/catalogue.db'
 if (-not (Test-Path -LiteralPath $seedDestination -PathType Leaf)) { throw "Packaged seed missing: $seedDestination" }
+if (-not (Test-Path -LiteralPath $catalogueDestination -PathType Leaf)) { throw "Packaged migration catalogue missing: $catalogueDestination" }
 if ([string]::IsNullOrWhiteSpace($manifest.seedSha256)) { throw 'Manifest seedSha256 is required' }
 $seedSourceHash = Get-Sha256 $seedSource
 $seedPackagedHash = Get-Sha256 $seedDestination
+$cataloguePackagedHash = Get-Sha256 $catalogueDestination
 if ($seedSourceHash -ne $manifest.seedSha256) { throw "Approved seed hash mismatch: $seedSourceHash" }
 if ($seedPackagedHash -ne $manifest.seedSha256) { throw "Packaged seed hash mismatch: $seedPackagedHash" }
-Write-Host "Packaged seed verified: $seedPackagedHash"
+if ($cataloguePackagedHash -ne $manifest.seedSha256) { throw "Packaged catalogue hash mismatch: $cataloguePackagedHash" }
+Write-Host "Packaged seed and migration catalogue verified: $seedPackagedHash"
 foreach ($folder in $manifest.contentFolders) {
     $source = $folder.source
     if (-not [IO.Path]::IsPathRooted($source)) { $source = Join-Path $root $source }

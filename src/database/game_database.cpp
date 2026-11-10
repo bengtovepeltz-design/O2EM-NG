@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <ctime>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -19,12 +21,14 @@ namespace
 {
     struct sqlite3;
     struct sqlite3_stmt;
+    struct sqlite3_backup;
     using sqlite3_int64 = long long;
     using sqlite3_destructor_type = void(__cdecl*)(void*);
 
     constexpr int SQLITE_OK = 0;
     constexpr int SQLITE_ROW = 100;
     constexpr int SQLITE_DONE = 101;
+    constexpr int SQLITE_OPEN_READONLY = 0x00000001;
     constexpr int SQLITE_OPEN_READWRITE = 0x00000002;
     constexpr int SQLITE_OPEN_CREATE = 0x00000004;
     const sqlite3_destructor_type SQLITE_TRANSIENT =
@@ -47,6 +51,9 @@ namespace
         using Reset = int(__cdecl*)(sqlite3_stmt*);
         using ClearBindings = int(__cdecl*)(sqlite3_stmt*);
         using ErrMsg = const char*(__cdecl*)(sqlite3*);
+        using BackupInit = sqlite3_backup*(__cdecl*)(sqlite3*, const char*, sqlite3*, const char*);
+        using BackupStep = int(__cdecl*)(sqlite3_backup*, int);
+        using BackupFinish = int(__cdecl*)(sqlite3_backup*);
 
         WinSQLite()
         {
@@ -68,6 +75,9 @@ namespace
             reset = Load<Reset>("sqlite3_reset");
             clearBindings = Load<ClearBindings>("sqlite3_clear_bindings");
             errMsg = Load<ErrMsg>("sqlite3_errmsg");
+            backupInit = Load<BackupInit>("sqlite3_backup_init");
+            backupStep = Load<BackupStep>("sqlite3_backup_step");
+            backupFinish = Load<BackupFinish>("sqlite3_backup_finish");
 
             available_ = openV2 && close && exec && freeMemory && prepareV2 &&
                 step && finalize && bindText && bindInt && columnText &&
@@ -99,6 +109,9 @@ namespace
         Reset reset = nullptr;
         ClearBindings clearBindings = nullptr;
         ErrMsg errMsg = nullptr;
+        BackupInit backupInit = nullptr;
+        BackupStep backupStep = nullptr;
+        BackupFinish backupFinish = nullptr;
 
     private:
         template<typename T>
@@ -319,6 +332,239 @@ namespace
         text += flag;
         return text;
     }
+
+    bool ReadUserVersion(const WinSQLite& api, const std::filesystem::path& path,
+                         int& version)
+    {
+        DatabaseHandle handle(api);
+        const std::string pathString = path.string();
+        if (api.openV2(pathString.c_str(), handle.Address(),
+                       SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+            return false;
+        Statement statement(api, handle.Get(), "PRAGMA user_version;");
+        if (!statement) return false;
+        if (api.step(statement.Get()) != SQLITE_ROW) return false;
+        version = api.columnInt(statement.Get(), 0);
+        return true;
+    }
+
+    bool BackupDatabase(const WinSQLite& api, const std::filesystem::path& source,
+                        const std::filesystem::path& destination)
+    {
+        if (!api.openV2 || !api.close || !api.backupInit || !api.backupStep ||
+            !api.backupFinish)
+            return false;
+        DatabaseHandle sourceHandle(api);
+        DatabaseHandle destinationHandle(api);
+        const std::string sourceString = source.string();
+        const std::string destinationString = destination.string();
+        if (api.openV2(sourceString.c_str(), sourceHandle.Address(),
+                       SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+            return false;
+        if (api.openV2(destinationString.c_str(), destinationHandle.Address(),
+                       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) !=
+            SQLITE_OK)
+            return false;
+        sqlite3_backup* backup = api.backupInit(destinationHandle.Get(), "main",
+                                                sourceHandle.Get(), "main");
+        if (!backup) return false;
+        const int step = api.backupStep(backup, -1);
+        api.backupFinish(backup);
+        return step == SQLITE_DONE;
+    }
+
+    std::filesystem::path UniqueBackupPath(const std::filesystem::path& folder,
+                                           const std::string& stem)
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm local{};
+        localtime_s(&local, &now);
+        char stamp[32] = {};
+        std::strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", &local);
+        std::filesystem::path candidate =
+            folder / (stem + ".pre-v5.0.0-" + stamp + ".db");
+        int suffix = 1;
+        while (std::filesystem::exists(candidate))
+        {
+            candidate = folder / (stem + ".pre-v5.0.0-" + stamp + "-" +
+                                  std::to_string(suffix++) + ".db");
+        }
+        return candidate;
+    }
+
+    bool CreateMigrationBackups(const WinSQLite& api,
+                                const std::filesystem::path& basePath,
+                                const std::filesystem::path& mainDatabase,
+                                std::string& message)
+    {
+        const std::filesystem::path backupFolder =
+            basePath / "GAMEDATA" / "Backups";
+        std::error_code error;
+        std::filesystem::create_directories(backupFolder, error);
+        if (error)
+        {
+            message = "Could not create migration backup folder: " +
+                      error.message();
+            return false;
+        }
+
+        const std::filesystem::path mainBackup =
+            UniqueBackupPath(backupFolder, "o2em-ng");
+        if (!BackupDatabase(api, mainDatabase, mainBackup))
+        {
+            message = "Could not back up o2em-ng.db; migration aborted.";
+            return false;
+        }
+
+        const std::filesystem::path collectionDatabase =
+            basePath / "GAMEDATA" / "mycollection.db";
+        if (std::filesystem::exists(collectionDatabase, error))
+        {
+            const std::filesystem::path collectionBackup =
+                UniqueBackupPath(backupFolder, "mycollection");
+            if (!BackupDatabase(api, collectionDatabase, collectionBackup))
+            {
+                message = "Could not back up mycollection.db; migration aborted.";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    struct CatalogueMergeReport
+    {
+        std::size_t inserted = 0;
+        std::size_t updated = 0;
+    };
+
+    bool MergeCatalogueSeed(const WinSQLite& api, sqlite3* userDatabase,
+                            const std::filesystem::path& cataloguePath,
+                            const std::unordered_map<std::string, bool>& suppressed,
+                            CatalogueMergeReport& report, std::string& error)
+    {
+        std::error_code fsError;
+        if (!std::filesystem::is_regular_file(cataloguePath, fsError))
+            return true; // No packaged catalogue resource; nothing to merge.
+
+        DatabaseHandle catalogue(api);
+        const std::string catalogueString = cataloguePath.string();
+        if (api.openV2(catalogueString.c_str(), catalogue.Address(),
+                       SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK)
+        {
+            error = "Could not open Beta 5 catalogue resource.";
+            return false;
+        }
+
+        Statement select(api, catalogue.Get(),
+            "SELECT rom_filename,title,notes,category,plus_version,prototype,"
+            "unreleased,alternate,hack,fixed,user_title,year,publisher,"
+            "developer,genre,players,controls,voice_module,videopac_plus_text,"
+            "rating,short_description,user_description,trivia,manual_path,"
+            "user_catalog_id FROM games;");
+        if (!select)
+        {
+            error = "Could not read Beta 5 catalogue resource.";
+            return false;
+        }
+
+        Statement exists(api, userDatabase,
+            "SELECT 1 FROM games WHERE rom_filename=? COLLATE NOCASE LIMIT 1;");
+        Statement upsert(api, userDatabase,
+            "INSERT INTO games("
+            "rom_filename,title,notes,category,plus_version,prototype,"
+            "unreleased,alternate,hack,fixed,user_title,year,publisher,"
+            "developer,genre,players,controls,voice_module,videopac_plus_text,"
+            "rating,short_description,user_description,trivia,manual_path,"
+            "user_catalog_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+            "ON CONFLICT(rom_filename) DO UPDATE SET "
+            "title=excluded.title,notes=excluded.notes,category=excluded.category,"
+            "plus_version=excluded.plus_version,prototype=excluded.prototype,"
+            "unreleased=excluded.unreleased,alternate=excluded.alternate,"
+            "hack=excluded.hack,fixed=excluded.fixed,"
+            "year=CASE WHEN games.year='' THEN excluded.year ELSE games.year END,"
+            "publisher=CASE WHEN games.publisher='' THEN excluded.publisher ELSE games.publisher END,"
+            "developer=CASE WHEN games.developer='' THEN excluded.developer ELSE games.developer END,"
+            "genre=CASE WHEN games.genre='' THEN excluded.genre ELSE games.genre END,"
+            "players=CASE WHEN games.players='' THEN excluded.players ELSE games.players END,"
+            "controls=CASE WHEN games.controls='' THEN excluded.controls ELSE games.controls END,"
+            "voice_module=CASE WHEN games.voice_module='' THEN excluded.voice_module ELSE games.voice_module END,"
+            "videopac_plus_text=CASE WHEN games.videopac_plus_text='' THEN excluded.videopac_plus_text ELSE games.videopac_plus_text END,"
+            "short_description=CASE WHEN games.short_description='' THEN excluded.short_description ELSE games.short_description END,"
+            "trivia=CASE WHEN games.trivia='' THEN excluded.trivia ELSE games.trivia END;");
+        if (!exists || !upsert)
+        {
+            error = "Could not prepare Beta 5 catalogue merge.";
+            return false;
+        }
+
+        while (api.step(select.Get()) == SQLITE_ROW)
+        {
+            const std::string romFilename = ColumnString(api, select.Get(), 0);
+            if (romFilename.empty()) continue;
+            std::string key = romFilename;
+            std::transform(key.begin(), key.end(), key.begin(),
+                [](unsigned char character)
+                {
+                    return static_cast<char>(std::tolower(character));
+                });
+
+            bool rowExists = false;
+            BindText(api, exists.Get(), 1, romFilename);
+            if (api.step(exists.Get()) == SQLITE_ROW) rowExists = true;
+            api.reset(exists.Get());
+            api.clearBindings(exists.Get());
+            if (!rowExists && suppressed.find(key) != suppressed.end())
+                continue;
+
+            BindText(api, upsert.Get(), 1, romFilename);
+            BindText(api, upsert.Get(), 2, ColumnString(api, select.Get(), 1));  // title
+            BindText(api, upsert.Get(), 3, ColumnString(api, select.Get(), 2));  // notes
+            BindText(api, upsert.Get(), 4, ColumnString(api, select.Get(), 3));  // category
+            api.bindInt(upsert.Get(), 5, api.columnInt(select.Get(), 4));        // plus_version
+            api.bindInt(upsert.Get(), 6, api.columnInt(select.Get(), 5));        // prototype
+            api.bindInt(upsert.Get(), 7, api.columnInt(select.Get(), 6));        // unreleased
+            api.bindInt(upsert.Get(), 8, api.columnInt(select.Get(), 7));        // alternate
+            api.bindInt(upsert.Get(), 9, api.columnInt(select.Get(), 8));        // hack
+            api.bindInt(upsert.Get(), 10, api.columnInt(select.Get(), 9));       // fixed
+            BindText(api, upsert.Get(), 11, ColumnString(api, select.Get(), 10)); // user_title
+            BindText(api, upsert.Get(), 12, ColumnString(api, select.Get(), 11)); // year
+            BindText(api, upsert.Get(), 13, ColumnString(api, select.Get(), 12)); // publisher
+            BindText(api, upsert.Get(), 14, ColumnString(api, select.Get(), 13)); // developer
+            BindText(api, upsert.Get(), 15, ColumnString(api, select.Get(), 14)); // genre
+            BindText(api, upsert.Get(), 16, ColumnString(api, select.Get(), 15)); // players
+            BindText(api, upsert.Get(), 17, ColumnString(api, select.Get(), 16)); // controls
+            BindText(api, upsert.Get(), 18, ColumnString(api, select.Get(), 17)); // voice_module
+            BindText(api, upsert.Get(), 19, ColumnString(api, select.Get(), 18)); // videopac_plus_text
+            BindText(api, upsert.Get(), 20, ColumnString(api, select.Get(), 19)); // rating
+            BindText(api, upsert.Get(), 21, ColumnString(api, select.Get(), 20)); // short_description
+            BindText(api, upsert.Get(), 22, ColumnString(api, select.Get(), 21)); // user_description
+            BindText(api, upsert.Get(), 23, ColumnString(api, select.Get(), 22)); // trivia
+            BindText(api, upsert.Get(), 24, ColumnString(api, select.Get(), 23)); // manual_path
+            BindText(api, upsert.Get(), 25, ColumnString(api, select.Get(), 24)); // user_catalog_id
+
+            if (api.step(upsert.Get()) != SQLITE_DONE)
+            {
+                error = "Beta 5 catalogue merge failed while writing " + romFilename;
+                api.reset(upsert.Get());
+                api.clearBindings(upsert.Get());
+                return false;
+            }
+            if (rowExists) ++report.updated;
+            else ++report.inserted;
+            api.reset(upsert.Get());
+            api.clearBindings(upsert.Get());
+        }
+
+        std::string ignored;
+        if (!Execute(api, userDatabase,
+                     "UPDATE games SET videopac_plus_text='Yes' "
+                     "WHERE rom_filename='vp_60.bin' COLLATE NOCASE;", ignored))
+        {
+            error = "Could not apply vp_60 Beta 5 correction.";
+            return false;
+        }
+        return true;
+    }
 }
 
 GameDatabase::GameDatabase(const std::filesystem::path& basePath)
@@ -358,6 +604,30 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
     const std::filesystem::path databasePath = DatabasePath();
     const bool existed = std::filesystem::exists(databasePath, fsError);
     const std::string databasePathString = databasePath.string();
+
+    int userVersion = 0;
+    bool needsMigration = false;
+    if (existed)
+    {
+        if (!ReadUserVersion(api, databasePath, userVersion))
+        {
+            result.message = "Could not read the database schema version.";
+            return result;
+        }
+        needsMigration = userVersion < 5;
+        if (needsMigration)
+        {
+            if (!CreateMigrationBackups(api, basePath_, databasePath,
+                                        result.migrationMessage))
+            {
+                result.message = "Beta 5 migration aborted: " +
+                                 result.migrationMessage;
+                return result;
+            }
+            result.migrationBackupCreated = true;
+            result.migrated = true;
+        }
+    }
 
     DatabaseHandle handle(api);
     if (api.openV2(databasePathString.c_str(), handle.Address(),
@@ -541,6 +811,41 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         suppressedKeys[key] = true;
     }
 
+    // Merge the system-owned Beta 5 catalogue into the user's existing
+    // database. Personal fields (favorites, ratings, play history, user
+    // metadata and suppression choices) are never updated here.
+    const std::filesystem::path cataloguePath =
+        DatabasePath().parent_path() / "catalogue.db";
+    CatalogueMergeReport mergeReport;
+    std::string mergeError;
+    if (!Execute(api, handle.Get(), "BEGIN IMMEDIATE TRANSACTION;", error))
+    {
+        result.message = "Could not begin Beta 5 catalogue merge: " + error;
+        return result;
+    }
+    if (!MergeCatalogueSeed(api, handle.Get(), cataloguePath, suppressedKeys,
+                            mergeReport, mergeError))
+    {
+        Execute(api, handle.Get(), "ROLLBACK;", error);
+        result.message = "Beta 5 catalogue merge failed: " + mergeError;
+        return result;
+    }
+    if ((!existed || userVersion < 5) &&
+        !Execute(api, handle.Get(), "PRAGMA user_version=5;", error))
+    {
+        Execute(api, handle.Get(), "ROLLBACK;", error);
+        result.message = "Could not set Beta 5 schema version: " + error;
+        return result;
+    }
+    if (!Execute(api, handle.Get(), "COMMIT;", error))
+    {
+        Execute(api, handle.Get(), "ROLLBACK;", error);
+        result.message = "Could not commit Beta 5 catalogue merge: " + error;
+        return result;
+    }
+    result.catalogueRowsInserted = mergeReport.inserted;
+    result.catalogueRowsUpdated = mergeReport.updated;
+
     for (const ImportedRecord& record : records)
     {
         const RomClassification classification =
@@ -713,6 +1018,10 @@ GameDatabaseResult GameDatabase::InitializeAndPopulate(GameLibrary& library) con
         message << ", " << result.importedRecords << " records refreshed";
     else
         message << ", no Gamelist.txt found";
+    if (result.migrated)
+        message << ", Beta 5 migration: " << result.catalogueRowsInserted
+                << " rows inserted, " << result.catalogueRowsUpdated
+                << " rows merged";
     message << ". DB: " << DatabasePath().string();
     result.message = message.str();
     return result;

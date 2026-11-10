@@ -12,19 +12,25 @@ VCInstallDir redistributable folders. Missing required files fail the packaging 
 silently creating an incomplete distribution.
 
 The authoritative seed is always `Gamedata/o2em-ng.db`. A Release build also stages
-that exact file into `x64/Release/GAMEDATA/o2em-ng.db` through
-`tools/stage-release-seed.ps1`, so running the Release build folder directly uses the
-same seed as the package. Any previous runtime database in that build-output folder is
-backed up as `o2em-ng.runtime-backup-<timestamp>.db` before it is replaced.
+that exact file into both `x64/Release/GAMEDATA/o2em-ng.db` and
+`x64/Release/GAMEDATA/catalogue.db` through `tools/stage-release-seed.ps1`, so
+running the Release build folder directly uses the same seed and migration catalogue
+as the package. Any previous runtime database in that build-output folder is backed
+up as `o2em-ng.runtime-backup-<timestamp>.db` before it is replaced.
 
-`tools/package-release.ps1` verifies both the tracked seed and the packaged
-`GAMEDATA/o2em-ng.db` against the SHA256 in `release-manifest.json`. A mismatch fails
-the package instead of producing a wrong release. `x64/Release/GAMEDATA` is never used
-as the package source.
+`catalogue.db` is the system-owned Beta 5 catalogue used only for safe upgrade
+merging. It is not the user's database.
+
+`tools/package-release.ps1` verifies the tracked seed, the packaged
+`GAMEDATA/o2em-ng.db` and the packaged `GAMEDATA/catalogue.db` against the SHA256 in
+`release-manifest.json`. A mismatch fails the package instead of producing a wrong
+release. `x64/Release/GAMEDATA` is never used as the package source.
 
 A clean installation receives this seed. Upgrading an existing installation preserves
-the existing user `GAMEDATA/o2em-ng.db` by design; only a clean destination is
-guaranteed to start with the approved seed and empty My Collection.
+the existing user `GAMEDATA/o2em-ng.db` and `GAMEDATA/mycollection.db`; the
+application startup migration merges Beta 5 catalogue additions/corrections while
+preserving all user-owned fields. The migration creates safety backups under
+`GAMEDATA/Backups` before changing an existing database.
 
 Only listed files and the approved content folders are included. The supplied
 GAMEDATA/o2em-ng.db catalogue is included. No local configuration, ROMs, BIOS,
@@ -49,7 +55,10 @@ The installer reads `dist/release-info.iss`, generated from the same manifest ve
 and release name, and consumes the prepared package. The current candidate output is
 `O2EM-NG-Beta-5-v5.0.0-Setup.exe`. It does not copy your development configuration.
 The supplied database seeds new installations; an existing user database is preserved
-on upgrade and uninstall. Upgrades do not automatically merge new catalogue entries.
+on upgrade and uninstall. On first Beta 5 startup, the application merges the packaged
+system catalogue into the preserved user database and writes current schema version 5.
+System/project pages (About, Credits, Special Thanks, Roadmap, Release Notes) are
+compiled into the application, not read from the legacy user `project_pages` rows.
 The application icon is embedded in the executable and included for the SDL window.
 
 Packaging does not publish to GitHub. Test the package and installer on a clean

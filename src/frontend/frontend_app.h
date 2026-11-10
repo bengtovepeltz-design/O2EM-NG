@@ -165,7 +165,6 @@ private:
     void DrawWin95Button(const SDL_FRect& rect, const char* label, bool pressed);
     void OpenSelectedManual();
     void EditLibraryDescription();
-    void EditCurrentProjectPage();
     void SelectProjectPage(int index);
 
     void HandleKeyDown(const SDL_KeyboardEvent& event);

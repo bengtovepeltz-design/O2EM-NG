@@ -1,0 +1,26 @@
+#include "system_project_pages.h"
+
+namespace {
+
+const char* kAbout = "O2EM-NG\n\nBeta 5 \xE2""\x80""\x94"" v5.0.0\n\nPowered by the new NG core";
+
+const char* kCredits = "ORIGINAL O2EM - Free Odyssey2 / Videopac+ Emulator\n\nCreated by Daniel Boris <dboris@comcast.net> - (c) 1997, 1998\nDeveloped by Andre de la Rocha <adlroc@users.sourceforge.net>\nArlindo M. de Oliveira <dgtec@users.sourceforge.net>\n\nOriginal O2EM project website:\nhttp://o2em.sourceforge.net\n\nO2EM-NG\n\nProject direction and Windows modernization:\nBengt-Ove Peltz\n\nTHIRD-PARTY TECHNOLOGY\n\nSDL3\nSQLite\nPDFium\nMicrosoft Visual Studio and Windows SDK";
+
+const char* kSpecialThanks = "Videopac and Odyssey2 communities\n\nCollectors and archivists\n\nMark Guttenbrunner (Manopac)\nFor his extensive work on the original O2EM emulator and his invaluable contributions to understanding and preserving the Philips Videopac/Odyssey\xC2""\xB2"" hardware. His research and emulation work remains an important technical reference for O2EM-NG.\n\nBrian Dehli \xE2""\x80""\x94"" Tvspil.dk\nFor his generous support of the O2EM-NG project, including assistance in locating rare Videopac documentation, sharing his extensive knowledge, and contributing original Videopac cartridges and other physical reference material for preservation and testing. His long-standing dedication to preserving Philips Videopac hardware, games and history through Tvspil.dk \xE2""\x80""\x94"" and his remarkable generosity and willingness to help \xE2""\x80""\x94"" are sincerely appreciated.\n\nS\xC3""\xB6""ren Gust\nFor his important technical contributions to O2EM and the wider Videopac community, including detailed hardware documentation, emulator patches, MegaCART bank-switching support, Videopac+ research and numerous improvements to compatibility and accuracy. Parts of his work remain part of the technical heritage inherited by O2EM-NG, and his documentation continues to be a valuable reference for understanding the Philips Videopac hardware.\n\n\n";
+
+const char* kRoadmap = "BETA 5\nNG emulation core\nG7000 / G7400 convergence\nC7010 special hardware\nCompatibility and regression testing\nDocumentation and release packaging\n\nFUTURE\nAdd planned features and priorities here.";
+
+const char* kReleaseNotes = "O2EM-NG Beta 5 \xE2""\x80""\x94"" v5.0.0\n\nBeta 5 is the largest technical update in O2EM-NG history.\n\nThe emulator now runs on the completely new NG emulation core, replacing the old O2EM machine architecture while preserving the familiar O2EM-NG frontend, Library, My Collection, controls and workflows.\n\nWhat's new in Beta 5:\n\n\xE2""\x80""\xA2"" Completely new NG emulation core\n\xE2""\x80""\xA2"" New Intel MCS-48 / 8048 CPU\n\xE2""\x80""\xA2"" New deterministic machine scheduler and timebase\n\xE2""\x80""\xA2"" New i8244 / i8245 video engine\n\xE2""\x80""\xA2"" Rebuilt G7000 / Odyssey\xC2""\xB2"" emulation\n\xE2""\x80""\xA2"" Rebuilt G7400 / Videopac+ emulation\n\xE2""\x80""\xA2"" New EF9340 / EF9341 / VPP implementation\n\xE2""\x80""\xA2"" New hardware-synchronized NG audio engine\n\xE2""\x80""\xA2"" C7010 Chess integrated as NG special hardware\n\xE2""\x80""\xA2"" Improved PAL and NTSC timing\n\xE2""\x80""\xA2"" Improved raster, sprite, grid and character rendering\n\xE2""\x80""\xA2"" Improved cartridge and memory handling\n\xE2""\x80""\xA2"" Improved Xbox controller support\n\xE2""\x80""\xA2"" Restored reset, return-to-menu and controller port-swap commands\n\xE2""\x80""\xA2"" Extensive compatibility testing against MAME and real Philips hardware\n\xE2""\x80""\xA2"" Many historical per-game timing and raster workarounds are no longer needed\n\nThe new audio engine is synchronized directly with the machine hardware and has been manually compared with a real Philips G7000.\n\nThe G7000, G7400/Videopac+ and C7010 now run as part of the new NG machine architecture.\n\nExisting O2EM-NG features remain, including:\n\n\xE2""\x80""\xA2"" Win95-inspired frontend\n\xE2""\x80""\xA2"" Library and Smart Database\n\xE2""\x80""\xA2"" My Collection\n\xE2""\x80""\xA2"" Favorites and personal ratings\n\xE2""\x80""\xA2"" Game metadata and media\n\xE2""\x80""\xA2"" Manuals\n\xE2""\x80""\xA2"" ROM importing\n\xE2""\x80""\xA2"" Existing keyboard and controller mappings\n\nBeta 5 represents a new generation of O2EM-NG rather than an incremental update to the old core.\n\nThe Future is finally running.";
+
+} // namespace
+
+std::vector<ProjectPage> BuildSystemProjectPages()
+{
+    return {
+        { "about", "About", kAbout, 0 },
+        { "credits", "Credits", kCredits, 1 },
+        { "special_thanks", "Special Thanks", kSpecialThanks, 2 },
+        { "roadmap", "Roadmap", kRoadmap, 3 },
+        { "release_notes", "Release Notes", kReleaseNotes, 4 },
+    };
+}

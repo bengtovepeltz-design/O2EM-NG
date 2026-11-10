@@ -1,7 +1,7 @@
 {
   "version": "5.0.0",
   "release": "Beta 5",
-  "seedSha256": "8E3E558CA55EDD98A522DAB0581F181E3D2A94F79E3FBCC242A0D7C59227725E",
+  "seedSha256": "5E65DA91699232359ABA40D65ABBB39BFB792169591B29D656B2C05D59B209AC",
   "files": [
     {
       "source": "assets/O2EM-NG_Icon.png",
@@ -10,6 +10,10 @@
     {
       "source": "Gamedata/o2em-ng.db",
       "destination": "GAMEDATA/o2em-ng.db"
+    },
+    {
+      "source": "Gamedata/o2em-ng.db",
+      "destination": "GAMEDATA/catalogue.db"
     },
     {
       "source": "D:/Librarys/SDL3-3.4.10/lib/x64/SDL3.dll",

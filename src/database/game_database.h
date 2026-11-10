@@ -26,6 +26,13 @@ struct GameDatabaseResult
     std::size_t matchedGames = 0;
     std::vector<std::string> unmatchedRomFilenames;
     std::string message;
+
+    // Beta 4 -> Beta 5 migration state (also useful to the migration tests).
+    bool migrated = false;
+    bool migrationBackupCreated = false;
+    std::size_t catalogueRowsInserted = 0;
+    std::size_t catalogueRowsUpdated = 0;
+    std::string migrationMessage;
 };
 
 // Read-only identity pair for the main preservation catalogue. Used by My
