@@ -32,8 +32,7 @@ constexpr int kLayerH = kVisibleRows * kGlyphH;
 Byte gLum = 0xFF;
 Byte gTransparency = 0xFF;
 Byte gData = 0;
-Byte gMode = 0;
-int gCursorX = 0;
+Byte gMode = 0;int gCursorX = 0;
 int gCursorY = 0;
 int gY0 = 0;
 int gSlice = 0;
@@ -46,6 +45,24 @@ bool gBlink = false;
 Byte gMem[kCols][kRows][4]{};
 Byte gDynamicChars[2][960]{};
 std::array<Byte, kLayerW * kLayerH> gLayer{};
+
+// Diagnostic VBL latch snapshot (only populated by vpp_latch_frame()).
+std::array<Byte, kLayerW * kLayerH> gLatchedLayer{};
+Byte gLatchedTransparency = 0xFF;
+Byte gLatchedLum = 0xFF;
+Byte gLatchedMode = 0;
+bool gLatchedValid = false;
+
+bool vppTraceEnabled()
+{
+    static int enabled = -1;
+    if (enabled < 0)
+    {
+        const char* env = std::getenv("O2EM_VPP_TRACE");
+        enabled = (env && *env && *env != '0') ? 1 : 0;
+    }
+    return enabled == 1;
+}
 
 int remapColour3(int value)
 {
@@ -254,6 +271,19 @@ void rebuildLayer()
 }
 }
 
+void vpp_latch_frame(void)
+{
+    if (!app_data.vpp)
+        return;
+    if (gDirty)
+        rebuildLayer();
+    gLatchedLayer = gLayer;
+    gLatchedTransparency = gTransparency;
+    gLatchedLum = gLum;
+    gLatchedMode = gMode;
+    gLatchedValid = true;
+}
+
 Byte read_PB(Byte p)
 {
     switch (p & 3)
@@ -276,6 +306,13 @@ void write_PB(Byte p, Byte val)
     case 3: gTransparency = static_cast<Byte>((gTransparency & 0xF0) | val); break;
     }
     gDirty = true;
+    if (vppTraceEnabled() && frame >= 100 && frame <= 260)
+    {
+        std::fprintf(stderr,
+            "VPP_PB frame=%d p=%u val=%02X -> trans=%02X lum=%02X\n",
+            frame, static_cast<unsigned>(p & 3), static_cast<unsigned>(val),
+            static_cast<unsigned>(gTransparency), static_cast<unsigned>(gLum));
+    }
 }
 
 Byte vpp_read(ADDRESS adr)
@@ -396,6 +433,7 @@ void init_vpp(void)
     gDirty = true;
     gBlinkCounter = 0;
     gBlink = false;
+    gLatchedValid = false;
     std::memset(gMem, 0, sizeof(gMem));
     std::memset(gDynamicChars, 0, sizeof(gDynamicChars));
     std::fill(gLayer.begin(), gLayer.end(), 0);
@@ -424,11 +462,33 @@ void vpp_compose(Byte* framebuffer, int width, int height)
         gDirty = true;
     }
 
-    if (gTransparency == 0xFF)
+    const Byte effectiveTransparency =
+        gLatchedValid ? gLatchedTransparency : gTransparency;
+    if (effectiveTransparency == 0xFF)
+    {
+        if (vppTraceEnabled() && frame >= 100 && frame <= 260)
+            std::fprintf(stderr,
+                "VPP_COMPOSE frame=%d trans=FF lum=%02X mode=%02X dirty=%d -> SKIP\n",
+                frame, static_cast<unsigned>(gLum), static_cast<unsigned>(gMode),
+                gDirty ? 1 : 0);
         return;
+    }
 
-    if (gDirty)
+    if (vppTraceEnabled() && frame >= 100 && frame <= 260)
+        std::fprintf(stderr,
+            "VPP_COMPOSE frame=%d trans=%02X lum=%02X mode=%02X dirty=%d\n",
+            frame, static_cast<unsigned>(effectiveTransparency),
+            static_cast<unsigned>(gLatchedValid ? gLatchedLum : gLum),
+            static_cast<unsigned>(gLatchedValid ? gLatchedMode : gMode),
+            gDirty ? 1 : 0);
+
+    if (!gLatchedValid && gDirty)
         rebuildLayer();
+
+    const Byte savedTransparency = gTransparency;
+    if (gLatchedValid)
+        gTransparency = gLatchedTransparency;
+    const Byte* composeLayer = gLatchedValid ? gLatchedLayer.data() : gLayer.data();
 
     // Match Mark Guttenbrunner's working O2EM 1.20 VPP compositor.
     // The crucial detail is that TraReg is tested against the colour of the
@@ -470,7 +530,7 @@ void vpp_compose(Byte* framebuffer, int width, int height)
     for (int y = 0; y < copyH; ++y)
     {
         Byte* dst = framebuffer + (y + dstY) * width + dstX;
-        const Byte* plus = gLayer.data() + y * kLayerW;
+        const Byte* plus = composeLayer + y * kLayerW;
 
         for (int x = 0; x < copyW; ++x)
         {
@@ -483,4 +543,7 @@ void vpp_compose(Byte* framebuffer, int width, int height)
                 dst[x] = plus[x];
         }
     }
+
+    if (gLatchedValid)
+        gTransparency = savedTransparency;
 }

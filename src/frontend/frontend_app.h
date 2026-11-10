@@ -18,6 +18,8 @@
 #include "src/metadata/metadata_engine.h"
 #include "src/update_check.h"
 
+class StartupSplash;
+
 class FrontendApp
 {
 public:
@@ -26,7 +28,10 @@ public:
     FrontendApp(const FrontendApp&) = delete;
     FrontendApp& operator=(const FrontendApp&) = delete;
 
-    bool Initialize();
+    // Optional startup progress sink (the startup splash). When non-null, the
+    // real initialization stages are reported to it so the loading screen
+    // reflects actual work. Passing nullptr preserves the previous behaviour.
+    bool Initialize(StartupSplash* splash = nullptr);
     bool HandleEvent(const SDL_Event& event);
     void Draw();
     bool IsRunning() const noexcept;
@@ -134,6 +139,11 @@ private:
     void MoveMetadataSelection(int direction);
     void MoveTab(int direction);
     void SetActiveTab(FrontendTab tab);
+    // Single owner for the frontend side of a game session boundary. The
+    // emulator owns its own machine/GPU teardown; these keep frontend
+    // transient state, shared renderer state and input coherent around it.
+    void BeginGameSession();
+    void RestoreFrontendAfterGame(bool launched);
     void ActivateSelection();
     void ActivateSettingsSelection();
     void ApplyFullscreenMode(bool enabled);

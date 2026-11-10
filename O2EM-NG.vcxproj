@@ -126,8 +126,10 @@
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
 copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
 if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
+if not exist "$(TargetDir)assets\audio" mkdir "$(TargetDir)assets\audio"
 copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"
-copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"</Command>
+copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"
+copy /Y "$(ProjectDir)assets\audio\reset_sound_g_7000.wav" "$(TargetDir)assets\audio\reset_sound_g_7000.wav"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,25 +157,46 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
       <Command>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(ProjectDir)tools\get_pdfium.ps1" -DestinationDirectory "$(ProjectDir)third_party\pdfium"
 copy /Y "$(ProjectDir)third_party\pdfium\pdfium.dll" "$(TargetDir)pdfium.dll"
 if not exist "$(TargetDir)assets" mkdir "$(TargetDir)assets"
+if not exist "$(TargetDir)assets\audio" mkdir "$(TargetDir)assets\audio"
 copy /Y "$(ProjectDir)assets\O2EM-NG_Header.png" "$(TargetDir)assets\O2EM-NG_Header.png"
-copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"</Command>
+copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.png"
+copy /Y "$(ProjectDir)assets\audio\reset_sound_g_7000.wav" "$(TargetDir)assets\audio\reset_sound_g_7000.wav"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\mcs48\vp61_trace_fixture.cpp" />
     <ClCompile Include="src\mcs48\vbl_timing_probe.cpp" />
+    <ClCompile Include="src\mcs48\g7400_freeze_trace.cpp" />
     <ClInclude Include="src\mcs48\legacy_observation.h" />
     <ClInclude Include="src\mcs48\vbl_timing_probe.h" />
+    <ClInclude Include="src\mcs48\g7400_freeze_trace.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="audio8245.cpp" />
     <ClCompile Include="c7010.cpp" />
+    <ClCompile Include="c7010_special.cpp" />
     <ClCompile Include="audio_sdl.cpp" />
     <ClCompile Include="cpu.cpp" />
     <ClCompile Include="crc32.cpp" />
     <ClCompile Include="cset.cpp" />
     <ClCompile Include="debug_stub.cpp" />
     <ClCompile Include="emulator_core.cpp" />
+    <ClCompile Include="src\ng_host\sdl_ng_host.cpp" />
+    <ClCompile Include="src\core_ng\cpu\mcs48_ng.cpp" />
+    <ClCompile Include="src\core_ng\scheduler.cpp" />
+    <ClCompile Include="src\core_ng\memory\cartridge.cpp" />
+    <ClCompile Include="src\core_ng\memory\mapper.cpp" />
+    <ClCompile Include="src\core_ng\memory\bus.cpp" />
+    <ClCompile Include="src\core_ng\input\adapter.cpp" />
+    <ClCompile Include="src\core_ng\video\vdc.cpp" />
+    <ClCompile Include="src\core_ng\video\vpp.cpp" />
+    <ClCompile Include="src\core_ng\audio\audio_device.cpp" />
+    <ClCompile Include="src\core_ng\video\ef9340_charset.cpp" />
+    <ClCompile Include="src\core_ng\video\character_rom.cpp" />
+    <ClCompile Include="src\core_ng\video\i8244.cpp" />
+    <ClCompile Include="src\core_ng\video\i8245.cpp" />
+    <ClCompile Include="src\core_ng\diagnostics\bus_trace.cpp" />
+    <ClCompile Include="src\core_ng\machine.cpp" />
     <ClCompile Include="frontend_boxart.cpp" />
     <ClCompile Include="src\media\video_preview.cpp" />
     <ClCompile Include="src\frontend\frontend_screenshot.cpp" />
@@ -193,6 +216,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClCompile Include="rom_browser.cpp" />
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="src\frontend\frontend_app.cpp" />
+    <ClCompile Include="src\frontend\startup_splash.cpp" />
     <ClCompile Include="src\frontend\frontend_collection.cpp" />
     <ClCompile Include="src\update_check.cpp" />
     <ClCompile Include="src\mcs48\cpu_adapter.cpp" />
@@ -229,6 +253,9 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="src\mcs48\input_schedule.h" />
     <ClInclude Include="audio.h" />
     <ClInclude Include="c7010.h" />
+    <ClInclude Include="src\ng_host\host_commands.h" />
+    <ClInclude Include="src\core_ng\special\special_hardware.h" />
+    <ClInclude Include="c7010_special.h" />
     <ClInclude Include="audio8245.h" />
     <ClInclude Include="audio_config.h" />
     <ClInclude Include="cpu.h" />
@@ -253,6 +280,7 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
     <ClInclude Include="rom_browser.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="src\frontend\frontend_app.h" />
+    <ClInclude Include="src\frontend\startup_splash.h" />
     <ClInclude Include="src\frontend\frontend_collection.h" />
     <ClInclude Include="src\frontend\metadata_text_editor.h" />
     <ClInclude Include="src\database\library_view.h" />
@@ -295,8 +323,9 @@ copy /Y "$(ProjectDir)assets\O2EM-NG_Icon.png" "$(TargetDir)assets\O2EM-NG_Icon.
   </ImportGroup>
   <ItemGroup>
     <None Include="assets\O2EM-NG_Header.png" />
+    <None Include="assets\audio\reset_sound_g_7000.wav" />
   </ItemGroup>
-  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /></ItemGroup>
+  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /><None Include="Docs\Beta_5_v5.0.0_Quick start guide.md" /></ItemGroup>
   <Target Name="PackageRelease" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(DesignTimeBuild)' != 'true' and '$(SkipReleasePackaging)' != 'true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\package-release.ps1&quot; -ProjectDir &quot;$(ProjectDir).&quot; -TargetPath &quot;$(TargetPath)&quot; -RedistDir &quot;$(VCInstallDir)Redist\MSVC&quot;" />
   </Target>

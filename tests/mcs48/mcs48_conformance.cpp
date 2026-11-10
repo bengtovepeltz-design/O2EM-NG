@@ -10,14 +10,14 @@
 // no window, no audio, no user data, no ROM files.
 //
 // SUITE SEMANTICS (important):
-//   - Tests labeled PASS_CONTROL assert legacy behavior already matches the
-//     8048 reference (Intel manual / MAME as recorded in Phase 1). If one of
-//     these fails, production cpu.cpp has drifted from the audited baseline.
-//   - Tests labeled EXPECTED_LEGACY_FAILURE assert that the legacy core does
-//     NOT yet match the reference. They are ALLOWED AND EXPECTED to fail
-//     against cpu.cpp; they document known Phase 1 defects and define the
-//     acceptance criteria for the future MCS48-NG core. cpu.cpp must NOT be
-//     edited to make them pass.
+//   - Tests labeled PASS_CONTROL assert behavior that must match the 8048
+//     reference (Intel manual / MAME). If one of these fails, production
+//     cpu.cpp has drifted from the audited baseline. irq_entry_cycle_accounting
+//     is a control because production now charges the two-cycle IRQ entry.
+//   - Tests labeled EXPECTED_LEGACY_FAILURE assert that the remaining known
+//     Phase 1 defects are still present. They are ALLOWED AND EXPECTED to fail
+//     against cpu.cpp; they document the defects that the future MCS48-NG core
+//     must still fix.
 //
 // Exit codes: 0 = green (all controls pass AND all labeled legacy failures
 // confirmed). 1 = drift (a control failed or a known failure started
@@ -246,9 +246,10 @@ static void TestResetPrescaler() {
     KnownFailureResult("reset_clears_prescaler", master_count == 0, obs, "presc=0");
 }
 
-// Interrupt entry cycle accounting. Reference: the two entry cycles become
-// machine time. Legacy adds them to clk AFTER master_clk was advanced, and
-// the next iteration zeroes clk, losing them (elapsed machine time 1, clk 3).
+// Interrupt entry cycle accounting. Reference: check_irqs() burns two machine
+// cycles before the vector fetch, and those cycles must become real machine
+// time. The two cycles are queued at the IRQ entry and consumed by the next
+// instruction fetch, so the test steps over the vector NOP to observe them.
 static void TestIrqEntryCycles() {
     MachineReset();
     const unsigned char prog[] = {0x05, 0x00}; // EN I, NOP, then NOP space
@@ -258,13 +259,16 @@ static void TestIrqEntryCycles() {
     xirq_pend = 1;                         // synthetic external IRQ pending
     const int before = master_clk;
     Step(); // NOP executes; pending IRQ serviced in the scheduler tail
-    const int elapsed = master_clk - before;
     SanityCheck(pc == 0x003, "IRQ entry must vector to 0x003");
     SanityCheck(irq_ex == 1, "IRQ entry must mark in-service");
     SanityCheck(sp == 10 && intRAM[8] == 0x02, "entry must push return address");
-    char obs[48]; std::snprintf(obs, sizeof(obs), "machine=%d clk=%ld", elapsed, clk);
-    // Reference: 1 (NOP) + 2 (entry) = 3 machine cycles.
-    KnownFailureResult("irq_entry_cycle_accounting", elapsed == 3, obs, "machine=3");
+    const int boundary = master_clk - before;
+    Step(); // vector NOP consumes the queued two-cycle entry cost
+    const int elapsed = master_clk - before;
+    char obs[64]; std::snprintf(obs, sizeof(obs),
+        "machine=%d boundary=%d clk=%ld", elapsed, boundary, clk);
+    // Reference: 1 (NOP) + 2 (entry) + 1 (vector NOP) = 4 machine cycles.
+    ControlResult("irq_entry_cycle_accounting", elapsed == 4, obs, "machine=4");
 }
 
 // RET during interrupt service must not resurrect memory-bank bit 11.

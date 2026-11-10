@@ -19,6 +19,36 @@ extern int last_line;
 
 extern int evblclk;
 
+// Reference-derived PAL vertical raster timebase (standard G7000/G7400 PAL).
+// Off (NTSC / C52 / Jopac / legacy switch) => historical production values.
+int VM_PalVerticalTimingActive(void);
+int VM_PalVblCycle(void);
+int VM_PalFrameBase(void);
+int VM_EffectiveVblClk(void);
+int VM_EffectiveFrameClk(void);
+unsigned int VM_A4BeamValue(int master);
+unsigned int VM_PalA4BeamValue(int master);
+void VM_RasterTimingFrameBoundary(void);
+void VM_ConfigurePalRasterTiming(void);
+
+// Experimental unified CPU/video/raster timebase (Checkpoint B).
+// Off unless O2EM_UNIFIED_VIDEO_TIMEBASE_TEST=1.
+bool VM_UnifiedVideoTestEnabled(void);
+void VM_UnifiedVideoConfigure(void);
+void VM_UnifiedVideoReset(void);
+void VM_UnifiedVideoAdvance(int cycles);
+int VM_UnifiedVideoPhasePixels(void);
+int VM_UnifiedVideoHPos(void);
+int VM_UnifiedVideoVPos(void);
+int VM_UnifiedVideoHBlank(void);
+int VM_UnifiedVideoVBlank(void);
+int VM_UnifiedVideoT1Level(void);
+int VM_UnifiedVideoBeamLine(void);
+int VM_UnifiedVideoYBeam(void);
+int VM_UnifiedVideoXBeam(void);
+int VM_UnifiedVideoTakeVblCross(void);
+int VM_UnifiedVideoTakeFrameCross(void);
+
 extern int master_clk;		/* Master clock */
 extern int int_clk;		/* counter for length of /INT pulses for JNI */
 extern int h_clk;   /* horizontal clock */
@@ -59,6 +89,7 @@ void write_p1(Byte d);
 Byte read_t1(void);
 void init_system(void);
 void O2EM_SetRegionModeOverride(int mode);
+void O2EM_RequestReset(void);
 void init_roms(void);
 void run(void);
 int savestate(char* filename);

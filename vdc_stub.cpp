@@ -27,6 +27,28 @@ using Byte = uint8_t;
 #define COL_VPP   0x40
 #define COL_CHAR  0x80
 
+// MAME 0.289 i8244 update-on-write semantics:
+//  - flush the rendered region before A0/A2/A3 changes, not only before VBL;
+//  - draw objects only while A0 bit 5 (display enable) is set;
+//  - map the CPU write time to the scanline containing the beam position.
+// The legacy O2EM renderer is still available with O2EM_I8244_LEGACY_RENDER=1
+// for regression comparison.
+static bool I8244MameUpdateEnabled(void)
+{
+    static int enabled = -1;
+    if (enabled < 0)
+    {
+        const char* legacy = std::getenv("O2EM_I8244_LEGACY_RENDER");
+        enabled = (legacy && *legacy && *legacy != '0') ? 0 : 1;
+    }
+    return enabled == 1;
+}
+
+bool VDCStub_MameUpdateEnabled(void)
+{
+    return I8244MameUpdateEnabled();
+}
+
 Byte coltab[256] = { 0 };
 long clip_low = 0;
 long clip_high = BMPW * BMPH;
@@ -35,6 +57,32 @@ int show_fps = 0;
 static SDL_Window* gWindow = nullptr;
 static SDL_Renderer* gRenderer = nullptr;
 static SDL_Texture* gTexture = nullptr;
+static int gRendererGeneration = 0;
+
+// Development-only frame capture state (video investigation). The probe
+// enables this before booting; normal runs keep it off.
+static bool gDebugFrameTracking = false;
+static unsigned long long gDebugFrameSerial = 0;
+static unsigned long long gDebugFrameHash = 0;
+static int gDebugFrameNumber = 0;
+static int gDebugFrameA0 = 0;
+static int gDebugFrameA3 = 0;
+static int gDebugFrameAA = 0;
+static unsigned char gDebugLastFrame[BMPW * BMPH];
+static unsigned char gDebugLastVdc[256];
+
+// Small, bounded lifecycle trace. Debug builds always emit it; Release builds
+// emit only when O2EM_LIFECYCLE_TRACE is explicitly set. This proves renderer
+// ownership without creating permanent Release logs.
+static bool LifecycleTraceEnabled(void)
+{
+#if defined(_DEBUG)
+    return true;
+#else
+    const char* env = std::getenv("O2EM_LIFECYCLE_TRACE");
+    return env && *env && *env != '0';
+#endif
+}
 
 static char gOverlayMessage[64] = { 0 };
 static Uint64 gOverlayUntil = 0;
@@ -46,6 +94,34 @@ void VDCStub_ShowMessage(const char* message)
 
     SDL_snprintf(gOverlayMessage, sizeof(gOverlayMessage), "%s", message);
     gOverlayUntil = SDL_GetTicks() + 1800;
+}
+
+void VDCStub_DrawOverlay(SDL_Renderer* renderer, const SDL_FRect& dst)
+{
+    if (!renderer || gOverlayMessage[0] == '\0')
+        return;
+
+    if (SDL_GetTicks() < gOverlayUntil)
+    {
+        float textX = dst.x + 12.0f;
+        float textY = dst.y + dst.h - 28.0f;
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 190);
+        SDL_FRect background{
+            textX - 6.0f,
+            textY - 6.0f,
+            static_cast<float>(SDL_strlen(gOverlayMessage) * 8 + 12),
+            20.0f
+        };
+        SDL_RenderFillRect(renderer, &background);
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderDebugText(renderer, textX, textY, gOverlayMessage);
+    }
+    else
+    {
+        gOverlayMessage[0] = '\0';
+    }
 }
 
 static Byte vscreen[BMPW * BMPH] = { 0 };
@@ -106,11 +182,143 @@ void VDCStub_SetWindow(SDL_Window* window)
     if (!gRenderer && gWindow)
     {
         gRenderer = SDL_CreateRenderer(gWindow, nullptr);
-        if (!gRenderer)
+        if (gRenderer)
+        {
+            ++gRendererGeneration;
+            if (LifecycleTraceEnabled())
+            {
+                std::printf(
+                    "O2EM-NG: [lifecycle] renderer created ptr=%p generation=%d\n",
+                    static_cast<void*>(gRenderer), gRendererGeneration);
+                std::fflush(stdout);
+            }
+        }
+        else
+        {
             SDL_Log("SDL_CreateRenderer failed: %s", SDL_GetError());
+        }
     }
 
     ensure_texture();
+}
+
+SDL_Renderer* VDCStub_GetRenderer(void)
+{
+    return gRenderer;
+}
+
+int VDCStub_RendererGeneration(void)
+{
+    return gRendererGeneration;
+}
+
+void VDCStub_DebugEnableFrameTracking(void)
+{
+    gDebugFrameTracking = true;
+}
+
+unsigned long long VDCStub_DebugFrameSerial(void)
+{
+    return gDebugFrameSerial;
+}
+
+unsigned long long VDCStub_DebugFrameHash(void)
+{
+    return gDebugFrameHash;
+}
+
+int VDCStub_DebugFrameNumber(void)
+{
+    return gDebugFrameNumber;
+}
+
+int VDCStub_DebugFrameA0(void)
+{
+    return gDebugFrameA0;
+}
+
+int VDCStub_DebugFrameA3(void)
+{
+    return gDebugFrameA3;
+}
+
+int VDCStub_DebugFrameAA(void)
+{
+    return gDebugFrameAA;
+}
+
+void VDCStub_DebugCopyLastVdc(unsigned char* dst)
+{
+    if (dst)
+        std::memcpy(dst, gDebugLastVdc, sizeof(gDebugLastVdc));
+}
+
+unsigned VDCStub_DebugPixelColor(int x, int y)
+{
+    if (x < 0 || x >= BMPW || y < 0 || y >= BMPH)
+        return 0xFF;
+    return vscreen[y * BMPW + x];
+}
+
+unsigned VDCStub_DebugPixelLayers(int x, int y)
+{
+    if (x < 0 || x >= BMPW || y < 0 || y >= BMPH)
+        return 0;
+    return col[y * BMPW + x];
+}
+
+void VDCStub_DebugSaveLastFrameBmp(const char* path)
+{
+    if (!path || !*path)
+        return;
+
+    FILE* f = std::fopen(path, "wb");
+    if (!f)
+        return;
+
+    constexpr int w = BMPW;
+    constexpr int h = BMPH;
+    constexpr int rowBytes = w * 3;
+    constexpr int rowPadded = (rowBytes + 3) & ~3;
+    constexpr int dataSize = rowPadded * h;
+    constexpr int fileSize = 54 + dataSize;
+
+    unsigned char header[54] = {};
+    header[0] = 'B';
+    header[1] = 'M';
+    auto put32 = [](unsigned char* p, unsigned int v)
+    {
+        p[0] = static_cast<unsigned char>(v & 0xFF);
+        p[1] = static_cast<unsigned char>((v >> 8) & 0xFF);
+        p[2] = static_cast<unsigned char>((v >> 16) & 0xFF);
+        p[3] = static_cast<unsigned char>((v >> 24) & 0xFF);
+    };
+    put32(header + 2, static_cast<unsigned int>(fileSize));
+    put32(header + 10, 54);
+    put32(header + 14, 40);
+    put32(header + 18, static_cast<unsigned int>(w));
+    put32(header + 22, static_cast<unsigned int>(h));
+    header[26] = 1;
+    header[28] = 24;
+    put32(header + 34, static_cast<unsigned int>(dataSize));
+
+    std::fwrite(header, 1, sizeof(header), f);
+
+    unsigned char row[rowPadded] = {};
+    for (int y = h - 1; y >= 0; --y)
+    {
+        std::memset(row, 0, sizeof(row));
+        for (int x = 0; x < w; ++x)
+        {
+            const uint32_t argb = palette_to_argb(gDebugLastFrame[y * w + x]);
+            row[x * 3 + 0] = static_cast<unsigned char>(argb & 0xFF);
+            row[x * 3 + 1] = static_cast<unsigned char>((argb >> 8) & 0xFF);
+            row[x * 3 + 2] = static_cast<unsigned char>((argb >> 16) & 0xFF);
+        }
+        std::fwrite(row, 1, rowPadded, f);
+    }
+
+    std::fclose(f);
 }
 
 static inline void mputvid(unsigned int ad, unsigned int len, Byte d, Byte c)
@@ -134,6 +342,13 @@ static void draw_grid(void)
     Byte mask, d;
     int j, i, x, w;
     Byte color;
+
+    static int drawTrace = -1;
+    if (drawTrace < 0)
+    {
+        const char* env = std::getenv("O2EM_GRID_DRAW_TRACE");
+        drawTrace = (env && *env && *env != '0') ? 1 : 0;
+    }
 
     if (VDCwrite[0xA0] & 0x40)
     {
@@ -172,6 +387,10 @@ static void draw_grid(void)
                 if (d & mask)
                 {
                     color = ColorVector[j * 24 + 24];
+                    if (drawTrace && frame == 200 && j == 0 && i == 0)
+                        std::fprintf(stderr, "GRID_H_DRAW line=%d cv=%02X d=%u\n",
+                            j * 24 + 24, unsigned(color),
+                            unsigned((color & 0x07) | ((color & 0x40) >> 3) | (color & 0x80 ? 0 : 8)));
                     mputvid(pn1, 36, (color & 0x07) | ((color & 0x40) >> 3) | (color & 0x80 ? 0 : 8), COL_HGRID);
                     color = ColorVector[j * 24 + 25];
                     mputvid(pn1 + BMPW, 36, (color & 0x07) | ((color & 0x40) >> 3) | (color & 0x80 ? 0 : 8), COL_HGRID);
@@ -200,6 +419,10 @@ static void draw_grid(void)
                         (pn1 <= static_cast<unsigned long>(clip_high)))
                     {
                         color = ColorVector[x * 24 + 24 + i];
+                        if (drawTrace && frame == 200 && j == 0 && x == 0)
+                            std::fprintf(stderr, "GRID_V_DRAW line=%d cv=%02X d=%u\n",
+                                x * 24 + 24 + i, unsigned(color),
+                                unsigned((color & 0x07) | ((color & 0x40) >> 3) | (color & 0x80 ? 0 : 8)));
                         mputvid(pn1, w, (color & 0x07) | ((color & 0x40) >> 3) | (color & 0x80 ? 0 : 8), COL_VGRID);
                     }
                     pn1 += BMPW;
@@ -212,6 +435,9 @@ static void draw_grid(void)
 
 static void draw_char(Byte ypos, Byte xpos, Byte chr, Byte colr)
 {
+    if (ypos < 0x0E)
+        return;
+
     int j, c;
     Byte cl, d1;
     int y, b, n;
@@ -264,6 +490,9 @@ static void draw_char(Byte ypos, Byte xpos, Byte chr, Byte colr)
 static void draw_quad(Byte ypos, Byte xpos, Byte cp0l, Byte cp0h, Byte cp1l, Byte cp1h,
                       Byte cp2l, Byte cp2h, Byte cp3l, Byte cp3h)
 {
+    if (ypos < 0x0E)
+        return;
+
     int chp[4];
     Byte qcol[4];
     unsigned int pnt;
@@ -342,7 +571,14 @@ void draw_display(void)
     if (VDCwrite[0xA0] & 0x08)
         draw_grid();
 
-    if (useforen && (!(VDCwrite[0xA0] & 0x20)))
+    if (I8244MameUpdateEnabled())
+    {
+        // MAME 0.289 i8244: objects are only drawn while the display is
+        // enabled (A0 bit 5). VP48 switches this bit per scanline band.
+        if (!(VDCwrite[0xA0] & 0x20))
+            return;
+    }
+    else if (useforen && (!(VDCwrite[0xA0] & 0x20)))
         return;
 
     const Byte* characters = C7010_IsEnabled() && c7010CharactersValid
@@ -432,6 +668,19 @@ void draw_display(void)
 void draw_region(void)
 {
     int i;
+
+    // Use the same PAL beam timebase as A4/VBL for the renderer line index.
+    // The legacy 20-cycle scale remains only for NTSC/legacy timing.
+    static int palRenderOffset = -1;
+    if (palRenderOffset < 0)
+    {
+        // MAME 0.289 i8244 update-on-write renders exactly up to the current
+        // beam position; there is no extra line lag. The legacy path keeps its
+        // historical -5 calibration. The legacy 20-cycle path below also
+        // applies its own -5 for non-PAL timing.
+        palRenderOffset = I8244MameUpdateEnabled() ? 0 : 5;
+    }
+
     if (!C7010_IsEnabled()) {
         c7010CharactersValid = false;
     } else if (!c7010CharactersValid || last_line == 0 || (VDCwrite[0xA0] & 0x20)) {
@@ -439,40 +688,80 @@ void draw_region(void)
         c7010CharactersValid = true;
     }
 
-    // 0030Y: C7010 multiplexes characters down the screen. Use the same
-    // 22-cycle raster scale as the VDC beam latch, preserving the origin.
-    // The legacy 20-cycle scale clips later rows before they are installed.
-    if (C7010_IsEnabled())
-        i = (master_clk / 22 - 5);
+    // C7010 multiplexes characters down the screen. Under the legacy PAL
+    // model it uses the historical 22-cycle raster scale (calibrated against
+    // that frame timing). Under the corrected PAL model the renderer must use
+    // the same exact beam timebase as A4/T1/VBL, otherwise later character
+    // rows are installed against the wrong scanline and the board loses its
+    // bottom half.
+    const bool mameRender = I8244MameUpdateEnabled();
+    if (VM_UnifiedVideoTestEnabled())
+    {
+        // Checkpoint B: one authoritative beam line. Bypass the legacy
+        // /20 /22 /24 scales, C7010 raster path, CRC branches, palRenderOffset
+        // and snapline. regionoff is retained only as a fixed display-origin
+        // offset (see tests/compat/reports/unified_delta.md).
+        i = VM_UnifiedVideoBeamLine();
+        if (regionoff != 0xffff)
+            i += static_cast<int>(regionoff);
+    }
+    else if (C7010_IsEnabled())
+    {
+        if (mameRender && VM_PalVerticalTimingActive())
+            i = static_cast<int>((static_cast<long long>(master_clk) * 18 + 228) / 456) - palRenderOffset;
+        else
+            i = (master_clk / 22 - 5);
+    }
     else if (regionoff == 0xffff)
-        i = (master_clk / (LINECNT - 1) - 5);
+    {
+        if (mameRender && VM_PalVerticalTimingActive())
+            i = static_cast<int>((static_cast<long long>(master_clk) * 18 + 228) / 456) - palRenderOffset;
+        else
+            i = (master_clk / (LINECNT - 1) - 5);
+    }
     else
-        i = (master_clk / 22 + regionoff);
-
-    i = snapline(i, VDCwrite[0xA0], 0);
-
-    if (app_data.crc == 0xA7344D1F)
     {
-        i = (master_clk / 22 + regionoff) + 6;
-        i = snapline(i, VDCwrite[0xA0], 0) + 6;
+        // Per-title line offset (regionoff) is a fixed visible-area shift, not
+        // a line-rate calibration. Keep the offset but use the active PAL beam
+        // scale so mid-frame character/object updates land on the right line.
+        if (mameRender && VM_PalVerticalTimingActive())
+            i = static_cast<int>((static_cast<long long>(master_clk) * 18 + 228) / 456) - palRenderOffset + static_cast<int>(regionoff);
+        else
+            i = (master_clk / 22 + regionoff);
     }
 
-    if (app_data.crc == 0xD0BC4EE6)
-    {
-        i = (master_clk / 24 + regionoff) - 6;
-        i = snapline(i, VDCwrite[0xA0], 0) + 7;
-    }
+    if (!VM_UnifiedVideoTestEnabled())
+        i = snapline(i, VDCwrite[0xA0], 0);
 
-    if (app_data.crc == 0x26517E77)
+    // The per-title raster offsets below were calibrated against the legacy
+    // PAL timing model (22/24-cycle line scale). Under the corrected PAL
+    // timebase the generic exact-beam mapping already places the writes on the
+    // right scanline, so applying the old calibration shifts/clips the image.
+    if (!mameRender || !VM_PalVerticalTimingActive())
     {
-        i = (master_clk / 22 + regionoff);
-        i = snapline(i, VDCwrite[0xA0], 0) - 5;
-    }
+        if (app_data.crc == 0xA7344D1F)
+        {
+            i = (master_clk / 22 + regionoff) + 6;
+            i = snapline(i, VDCwrite[0xA0], 0) + 6;
+        }
 
-    if (app_data.crc == 0xA57E1724)
-    {
-        i = (master_clk / (LINECNT - 1) - 5);
-        i = snapline(i, VDCwrite[0xA0], 0) - 3;
+        if (app_data.crc == 0xD0BC4EE6)
+        {
+            i = (master_clk / 24 + regionoff) - 6;
+            i = snapline(i, VDCwrite[0xA0], 0) + 7;
+        }
+
+        if (app_data.crc == 0x26517E77)
+        {
+            i = (master_clk / 22 + regionoff);
+            i = snapline(i, VDCwrite[0xA0], 0) - 5;
+        }
+
+        if (app_data.crc == 0xA57E1724)
+        {
+            i = (master_clk / (LINECNT - 1) - 5);
+            i = snapline(i, VDCwrite[0xA0], 0) - 3;
+        }
     }
 
     if (i < 0)
@@ -480,8 +769,10 @@ void draw_region(void)
     if (i > BMPH)
         i = BMPH;
 
+    const int highLine = i;
+
     clip_low = last_line * static_cast<long>(BMPW);
-    clip_high = i * static_cast<long>(BMPW);
+    clip_high = highLine * static_cast<long>(BMPW);
 
     if (clip_high > BMPW * BMPH)
         clip_high = BMPW * BMPH;
@@ -498,7 +789,7 @@ void draw_region(void)
     if (clip_low < clip_high)
         draw_display();
 
-    last_line = i;
+    last_line = highLine;
 }
 
 void finish_display(void)
@@ -520,6 +811,23 @@ void finish_display(void)
         for (int i = 0; i < BMPW * BMPH; ++i)
             beforePixels += (palette_to_argb(vscreen[i]) & 0x00FFFFFF) != 0;
     vpp_compose(vscreen, BMPW, BMPH);
+    if (gDebugFrameTracking)
+    {
+        unsigned long long hash = 1469598103934665603ull;
+        for (int i = 0; i < BMPW * BMPH; ++i)
+        {
+            hash ^= vscreen[i];
+            hash *= 1099511628211ull;
+        }
+        gDebugFrameHash = hash;
+        gDebugFrameNumber = frame;
+        gDebugFrameA0 = VDCwrite[0xA0];
+        gDebugFrameA3 = VDCwrite[0xA3];
+        gDebugFrameAA = VDCwrite[0xAA];
+        std::memcpy(gDebugLastFrame, vscreen, sizeof(gDebugLastFrame));
+        std::memcpy(gDebugLastVdc, VDCwrite, sizeof(gDebugLastVdc));
+        ++gDebugFrameSerial;
+    }
     if (sampleVp31)
     {
         int afterPixels = 0;
@@ -598,27 +906,7 @@ void finish_display(void)
         }
     }
 
-    if (gOverlayMessage[0] != '\0' && SDL_GetTicks() < gOverlayUntil)
-    {
-        float textX = dst.x + 12.0f;
-        float textY = dst.y + dst.h - 28.0f;
-
-        SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 190);
-        SDL_FRect background{
-            textX - 6.0f,
-            textY - 6.0f,
-            static_cast<float>(SDL_strlen(gOverlayMessage) * 8 + 12),
-            20.0f
-        };
-        SDL_RenderFillRect(gRenderer, &background);
-
-        SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
-        SDL_RenderDebugText(gRenderer, textX, textY, gOverlayMessage);
-    }
-    else if (gOverlayMessage[0] != '\0')
-    {
-        gOverlayMessage[0] = '\0';
-    }
+    VDCStub_DrawOverlay(gRenderer, dst);
 
     SDL_RenderPresent(gRenderer);
 }
@@ -634,16 +922,23 @@ void clear_collision(void)
 
 void close_display(void)
 {
+    // Release only emulator-owned GPU resources. The SDL_Window and the shared
+    // SDL_Renderer are application-owned: they must survive every game session
+    // so frontend texture caches (banner, box art, icon, manual, screenshots)
+    // never outlive the renderer that created them.
     if (gTexture)
     {
         SDL_DestroyTexture(gTexture);
         gTexture = nullptr;
     }
 
-    if (gRenderer)
+    if (LifecycleTraceEnabled() && gRenderer)
     {
-        SDL_DestroyRenderer(gRenderer);
-        gRenderer = nullptr;
+        std::printf(
+            "O2EM-NG: [lifecycle] emulator display closed; renderer retained "
+            "ptr=%p generation=%d\n",
+            static_cast<void*>(gRenderer), gRendererGeneration);
+        std::fflush(stdout);
     }
 }
 

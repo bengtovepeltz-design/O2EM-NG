@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <cmath>
@@ -31,9 +32,22 @@
 #include "ui_font.h"
 #include "videopac_font.h"
 #include "vdc_stub.h"
+#include "startup_splash.h"
 
 namespace
 {
+    // Small, bounded lifecycle trace. Debug builds always emit it; Release
+    // builds emit only when O2EM_LIFECYCLE_TRACE is explicitly set.
+    bool LifecycleTraceEnabled()
+    {
+#if defined(_DEBUG)
+        return true;
+#else
+        const char* env = std::getenv("O2EM_LIFECYCLE_TRACE");
+        return env && *env && *env != '0';
+#endif
+    }
+
     // Five-point star shared by the Favorites marker and the personal rating.
     // Vector geometry (SDL_RenderGeometry) so it never depends on a Unicode
     // star glyph being present in the UI font. The caller supplies the fill and
@@ -353,10 +367,19 @@ FrontendApp::~FrontendApp()
     UiFont_Shutdown();
 }
 
-bool FrontendApp::Initialize()
+bool FrontendApp::Initialize(StartupSplash* splash)
 {
     if (!window_)
         return false;
+
+    // Report only real initialization stages; no synthetic percentages.
+    const auto stage = [splash](const char* label, int completed)
+    {
+        if (splash)
+            splash->Stage(label, completed);
+    };
+
+    stage("Initializing frontend...", 0);
 
     renderer_ = RefreshRenderer();
 
@@ -367,6 +390,7 @@ bool FrontendApp::Initialize()
     const std::string baseFolder = basePath ? basePath : "";
 
     settingsPath_ = baseFolder + "o2em-ng.cfg";
+    stage("Loading settings...", 1);
     settings_ = LoadSettings(settingsPath_);
 
     SDL_GetWindowPosition(window_, &windowedX_, &windowedY_);
@@ -378,6 +402,7 @@ bool FrontendApp::Initialize()
     else
         std::printf("O2EM-NG: windowed startup enabled from settings.\n");
 
+    stage("Loading library...", 2);
     const std::vector<RomEntry> allRoms = LoadRoms(baseFolder + "ROMS");
     // Patch 0024: the library is universal. Official catalogue entries are
     // added by the database below, but every installed .bin/.rom is visible.
@@ -387,12 +412,14 @@ bool FrontendApp::Initialize()
     // is loaded last so user-owned edits always take precedence.
     assetManager_.SetBasePath(baseFolder);
     importManager_.SetBasePath(baseFolder);
+    stage("Scanning BIOS...", 3);
     RefreshInstalledBiosFiles();
 
     // Patch 0030C Phase 4B: metadata/database identity must be loaded before
     // media is resolved. User Catalog IDs such as 54+, C7010 or Tutankham+
     // are required to find imported covers/manuals/screenshots reliably.
     metadataEngine_.SetBasePath(baseFolder);
+    stage("Loading metadata...", 4);
     const std::size_t metadataCount = metadataEngine_.Populate(library_);
     std::printf(
         "O2EM-NG: loaded metadata for %zu of %zu games.\n",
@@ -400,6 +427,7 @@ bool FrontendApp::Initialize()
         library_.Count());
 
     gameDatabase_.SetBasePath(baseFolder);
+    stage("Opening game database...", 5);
     const GameDatabaseResult databaseResult =
         gameDatabase_.InitializeAndPopulate(library_);
     std::printf("O2EM-NG: %s\n", databaseResult.message.c_str());
@@ -437,6 +465,7 @@ bool FrontendApp::Initialize()
     // Resolve media last, after the database has restored user Catalog IDs.
     // This prevents media from disappearing on startup and then suddenly
     // reappearing after importing another screenshot/cover.
+    stage("Resolving media...", 6);
     assetManager_.Populate(library_);
 
     std::size_t manualCount = 0;
@@ -462,12 +491,38 @@ bool FrontendApp::Initialize()
     // My Collection: fully owned by CollectionPage. It creates and reads its
     // own database GAMEDATA/mycollection.db and only reads the main library
     // for reference metadata / cover reuse. The main DB is never modified.
+    stage("Preparing interface...", 7);
     collectionPage_.Initialize(baseFolder, &library_, &gameDatabase_, window_);
 
     settingsSelected_ = 0;
     activeTab_ = FrontendTab::Library;
     running_ = true;
     redraw_ = true;
+
+    stage("Ready", 8);
+
+#if defined(_DEBUG)
+    // Development-only direct launch for input/video investigation. Never
+    // active in normal use; requires O2EM_DEBUG_LAUNCH_ROM=<rom filename>.
+    const char* debugLaunchRom = std::getenv("O2EM_DEBUG_LAUNCH_ROM");
+    if (debugLaunchRom && *debugLaunchRom)
+    {
+        for (const GameInfo& game : library_.Games())
+        {
+            if (game.filename == debugLaunchRom ||
+                game.romPath.filename().string() == debugLaunchRom)
+            {
+                collections_.SelectFilename(game.filename);
+                activeTab_ = FrontendTab::Library;
+                std::printf("O2EM-NG: DEBUG direct launch: %s\n",
+                    game.filename.c_str());
+                std::fflush(stdout);
+                ActivateSelection();
+                break;
+            }
+        }
+    }
+#endif
 
     return true;
 }
@@ -687,6 +742,61 @@ void FrontendApp::SetActiveTab(FrontendTab tab)
         FrontendTabs_GetName(activeTab_));
 }
 
+void FrontendApp::BeginGameSession()
+{
+    // Input state belongs to the session, not to the process. Starting from a
+    // clean neutral state prevents a held button/axis or a swapped controller
+    // port assignment from the previous session leaking into this game.
+    InputManager_ResetSessionState();
+    InputManager_BeginSessionKeySuppression();
+
+    // Release preview decoding resources while the game runs. This destroys
+    // the screenshot texture while the application-owned renderer is still
+    // valid, so it cannot leave a dangling frontend pointer.
+    FrontendScreenshot_Invalidate();
+
+    redraw_ = true;
+}
+
+void FrontendApp::RestoreFrontendAfterGame(bool launched)
+{
+    // The renderer is application-owned, so normally this returns the same
+    // pointer that was used before the game. The refresh is kept as the safe
+    // hook for a future device-loss/recreation path.
+    renderer_ = RefreshRenderer();
+
+    if (renderer_)
+    {
+        // Emulation must not leave render state behind for the first frontend
+        // draw. Reset the neutral state the frontend draws from.
+        SDL_SetRenderTarget(renderer_, nullptr);
+        SDL_SetRenderViewport(renderer_, nullptr);
+        SDL_SetRenderClipRect(renderer_, nullptr);
+        SDL_SetRenderScale(renderer_, 1.0f, 1.0f);
+        // The emulator enables blending for its scanline overlay. The shared
+        // renderer must return to the frontend's default state.
+        SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_NONE);
+    }
+
+    // No release events are guaranteed while the emulator owns the event loop;
+    // drop held state on the way back to the frontend.
+    InputManager_ClearHeldState();
+
+    if (LifecycleTraceEnabled())
+    {
+        const GameInfo* selected = GetSelectedGame();
+        std::printf(
+            "O2EM-NG: [lifecycle] frontend restored after %s: renderer=%p "
+            "generation=%d selected=%s\n",
+            launched ? "game exit" : "failed launch",
+            static_cast<void*>(renderer_), VDCStub_RendererGeneration(),
+            selected ? selected->filename.c_str() : "(none)");
+        std::fflush(stdout);
+    }
+
+    redraw_ = true;
+}
+
 void FrontendApp::ActivateSelection()
 {
     if (activeTab_ == FrontendTab::Settings)
@@ -772,27 +882,32 @@ void FrontendApp::ActivateSelection()
 
     const std::string launchedFilename = game->filename;
 
-    // The emulator destroys the SDL renderer when a game closes. Release the
-    // cached header texture while the frontend renderer is still valid, so the
-    // texture can never survive as a stale pointer into the destroyed renderer.
-    // FrontendLayout_DrawHeader() will reload it on the first frontend redraw.
-    FrontendLayout_Shutdown();
+    BeginGameSession();
 
     std::printf("O2EM-NG: Launch request using BIOS: %s\n", settings_.bios_file.c_str());
     std::fflush(stdout);
-    FrontendScreenshot_Invalidate(); // Release preview decoding during gameplay.
-    LaunchRom(window_, *game, settings_.region_mode, settings_.bios_file, settings_.scanlines);
+    const bool launched =
+        LaunchRom(window_, *game, settings_.region_mode, settings_.bios_file, settings_.scanlines);
 
-    const std::time_t launchedAt = std::time(nullptr);
-    if (gameDatabase_.RecordLaunch(launchedFilename, launchedAt))
+    if (launched)
     {
-        ++game->playCount;
-        game->lastPlayed = launchedAt;
-        collections_.Rebuild();
+        const std::time_t launchedAt = std::time(nullptr);
+        if (gameDatabase_.RecordLaunch(launchedFilename, launchedAt))
+        {
+            ++game->playCount;
+            game->lastPlayed = launchedAt;
+            collections_.Rebuild();
+        }
+    }
+    else
+    {
+        // EmulatorCore_StartRom() already reported the BIOS/ROM failure.
+        // Return through the same frontend restore path as a normal exit.
+        std::printf("O2EM-NG: game launch failed; returning to frontend.\n");
+        std::fflush(stdout);
     }
 
-    renderer_ = RefreshRenderer();
-    redraw_ = true;
+    RestoreFrontendAfterGame(launched);
 }
 
 void FrontendApp::ApplyFullscreenMode(bool enabled)
@@ -1642,8 +1757,11 @@ void FrontendApp::DrawFrontend()
 
     // Classic Win95 window chrome: title bar + menu bar are drawn inside the
     // borderless client area, then the framed banner and navigation row.
-    FrontendChrome::Draw(window_, renderer_,
-        "O2EM-NG - Philips Videopac G7000 - Classic Gaming Collection - \xC2\xA9 2026 Bengt-Ove Peltz");
+    const std::string windowTitle =
+        std::string("O2EM-NG ") + O2emVersion::kReleaseName + " - " +
+        O2emVersion::kAppVersion +
+        " - Philips Videopac G7000 - Classic Gaming Collection - \xC2\xA9 2026 Bengt-Ove Peltz";
+    FrontendChrome::Draw(window_, renderer_, windowTitle.c_str());
     FrontendLayout_DrawHeader(window_, renderer_);
     FrontendTabs_Draw(renderer_, windowWidth, activeTab_);
 
@@ -1806,6 +1924,20 @@ void FrontendApp::DrawLibraryList(const SDL_FRect& content)
 
 void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
 {
+#if defined(_DEBUG)
+    {
+        static std::string lastSelectedFilename;
+        const GameInfo* selected = GetSelectedGame();
+        const std::string current = selected ? selected->filename : std::string();
+        if (current != lastSelectedFilename)
+        {
+            lastSelectedFilename = current;
+            std::printf("O2EM-NG: DEBUG selected game: %s\n",
+                current.empty() ? "(none)" : current.c_str());
+            std::fflush(stdout);
+        }
+    }
+#endif
     // Personal-rating star hit rects are only valid when the stars were
     // actually drawn this frame; clear before any possible early return.
     ratingStarsDrawn_ = false;
@@ -4714,16 +4846,36 @@ void FrontendApp::DrawAboutTab(const SDL_FRect& content)
 {
     DrawProjectPage(content);
 
-    // Bottom-right version stamp. Fixed UI chrome, independent of the
-    // editable database project pages, so it always shows the compiled-in
-    // application version.
+    // The primary About page carries the fixed product identity. It is not
+    // read from the editable project database, so it cannot drift with user
+    // data or an old database seed.
+    if (projectPages_.empty() ||
+        projectPages_[projectPageIndex_].pageKey != "about")
+        return;
+
     const float margin = 14.0f;
     const SDL_FRect frame{content.x + margin, content.y + margin,
         content.w - margin * 2.0f, content.h - margin * 2.0f};
-    const SDL_FRect inner{frame.x + 4.0f, frame.y + 4.0f, frame.w - 8.0f, frame.h - 8.0f};
+    const SDL_FRect inner{frame.x + 4.0f, frame.y + 4.0f,
+        frame.w - 8.0f, frame.h - 8.0f};
+    const SDL_FRect textFrame{inner.x + 18.0f, inner.y + 126.0f,
+        inner.w - 36.0f, inner.h - 150.0f};
+    DrawSunkenFrame(renderer_, textFrame);
+    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
+    SDL_FRect textArea{textFrame.x + 8.0f, textFrame.y + 8.0f,
+        textFrame.w - 16.0f, textFrame.h - 16.0f};
+    SDL_RenderFillRect(renderer_, &textArea);
+
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, inner.x + inner.w - 170.0f, inner.y + inner.h - 19.0f, 0.8f,
-        std::string("O2EM-NG ") + O2emVersion::kAppVersion);
+    float y = textArea.y + 24.0f;
+    DrawText(renderer_, textArea.x + 20.0f, y, 1.9f, "O2EM-NG");
+    y += 48.0f;
+    DrawText(renderer_, textArea.x + 20.0f, y, 1.25f,
+        std::string(O2emVersion::kReleaseName) + " \xE2\x80\x94 " +
+            O2emVersion::kAppVersion);
+    y += 38.0f;
+    DrawText(renderer_, textArea.x + 20.0f, y, 1.0f,
+        "Powered by the new NG core");
 }
 
 void FrontendApp::DrawCreditsTab(const SDL_FRect& content)
@@ -4766,16 +4918,24 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
 
     Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
     DrawText(renderer_, inner.x + 22.0f, inner.y + 60.0f, 1.55f, page.title);
-    DrawText(renderer_, inner.x + 22.0f, inner.y + 94.0f, 0.9f,
-        "Editable project information stored in GAMEDATA/o2em-ng.db");
 
-    SDL_FRect editButton{inner.x + inner.w - 118.0f, inner.y + 57.0f, 92.0f, 30.0f};
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
-    SDL_RenderFillRect(renderer_, &editButton);
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
-    SDL_RenderRect(renderer_, &editButton);
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    DrawText(renderer_, editButton.x + 20.0f, editButton.y + 7.0f, 0.9f, "Edit...");
+    // The About page is a fixed product identity, not an editable history
+    // page. Credits, Special Thanks, Roadmap and Release Notes remain editable
+    // project pages.
+    const bool aboutPage = page.pageKey == "about";
+    if (!aboutPage)
+    {
+        DrawText(renderer_, inner.x + 22.0f, inner.y + 94.0f, 0.9f,
+            "Editable project information stored in GAMEDATA/o2em-ng.db");
+
+        SDL_FRect editButton{inner.x + inner.w - 118.0f, inner.y + 57.0f, 92.0f, 30.0f};
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Face);
+        SDL_RenderFillRect(renderer_, &editButton);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::Shadow);
+        SDL_RenderRect(renderer_, &editButton);
+        Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
+        DrawText(renderer_, editButton.x + 20.0f, editButton.y + 7.0f, 0.9f, "Edit...");
+    }
 
     SDL_FRect textFrame{inner.x + 18.0f, inner.y + 126.0f, inner.w - 36.0f, inner.h - 150.0f};
     DrawSunkenFrame(renderer_, textFrame);
@@ -4797,7 +4957,7 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
         if (specialName) DrawText(renderer_, textArea.x + 5.0f, y, 0.92f, lines[i]);
         y += 23.0f;
     }
-    if (maxScroll > 0)
+    if (!aboutPage && maxScroll > 0)
     {
         SDL_FRect track{textFrame.x + textFrame.w - 12.0f, textArea.y, 6.0f, textArea.h};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Face); SDL_RenderFillRect(renderer_, &track);

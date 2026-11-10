@@ -21,4 +21,9 @@ namespace mcs48 {
 // code (0 = measured, 2 = could not run).
 bool RunVblTimingProbeIfRequested(int& result);
 
+// Development-only video investigation probe. Boots a ROM, runs for a bounded
+// number of frames, and writes per-frame hashes / optional BMP frames. Disabled
+// unless O2EM_VIDEO_PROBE is set; production execution is unchanged otherwise.
+bool RunVideoProbeIfRequested(int& result);
+
 } // namespace mcs48

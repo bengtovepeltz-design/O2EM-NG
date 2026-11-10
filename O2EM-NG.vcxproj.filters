@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClCompile Include="src\mcs48\vp61_trace_fixture.cpp" />
     <ClCompile Include="src\mcs48\vbl_timing_probe.cpp" />
+    <ClCompile Include="src\mcs48\g7400_freeze_trace.cpp" />
     <ClInclude Include="src\mcs48\legacy_observation.h" />
     <ClInclude Include="src\mcs48\vbl_timing_probe.h" />
+    <ClInclude Include="src\mcs48\g7400_freeze_trace.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
@@ -96,6 +98,9 @@
     <ClCompile Include="c7010.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="c7010_special.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audio_sdl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -161,6 +166,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\frontend\frontend_app.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\frontend\startup_splash.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\frontend\frontend_collection.cpp">
@@ -239,6 +247,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="c7010.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ng_host\host_commands.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core_ng\special\special_hardware.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="c7010_special.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="audio8245.h">
@@ -332,6 +349,9 @@
     <ClInclude Include="src\frontend\frontend_app.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\frontend\startup_splash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\frontend\frontend_collection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -370,6 +390,9 @@
     <None Include="assets\O2EM-NG_Header.png">
       <Filter>Assets</Filter>
     </None>
+    <None Include="assets\audio\reset_sound_g_7000.wav">
+      <Filter>Assets</Filter>
+    </None>
   </ItemGroup>
-  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /></ItemGroup>
+  <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /><None Include="Docs\Beta_5_v5.0.0_Quick start guide.md" /></ItemGroup>
 <ItemGroup><None Include="tools\package-release.ps1" /><None Include="tools\release-manifest.json" /><None Include="Docs\Release packaging.md" /></ItemGroup><ItemGroup><ResourceCompile Include="O2EM-NG.rc" /><Image Include="assets\O2EM-NG.ico" /><Image Include="assets\O2EM-NG_Icon.png" /></ItemGroup><ItemGroup><None Include="Docs\readme.md" /></ItemGroup></Project>

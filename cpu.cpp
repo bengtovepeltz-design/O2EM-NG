@@ -32,6 +32,22 @@ Byte acc = 0;
 ADDRESS pc = 0;
 long clk = 0;
 
+// Forensic switch: the pre-Checkpoint-A VBL handler pulsed ext_IRQ() for five
+// cycles instead of holding the persistent /INT level. Generic legacy probe.
+static bool LegacyVblIrqEnabled()
+{
+    static int value = -1;
+    if (value < 0)
+    {
+        const char* e = getenv("O2EM_I8244_LEGACY_VBL_IRQ");
+        value = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return value == 1;
+}
+
+static int g_livePc = -1;
+static bool g_livePcDumped = false;
+
 Byte itimer = 0;
 Byte reg_pnt = 0;
 Byte timer_on = 0;
@@ -92,7 +108,158 @@ void CPU_ArmC7010EnterTrace(Byte scannedP2)
 #define make_psw() {psw = (cy << 7) | ac | f0 | bs | 0x08; psw = psw | ((sp - 8) >> 1);}
 #define illegal(o) {}
 #define undef(i) {}
+
 #define ROM(adr) (rom[(adr) & 0xfff])
+
+// Production external IRQ model (MAME 0.289 mcs48/i8244 semantics):
+//  - the i8244 VBL request is a persistent level on the 8048 /INT input;
+//  - the CPU samples it before each opcode fetch;
+//  - a taken interrupt costs two machine cycles before the vector fetch;
+//  - the line is cleared by the i8244 A1 status read, not by entry.
+// No request is lost while the CPU is ineligible (EI/IN-service window).
+static int g_irqLine = 0;
+static int g_vblStatus = 0;
+static int g_isrTraceActive = 0;
+static int g_isrTraceEnabled = -1;
+static int g_irqTrace = -1;
+static int g_irqTraceEvents = 0;
+
+int CPU_IsrTraceActive(void)
+{
+    if (g_isrTraceEnabled < 0)
+    {
+        const char* e = std::getenv("O2EM_ISR_TRACE");
+        g_isrTraceEnabled = (e && *e && *e != '0') ? 1 : 0;
+    }
+    return (g_isrTraceEnabled == 1 && g_isrTraceActive) ? 1 : 0;
+}
+
+int CPU_IrqLineState(void)
+{
+    return g_irqLine;
+}
+
+void CPU_VBL_StatusLatch(void)
+{
+    g_vblStatus = 1;
+}
+
+int CPU_VblStatus(void)
+{
+    return g_vblStatus;
+}
+
+static bool IrqTraceEnabled(void)
+{
+    if (g_irqTrace < 0)
+    {
+        const char* env = std::getenv("O2EM_IRQ_TRACE");
+        g_irqTrace = (env && *env && *env != '0') ? 1 : 0;
+    }
+    return g_irqTrace == 1;
+}
+
+void CPU_IrqLineAck(void)
+{
+    if (IrqTraceEnabled())
+        fprintf(stderr, "IRQ_ACK frame=%d mclk=%d pc=%03X irqLine=%d xirq_en=%d irq_ex=%d\n",
+            frame, master_clk, unsigned(pc), g_irqLine,
+            unsigned(xirq_en), unsigned(irq_ex));
+    g_irqLine = 0;
+    g_vblStatus = 0;
+}
+
+static int g_irqEntryPendingCycles = 0;
+
+static void AccountIrqEntryCycles(void)
+{
+    // check_irqs() burns two cycles before execute_call(0x03). clk is reset at
+    // the top of the instruction loop, so carry the cost to the next fetch.
+    g_irqEntryPendingCycles += 2;
+}
+
+// ---------------------------------------------------------------------------
+// PAL video timebase (single authoritative source for T1/A4/beam/VBL/A1)
+// ---------------------------------------------------------------------------
+// i8245 PAL geometry from MAME 0.289:
+//   456 pixels/line, 313 lines/frame, 18 pixels/MCS48 machine cycle.
+//   frame = 142728 pixels = 7929 + 1/3 machine cycles.
+//   VBL event = line 242, h=365 -> pixel 110717.
+// The beam is a free-running pixel phase. It advances by exactly 18 pixels
+// per machine cycle and keeps the fractional frame remainder across frames;
+// it is not reset at the O2EM frame boundary.
+#define PAL_FRAME_PIXELS 142728
+#define PAL_VBL_PIXEL (242 * 456 + 365)
+// Reset phase calibrated against MAME's CPU/VBL acceptance boundary. Expressed
+// in integer pixels so every consumer uses the same timebase.
+#define PAL_PHASE_INIT_PIXELS (-24)
+
+static long long g_videoPhasePixels = PAL_PHASE_INIT_PIXELS;
+static int g_t1BeamLastLevel = 0;
+
+static void PalVideoPhaseReset(void)
+{
+    long long p = PAL_PHASE_INIT_PIXELS % PAL_FRAME_PIXELS;
+    if (p < 0) p += PAL_FRAME_PIXELS;
+    g_videoPhasePixels = p;
+}
+
+static int T1BeamLevel(long long beamMaster)
+{
+    if (beamMaster < 0)
+        beamMaster = 0;
+    if (!VM_PalVerticalTimingActive())
+        return ((h_clk > 16) || (master_clk > VM_EffectiveVblClk())) ? 1 : 0;
+
+    // Exact i8244 PAL vblank()/hblank() from MAME 0.289:
+    //   vblank: (v==242 && h>=365) || (v==312 && h<=365) || (242<v<312)
+    //   hblank: 366 <= h < 454
+    const long long px = g_videoPhasePixels +
+        (beamMaster - static_cast<long long>(master_clk)) * 18;
+    int line = static_cast<int>(px / 456) % 313;
+    const int pixel = static_cast<int>(px % 456);
+    const bool vblank = (line == 242 && pixel >= 365) ||
+                        (line == 312 && pixel <= 365) ||
+                        (line > 242 && line < 312);
+    const bool hblank = (pixel >= 366 && pixel < 454);
+    return (vblank || hblank) ? 1 : 0;
+}
+
+// Advance the PAL beam by one instruction's machine cycles and report whether
+// the VBL event pixel was crossed during that interval.
+static bool PalVideoPhaseAdvance(int cycles)
+{
+    const long long before = g_videoPhasePixels;
+    const long long after = before + static_cast<long long>(cycles) * 18;
+    const bool crossed = (before <= PAL_VBL_PIXEL && PAL_VBL_PIXEL < after);
+    g_videoPhasePixels = after % PAL_FRAME_PIXELS;
+    return crossed;
+}
+
+
+static bool IrqTraceSlot(void)
+{
+    if (!IrqTraceEnabled() || g_irqTraceEvents >= 2000)
+        return false;
+    ++g_irqTraceEvents;
+    return true;
+}
+void CPU_VBL_IRQ(void)
+{
+    const int prior = g_irqLine;
+    CPU_VBL_StatusLatch();
+    if (IrqTraceSlot())
+    {
+        fprintf(stderr, "IRQ_REQ frame=%d mclk=%d pc=%03X irq_ex=%d xirq_en=%d pendirq=%d\n",
+            frame, master_clk, unsigned(pc), unsigned(irq_ex), unsigned(xirq_en), unsigned(pendirq));
+    }
+    // The i8244 drives /INT as a level. Keep it asserted until the game reads
+    // the A1 status register (CPU_IrqLineAck), matching the hardware/VBL event.
+    g_irqLine = 1;
+    if (IrqTraceEnabled())
+        fprintf(stderr, "IRQ_ASSERT frame=%d mclk=%d pc=%03X prior=%d xirq_en=%d irq_ex=%d\n",
+            frame, master_clk, unsigned(pc), prior, unsigned(xirq_en), unsigned(irq_ex));
+}
 
 
 void init_cpu(void){
@@ -104,6 +271,12 @@ void init_cpu(void){
 	A11=A11ff=0;
 	timer_on=0;
 	count_on=0;
+	g_t1BeamLastLevel=0;
+	PalVideoPhaseReset();
+	VM_UnifiedVideoReset();
+	g_irqLine=0;
+	g_vblStatus=0;
+	g_irqEntryPendingCycles=0;
 	reg_pnt=0;
 	tirq_en=xirq_en=irq_ex=xirq_pend=tirq_pend=0;
 }
@@ -111,12 +284,18 @@ void init_cpu(void){
 
 void ext_IRQ(void){
     struct ObserveExit { ~ObserveExit() { mcs48::observation::Event(7, 0, irq_ex); } } observeExit;
+    g_isrTraceActive = 1;
 	mcs48::observation::Event(14, 0, 0);
 	int_clk = 5; /* length of pulse on /INT */
 	if (xirq_en && !irq_ex) {
+        if (IrqTraceSlot())
+        {
+            fprintf(stderr, "IRQ_VEC frame=%d mclk=%d pc_before=%03X A=%02X PSW=%02X P1=%02X P2=%02X\n",
+                frame, master_clk, unsigned(pc), unsigned(acc), unsigned(psw), unsigned(p1), unsigned(p2));
+        }
 		irq_ex=1;
 		xirq_pend=0;
-		clk+=2;
+		AccountIrqEntryCycles();
 		make_psw();
 		push(pc & 0xFF);
 		push(((pc & 0xF00) >> 8) | (psw & 0xF0));
@@ -139,7 +318,7 @@ void tim_IRQ(void){
 	if (tirq_en && !irq_ex) {
 		irq_ex=2;
 		tirq_pend=0;
-		clk+=2;
+		AccountIrqEntryCycles();
 		make_psw();
 		push(pc & 0xFF);
 		push(((pc & 0xF00) >> 8) | (psw & 0xF0));
@@ -182,6 +361,36 @@ void cpu_exec(void) {
 
 		clk=0;	
 
+		// check_irqs(): consume the two machine cycles burned by a taken
+		// interrupt before the vector instruction is fetched.
+		if (g_irqEntryPendingCycles)
+		{
+			clk += g_irqEntryPendingCycles;
+			g_irqEntryPendingCycles = 0;
+		}
+
+		// Sample the persistent /INT line before the next opcode fetch.
+		if (g_irqLine && xirq_en && !irq_ex)
+			ext_IRQ();
+
+		// PAL counter mode counts real i8244 hblank->active falling edges.
+		// MAME's burn_cycles() samples T1 at the instruction-start screen
+		// position; the CPU/video phase advances only after the instruction.
+		if (count_on && (VM_UnifiedVideoTestEnabled() || VM_PalVerticalTimingActive())) {
+			const int level = VM_UnifiedVideoTestEnabled()
+				? VM_UnifiedVideoT1Level()
+				: T1BeamLevel(static_cast<long long>(master_clk));
+			if (g_t1BeamLastLevel && !level) {
+				itimer++;
+				if (itimer == 0) {
+					t_flag=1;
+					tim_IRQ();
+					draw_region();
+				}
+			}
+			g_t1BeamLastLevel = level;
+		}
+
         static const bool traceVp31 = std::getenv("O2EM_TRACE_VP31") != nullptr;
         struct Vp31Step { unsigned pc, op, a, p1, p2, bank, irq, r0, r1; };
         static Vp31Step history[96]{};
@@ -203,10 +412,43 @@ void cpu_exec(void) {
                 dumped = true;
             }
         }
+        if (g_livePc < 0)
+        {
+            const char* env = getenv("O2EM_LIVE_PC");
+            if (env && *env)
+                g_livePc = static_cast<int>(strtol(env, nullptr, 0));
+        }
+        if (g_livePc >= 0 && !g_livePcDumped && pc == g_livePc)
+        {
+            g_livePcDumped = true;
+            const int bank = static_cast<int>(rom - rom_table[0]) / 4096;
+            fprintf(stderr, "LIVE_PC bank=%d pc=%03X bytes=", bank, unsigned(pc));
+            for (int k = -16; k <= 48; ++k)
+                fprintf(stderr, "%02X", unsigned(rom[(pc + k) & 0xFFF]));
+            fprintf(stderr, "\n");
+        }
+
 		mcs48::observation::Before(pc, ROM(pc));
 		if (mcs48::observation::Stop()) return;
 		lastpc=pc;
 		op=ROM(pc++);
+
+        if (CPU_IsrTraceActive())
+        {
+            const int px = static_cast<int>((static_cast<long long>(master_clk) * 18) % 456);
+            fprintf(stderr,
+                "ISR pc=%03X op=%02X A=%02X PSW=%02X F1=%u P1=%02X P2=%02X "
+                "R=%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X irq=%u en=%u "
+                "frame=%d mclk=%d h=%d line=%d x=%d\n",
+                unsigned(lastpc), unsigned(op), unsigned(acc), unsigned(psw),
+                unsigned(f1 & 1), unsigned(p1), unsigned(p2),
+                unsigned(intRAM[reg_pnt + 0]), unsigned(intRAM[reg_pnt + 1]),
+                unsigned(intRAM[reg_pnt + 2]), unsigned(intRAM[reg_pnt + 3]),
+                unsigned(intRAM[reg_pnt + 4]), unsigned(intRAM[reg_pnt + 5]),
+                unsigned(intRAM[reg_pnt + 6]), unsigned(intRAM[reg_pnt + 7]),
+                unsigned(irq_ex), unsigned(xirq_en), frame, master_clk, h_clk,
+                static_cast<int>(VM_PalA4BeamValue(master_clk)), px >> 1);
+        }
 
         // 0030W: observe the missing lower-board interval before execution.
         if (master_clk >= 3500 && master_clk <= 5500 && C7010_TakeRasterSample()) {
@@ -258,6 +500,9 @@ void cpu_exec(void) {
 			case 0x05: /* EN I */
 				xirq_en=1;
 				clk++;
+				if (IrqTraceEnabled())
+					fprintf(stderr, "IRQ_EN frame=%d mclk=%d pc=%03X irqLine=%d irq_ex=%d\n",
+						frame, master_clk, unsigned(pc), g_irqLine, unsigned(irq_ex));
 				break;
 			case 0x06: /* ILL */
 				clk++;
@@ -338,8 +583,14 @@ void cpu_exec(void) {
 			case 0x15: /* DIS I */
 				xirq_en=0;
 				clk++;
+				if (IrqTraceEnabled())
+					fprintf(stderr, "IRQ_DIS frame=%d mclk=%d pc=%03X irqLine=%d irq_ex=%d\n",
+						frame, master_clk, unsigned(pc), g_irqLine, unsigned(irq_ex));
 				break;
 			case 0x16: /* JTF */
+				// burn_cycles(2) samples T1 at the instruction-start screen
+				// position (the boundary sample above); no intra-instruction
+				// beam advance is performed.
 				clk+=2;
 				dat = ROM(pc);
 				if (t_flag)
@@ -585,6 +836,10 @@ void cpu_exec(void) {
 			case 0x45: /* STRT CNT */
 				/* printf("START: %d=%d\n",master_clk/22,itimer); */
 				count_on=1;
+				if (VM_UnifiedVideoTestEnabled())
+					g_t1BeamLastLevel = VM_UnifiedVideoT1Level();
+				else if (VM_PalVerticalTimingActive())
+					g_t1BeamLastLevel = T1BeamLevel(static_cast<long long>(master_clk));
 				clk++;
 				break;
 			case 0x46:  /* JNT1 */
@@ -1106,6 +1361,12 @@ void cpu_exec(void) {
 					reg_pnt=0;
 				pc = pc | pull();
 				irq_ex=0;
+				g_isrTraceActive = 0;
+                if (IrqTraceSlot())
+                {
+                    fprintf(stderr, "IRQ_RETR frame=%d mclk=%d pc=%03X A=%02X PSW=%02X P1=%02X P2=%02X\n",
+                        frame, master_clk, unsigned(pc), unsigned(acc), unsigned(psw), unsigned(p1), unsigned(p2));
+                }
 				A11=A11ff; 
 				break;
 			case 0x94: /* CALL */
@@ -1674,6 +1935,21 @@ void cpu_exec(void) {
         mcs48::observation::Advance(static_cast<unsigned int>(clk));
         C7010_Run8048Cycles(static_cast<unsigned int>(clk), static_cast<unsigned int>(evblclk));
         master_clk+=clk;
+        bool vblCrossed = false;
+        if (VM_UnifiedVideoTestEnabled())
+        {
+            VM_UnifiedVideoAdvance(clk);
+            const int cross = VM_UnifiedVideoTakeVblCross();
+            if (mstate == 0 && cross)
+                vblCrossed = true;
+        }
+        else if (VM_PalVerticalTimingActive())
+        {
+            if (mstate == 0)
+                vblCrossed = PalVideoPhaseAdvance(clk);
+            else
+                PalVideoPhaseAdvance(clk);
+        }
 		h_clk+=clk;
 		clk_counter+=clk;
 
@@ -1692,12 +1968,16 @@ void cpu_exec(void) {
 		if (h_clk > LINECNT-1) {
 			h_clk-=LINECNT;
 			if (enahirq && (VDCwrite[0xA0] & 0x01)) { mcs48::observation::Event(13, 3, 0); ext_IRQ(); }
-			if (count_on && mstate == 0) {
-				itimer++;
-				if (itimer == 0) {
-					t_flag=1;
-					tim_IRQ();
-					draw_region();
+			// NTSC/legacy counter mode: one increment per h_clk wrap. PAL
+			// uses the exact i8244 beam edges sampled above instead.
+			if (!VM_PalVerticalTimingActive()) {
+				if (count_on && mstate == 0) {
+					itimer++;
+					if (itimer == 0) {
+						t_flag=1;
+						tim_IRQ();
+						draw_region();
+					}
 				}
 			}
 		}
@@ -1714,9 +1994,51 @@ void cpu_exec(void) {
 			}
 		}
 
-		if ((mstate==0) && (master_clk > VBLCLK)) handle_vbl();
-		
-		if ((mstate==1) && (master_clk > evblclk)) {
+		if (VM_UnifiedVideoTestEnabled())
+		{
+			// Unified beam: VBL asserts at the hardware VBL pixel for PAL/NTSC.
+			if ((mstate==0) && vblCrossed)
+			{
+				// The video frame boundary is the phase wrap at line 0, which
+				// happens *after* VBL. Discard any wrap observed before this
+				// VBL (notably the one at reset, when the initial phase starts
+				// near line 312). Otherwise the stale flag is consumed at VBL
+				// and the CPU frame boundary locks to line 242 instead of 0.
+				VM_UnifiedVideoTakeFrameCross();
+				handle_vbl();
+				if (!LegacyVblIrqEnabled())
+					CPU_VBL_IRQ();
+			}
+		}
+		else if (VM_PalVerticalTimingActive())
+		{
+			// PAL: the VBL line asserts when the continuous beam crosses the
+			// i8244 VBL pixel (line 242, h=365), independent of the opcode
+			// boundary. It is then sampled at the next pre-fetch.
+			if ((mstate==0) && vblCrossed)
+			{
+				handle_vbl();
+				if (!LegacyVblIrqEnabled())
+					CPU_VBL_IRQ();
+			}
+		}
+		else if ((mstate==0) && (master_clk > VM_EffectiveVblClk()))
+		{
+			handle_vbl();
+			if (!LegacyVblIrqEnabled())
+				CPU_VBL_IRQ();
+		}
+
+		if (VM_UnifiedVideoTestEnabled())
+		{
+			if ((mstate==1) && VM_UnifiedVideoTakeFrameCross())
+			{
+				handle_evbl();
+				if (app_data.crc == 0xA7344D1F) handle_evbll(); /* Atlantis */
+				break;
+			}
+		}
+		else if ((mstate==1) && (master_clk > VM_EffectiveFrameClk())) {
 			handle_evbl();
 			if (app_data.crc == 0xA7344D1F) handle_evbll(); /* Atlantis */
             break;

@@ -1,5 +1,6 @@
 #include "emulator_core.h"
 #include "vdc_stub.h"
+#include "src/ng_host/sdl_ng_host.h"
 #include <SDL3/SDL.h>
 #include <cstdio>
 #include <cstdlib>
@@ -15,6 +16,7 @@
 #include <cstdint>
 #include "audio.h"
 #include "c7010.h"
+#include "src/mcs48/g7400_freeze_trace.h"
 
 static long FileSize(FILE* stream)
 {
@@ -103,6 +105,14 @@ static bool LoadCart(const std::string& file)
         fclose(fn);
         return false;
     }
+
+    // Clear only the cartridge window of every bank. The low 1 KiB of each
+    // rom_table bank is the BIOS image installed by LoadBios() and must stay
+    // intact; bytes [1024..4095] are cartridge data and are repopulated below
+    // only for the banks this image actually provides. This prevents mapper
+    // paths from executing leftover bytes from the previously loaded cart.
+    for (int bank = 0; bank < 8; ++bank)
+        std::memset(&rom_table[bank][1024], 0, 3072);
 
     int nb = 0;
 
@@ -267,6 +277,32 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, co
     const std::filesystem::path biosFsPath = baseFolder / "BIOS" / biosFile;
     const std::string biosPath = biosFsPath.string();
 
+    // Development machine selector. It selects the emulation machine only;
+    // input bindings, frontend, library and settings are unchanged.
+    //
+    // Beta 5 release-candidate baseline: both Debug and Release use the NG
+    // machine by default. This is exactly the machine Bengt-Ove accepted via
+    // the normal Debug shortcut. O2EM_CORE=legacy remains an explicit A/B
+    // override; there is no silent legacy release default.
+    bool use_ng = true;
+    if (const char* core = std::getenv("O2EM_CORE")) {
+        if (std::strcmp(core, "ng") == 0)
+            use_ng = true;
+        else if (std::strcmp(core, "legacy") == 0)
+            use_ng = false;
+    }
+
+    // Always identify the active machine path at launch. C7010 and other
+    // special hardware are part of the NG machine; there is no hidden legacy
+    // fallback for a title.
+    std::printf("O2EM-NG: ACTIVE CORE: %s\n", use_ng ? "NG" : "LEGACY");
+    std::fflush(stdout);
+
+    if (use_ng) {
+        const bool pal = regionMode != RegionMode::NTSC;
+        return o2em::ng::host::RunSdl(romPath, biosPath, pal);
+    }
+
     std::printf("O2EM-NG: BIOS requested: %s\n", biosFile.c_str());
     std::printf("O2EM-NG: BIOS resolved path: %s\n", biosPath.c_str());
     std::printf("O2EM-NG: BIOS file exists: %s\n",
@@ -335,7 +371,24 @@ bool EmulatorCore_StartRom(const std::string& romPath, RegionMode regionMode, co
     init_system();
     init_audio();
 
+    // Opt-in observational diagnostic (Helicopter Rescue+ freeze). Inert unless
+    // O2EM_G7400_FREEZE_TRACE is set and the cartridge CRC matches.
+    mcs48::G7400FreezeTrace_Configure(romPath.c_str(), app_data.crc,
+        biosFile.c_str(),
+        regionMode == RegionMode::PAL ? "PAL"
+            : regionMode == RegionMode::NTSC ? "NTSC" : "AUTO",
+        app_data.vpp);
+
+    // Reference-derived PAL vertical raster timing (standard G7000/G7400 PAL).
+    VM_ConfigurePalRasterTiming();
+
+#if defined(_DEBUG)
+    VDCStub_ShowMessage("ACTIVE CORE: LEGACY");
+#endif
+
     run();
+
+    mcs48::G7400FreezeTrace_Shutdown();
 
     return true;
 }

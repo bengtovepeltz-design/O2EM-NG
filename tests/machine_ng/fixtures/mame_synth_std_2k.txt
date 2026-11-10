@@ -1,0 +1,63 @@
+MAME 0.289 runtime differential fixture
+=======================================
+
+Machine: videopac (Philips Videopac G7000, PAL)
+Cartridge: tests/machine_ng/fixtures/synth_std_2k.bin
+Commands:
+  mame videopac -rompath <mame>/roms -cart <synth_std_2k.bin> \
+       -debug -debugger windows -debugscript trace.cmd
+  trace.cmd: trace <file>,:maincpu,noloop ; gtime 50 ; trace off ; traceflush ; quit
+
+The fixture program is synthetic project data. It exercises:
+  DIS I / DIS TCNTI
+  P1 decode, external RAM MOVX writes and reads
+  ANL/ADD/ADDC/XRL/ORL/CPL/SWAP/RL/RLC/RR/RRC/DA
+  XCH/XCHD
+  VDC A0/A3/05 writes, V0 read
+  cartridge I/O window
+  INS A,BUS / OUTL BUS / OUTL P2 / IN A,P2 / IN A,P1
+  timer MOV T,A / STRT T / MOV A,T / STOP TCNT
+  DJNZ loop and final JMP loop
+
+MAME trace result:
+  instructions traced (starting at 0x400) = 15779
+  PC FNV-1a 64 (low byte then low PC nibble) = 0xaef10a408054b017
+
+MAME register checkpoint after the same instruction sequence:
+  PC=045F A=AA SP=0
+  R0=00 R1=20 R2=00 R3=00 R4=00 R5=00 R6=00 R7=00
+  P1=B7 P2=FF TC=F0 TPRE=06 EA=0
+
+NG-2 test:
+  tests/machine_ng/machine_ng_conformance.cpp :: TestMameRuntimeFixture
+  runs 15,779 post-BIOS-JMP instructions, compares the PC hash and the full
+  register checkpoint above. Result: PASS.
+
+Real BIOS + vp_01 prefix:
+  MAME trace first 4,261 PCs (starting at 0x400) FNV-1a 64 =
+  0x44b7f94c07942a55
+  MAME IRQ vector 0x003 first appears at trace index 4,261.
+  NG-2 :: TestRealBiosMamePrefix compares the same 4,261 PCs. Result: PASS.
+
+4K banked runtime differential:
+  Cartridge: tests/machine_ng/fixtures/synth_std_4k_banks.bin
+  MAME command: same debug trace/checkpoint flow
+  instructions traced (starting at 0x400) = 15767
+  PC FNV-1a 64 = 0x95037606fa5ff93d
+  PC=0440 A=33 SP=0 R5=33 R6=44 R7=22 P1=FD P2=FF
+  NG-2 :: TestMameRuntimeBankedFixture compares the PC hash and state.
+  Result: PASS.
+
+The IRQ phase difference after that point is the VDC VBL timer phase, not a
+CPU or bus semantic difference. MAME schedules the i8245 VBL timer with
+screen().time_until_pos(vblank_start, hblank_start - 1); screen_device
+measures scanlines relative to VBLANK, so the absolute line is
+vblank_start + (vtotal - visible_h) = 312 on PAL and 262 on NTSC. NG-2 uses
+that exact absolute line (see timebase.h, VblankIrqOffset).
+
+Comparison scope note:
+  MAME 0.289's debugger exposes PC/A/R0-R7/P1/P2/TC/TPRE/SP/EA in
+  this setup. PSW and internal IRQ latches are not exposed as debugger
+  symbols. NG-2 therefore compares the full instruction stream, A, all
+  registers, ports, timer/prescaler, SP and bank selection against MAME,
+  and covers PSW/IRQ/held-line semantics with its own deterministic tests.

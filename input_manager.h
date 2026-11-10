@@ -16,6 +16,13 @@ struct JoyState
 
 void InputManager_HandleEvent(const SDL_Event& event);
 
+// Session-boundary helpers. ClearHeldState drops transient presses/axes while
+// keeping physical controllers open; ResetSessionState additionally restores
+// the normal (unswapped) controller port assignment.
+void InputManager_ClearHeldState(void);
+void InputManager_ResetSessionState(void);
+void InputManager_BeginSessionKeySuppression(void);
+
 void InputManager_SetPlayer1State(const JoyState& state);
 void InputManager_SetPlayer2State(const JoyState& state);
 

@@ -43,7 +43,15 @@ void init_cpu(void);
 void cpu_exec(void);
 void ext_IRQ(void);
 void tim_IRQ(void);
+// Assert the persistent i8244 VBL/ /INT level. The CPU samples it before the
+// next opcode fetch; the A1 status read clears it.
+void CPU_VBL_IRQ(void);
+void CPU_VBL_StatusLatch(void);
+int CPU_VblStatus(void);
+int CPU_IrqLineState(void);
+int CPU_IsrTraceActive(void);
 void make_psw_debug(void);
+void CPU_IrqLineAck(void);
 
 // Patch 0030P: arm an extended 8048 instruction trace when the C7010
 // keyboard ENTER key is actually observed in the Videopac matrix scan.

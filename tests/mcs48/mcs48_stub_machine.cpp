@@ -68,6 +68,26 @@ struct resource app_data;
 // Machine functions (vmachine.h). Inert: they exist to satisfy the linker.
 // ---------------------------------------------------------------------------
 Byte read_P2(void) { return 0xFF; }
+int VM_PalVerticalTimingActive(void) { return 0; }   // harness runs the legacy timing path
+int VM_EffectiveVblClk(void) { return VBLCLK; }
+int VM_EffectiveFrameClk(void) { return evblclk; }
+bool VM_UnifiedVideoTestEnabled(void) { return false; } // Checkpoint B experiment off
+void VM_UnifiedVideoConfigure(void) {}
+void VM_UnifiedVideoReset(void) {}
+void VM_UnifiedVideoAdvance(int /*cycles*/) {}
+int VM_UnifiedVideoPhasePixels(void) { return 0; }
+int VM_UnifiedVideoHPos(void) { return 0; }
+int VM_UnifiedVideoVPos(void) { return 0; }
+int VM_UnifiedVideoHBlank(void) { return 0; }
+int VM_UnifiedVideoVBlank(void) { return 0; }
+int VM_UnifiedVideoT1Level(void) { return 0; }
+int VM_UnifiedVideoBeamLine(void) { return 0; }
+int VM_UnifiedVideoYBeam(void) { return 0; }
+int VM_UnifiedVideoXBeam(void) { return 0; }
+int VM_UnifiedVideoTakeVblCross(void) { return 0; }
+int VM_UnifiedVideoTakeFrameCross(void) { return 0; }
+unsigned int VM_PalA4BeamValue(int /*master*/) { return 0; }
+unsigned int VM_A4BeamValue(int /*master*/) { return 0; }
 int snapline(int /*pos*/, Byte /*reg*/, int /*t*/) { return 0; }
 void ext_write(Byte /*dat*/, ADDRESS /*adr*/) {}
 Byte ext_read(ADDRESS /*adr*/) { return 0xFF; }
