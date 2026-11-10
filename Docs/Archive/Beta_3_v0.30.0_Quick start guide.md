@@ -1,4 +1,4 @@
-> Archived Beta 3 guide (v0.30.0-beta). For the current beta, see the [Beta 4 guide](../Beta_4_v0.31.0_Quick%20start%20guide.md).
+> Archived Beta 3 guide (v0.30.0-beta). For current development, see the [Beta 5 guide](../Beta_5_v5.0.0_Quick%20start%20guide.md).
 
 # O2EM-NG Quick Start Guide
 

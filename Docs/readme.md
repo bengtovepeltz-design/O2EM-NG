@@ -5,36 +5,29 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Current release: [v0.31.0-beta - Beta 4](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.31.0-beta).**
-The previous release was [v0.30.0-beta (Beta 3)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.30.0-beta).
+**Current development: Beta 5 / v5.0.0 (release candidate, not yet publicly
+released).** The previous published release remains
+[v0.31.0-beta (Beta 4)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.31.0-beta).
 
 [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
-[Quick start](Beta_4_v0.31.0_Quick%20start%20guide.md) |
+[Quick start](Beta_5_v5.0.0_Quick%20start%20guide.md) |
 [Changelog](CHANGELOG.md) |
 [Project notes](Project.md)
 
-## What's new in Beta 4
+## What's new in Beta 5
 
-- **My Collection**: a separate page for your own physical Videopac games, with
-  its own database that is kept apart from the main game catalogue. Add, edit
-  and remove entries, mark titles as *Wanted*, search, sort, track separate
-  cartridge / box / manual conditions, and export the list to CSV. Linked
-  entries reuse the existing library title, catalogue number and box art
-  read-only - nothing is copied.
-- **Windows 95-style window**: a custom title bar with minimize / maximize /
-  close, a File / Library / Settings / Tools / Help menu bar, and the O2EM-NG
-  banner framed inside the UI instead of spanning edge to edge.
-- **UTF-8 media paths**: media files whose names contain non-ASCII characters
-  (for example an EM DASH) now load correctly from SDL.
-- C7010 Chess with a separate NSC800/Z80-compatible module and firmware support.
-- Corrected move-coordinate handling: the wrong source square is no longer cleared
-  in the reproduced E2-E4 case.
-- Stable chess-board rendering in local testing, with the earlier disappearing
-  pieces, lower-board clipping and flicker addressed.
-- Several moves, computer replies and a pawn capture tested successfully by the
-  developer. Full games and special moves remain community-testing targets.
-- Detailed chess diagnostics off by default; important error messages retained.
-- A program icon based on the O2EM-NG emblem and automated Release packaging.
+- **New NG emulation core**: new MCS48 CPU, unified machine scheduler and
+  timebase, new i8244/i8245 VDC, and G7000/Odyssey² convergence.
+- **G7400/Videopac+ support**: EF9340/EF9341/VPP device, Plus title
+  compatibility and corrected static-character orientation.
+- **New NG audio device** and compatibility/regression improvements.
+- **C7010 Chess as NG special hardware**, with the external NSC800 module
+  attached to the NG machine.
+- Existing frontend, library, database, settings and controller workflows are
+  preserved.
+
+Beta 4 remains the previous public release. Its Windows 95-style window,
+My Collection page, UTF-8 media paths and C7010 support are retained in Beta 5.
 
 ## Features
 
@@ -69,7 +62,7 @@ Media appears when the user supplies matching files.
 3. Run `O2EM-NG.exe`, select the console BIOS in Settings and choose a game.
 4. Add optional artwork, manuals and screenshots through the Import Center.
 
-The portable Beta 4 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
+The portable Beta 5 package includes SDL3, SDL3_image, SDL3_ttf, PDFium and the
 required Microsoft C++ runtime DLLs beside the executable. Windows system runtime
 components are still required. Keep the whole extracted folder together.
 
@@ -105,7 +98,7 @@ Please test longer chess games, captures, castling, en passant, promotion, both
 colours and console configurations. Ordinary-game regression testing is also welcome.
 Earlier releases were tested with games including Gunfighter, Atlantis, Golf,
 Munchkin and Bowling-Basketball; this is not a fresh compatibility certification
-for every title in Beta 4. Four in 1 Row remains a previously recorded issue pending retest.
+for every title in Beta 5. Four in 1 Row remains a previously recorded issue pending retest.
 
 Reports should include version, Windows version, game/ROM name, console BIOS,
 region, startup choices, exact moves or reproduction steps, and screenshots/video.

@@ -1,5 +1,6 @@
 {
-  "version": "0.31.0-beta",
+  "version": "5.0.0",
+  "release": "Beta 5",
   "files": [
     {
       "source": "assets/O2EM-NG_Icon.png",
@@ -42,6 +43,10 @@
       "destination": "assets/O2EM-NG_Header.png"
     },
     {
+      "source": "assets/audio/reset_sound_g_7000.wav",
+      "destination": "assets/audio/reset_sound_g_7000.wav"
+    },
+    {
       "source": "Gamedata/Gamelist.txt",
       "destination": "GAMEDATA/Gamelist.txt"
     },
@@ -58,8 +63,8 @@
       "destination": "Docs/CHANGELOG.md"
     },
     {
-      "source": "Docs/Beta_4_v0.31.0_Quick start guide.md",
-      "destination": "Docs/Beta_4_v0.31.0_Quick start guide.md"
+      "source": "Docs/Beta_5_v5.0.0_Quick start guide.md",
+      "destination": "Docs/Beta_5_v5.0.0_Quick start guide.md"
     },
     {
       "source": "Docs/readme.md",

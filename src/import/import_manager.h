@@ -22,7 +22,7 @@ struct ImportResult
     std::string message;
 };
 
-// Central import service for Beta 3. It owns file selection, destination
+// Central import service. It owns file selection, destination
 // folders, stable naming and safe copying so the frontend never asks users to
 // browse the O2EM-NG installation folders manually.
 class ImportManager

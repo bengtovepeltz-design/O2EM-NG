@@ -4,7 +4,7 @@
 // LOOK, COMPARE, REPORT — this module never downloads or installs anything.
 //
 // Release discovery note (verified against the live repository, 2026-09-18):
-// v0.31.0-beta is published with prerelease=true, and GitHub's
+// At that time v0.31.0-beta was published with prerelease=true, and GitHub's
 // /releases/latest endpoint returns ONLY non-prerelease releases — it
 // answers 404 for this repository. The smallest reliable public-release
 // query that fits the project's actual release practice is therefore
@@ -69,7 +69,7 @@ struct HttpHandle
 
 // ---- version parsing / comparison ---------------------------------------
 //
-// Accepts display forms such as "v0.31.0-beta", "0.32.0-beta", or a bare
+// Accepts display forms such as "v5.0.0", "0.32.0-beta", or a bare
 // "0.33.0": an optional leading 'v'/'V', then a numeric MAJOR.MINOR.PATCH,
 // then an optional simple suffix beginning with '-' or '+' (e.g. "-beta").
 // Anything else — garbage, missing components, extra dot-separated parts —
@@ -160,7 +160,7 @@ std::string ExtractFirstStringField(
     return {};
 }
 
-// "v0.32.0-beta" | "0.32.0-beta" | "0.32.0" -> "v0.32.0-beta"
+// "v5.0.0" | "0.32.0-beta" | "0.32.0" -> "v5.0.0"
 std::string NormalizeDisplayTag(std::string tag)
 {
     if (tag.empty())
@@ -308,8 +308,8 @@ void UpdateCheck::WorkerMain(UpdateCheck* self,
     {
         // Published, newest-first. Unauthenticated responses never include
         // draft releases, so [0] is the newest PUBLIC release. A release
-        // marked prerelease=true still appears here (that is how the current
-        // v0.31.0-beta is published); only /releases/latest filters those.
+        // marked prerelease=true still appears here (that is how Beta 4 /
+        // v0.31.0-beta was published); only /releases/latest filters those.
         const std::string tag = ExtractFirstStringField(body, "tag_name");
         int latestParts[3] = {0, 0, 0};
         int currentParts[3] = {0, 0, 0};

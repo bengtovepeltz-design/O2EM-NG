@@ -1,10 +1,11 @@
 # Release packaging
 
 Build **Release | x64** in Visual Studio. After a successful build, `PackageRelease`
-creates `dist/O2EM-NG-v0.31.0-beta/` and a matching ZIP.
+creates `dist/O2EM-NG-Beta-5-v5.0.0/` and a matching ZIP for the current
+development candidate.
 
-Edit `tools/release-manifest.json` to choose files, destinations, empty user folders
-and the version number. Relative sources are relative to the project directory;
+Edit `tools/release-manifest.json` to choose files, destinations, empty user folders,
+the version number and the release name. Relative sources are relative to the project directory;
 absolute sources currently point to this project's SDL SDK installation.
 The executable comes from MSBuild's TargetPath and the C++ runtime from its
 VCInstallDir redistributable folders. Missing required files fail the packaging step rather than
@@ -21,8 +22,9 @@ Debug builds are unaffected. To build Release without packaging, pass
 `/p:SkipReleasePackaging=true` to MSBuild.
 
 After packaging, run `Installer/Build Installer.bat` with Inno Setup 7 or 6 installed.
-The installer reads `dist/release-info.iss`, generated from the same manifest version,
-and consumes the prepared package. It does not copy your development configuration.
+The installer reads `dist/release-info.iss`, generated from the same manifest version
+and release name, and consumes the prepared package. The current candidate output is
+`O2EM-NG-Beta-5-v5.0.0-Setup.exe`. It does not copy your development configuration.
 The supplied database seeds new installations; an existing user database is preserved
 on upgrade and uninstall. Upgrades do not automatically merge new catalogue entries.
 The application icon is embedded in the executable and included for the SDL window.

@@ -8,5 +8,6 @@ the current documentation and may describe earlier versions.
 | `Beta_3_v0.30.0_Quick start guide.md` | Quick start guide for the published v0.30.0-beta (Beta 3). |
 | `Modern SDL3-based Philips Videopac.txt` | Early one-line project description, superseded by `../README.md`. |
 
-The current quick start guide is `../Beta_4_v0.31.0_Quick start guide.md`.
+The current development guide is `../Beta_5_v5.0.0_Quick start guide.md`.
+The published Beta 4 guide remains in `Docs/` as a historical reference.
 Current public documentation lives one level up in `Docs/`.

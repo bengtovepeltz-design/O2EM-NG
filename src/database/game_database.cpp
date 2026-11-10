@@ -976,11 +976,11 @@ bool GameDatabase::InitializeProjectPages() const
 
     struct DefaultPage { const char* key; const char* title; const char* content; int order; };
     const DefaultPage defaults[] = {
-        {"about", "About", "O2EM-NG is a modern Windows continuation of the original O2EM emulator.\n\nMission\nPreserve the original emulation core while modernizing the surrounding Windows experience.\n\nProject principles\nCompatibility before features. Accuracy before speed. Preservation before convenience.\n\nPlatform\nWindows x64, C/C++, SDL3, SQLite and PDFium.", 0},
+        {"about", "About", "O2EM-NG\n\nBeta 5 \xE2\x80\x94 v5.0.0\n\nPowered by the new NG core", 0},
         {"credits", "Credits", "ORIGINAL O2EM - Free Odyssey2 / Videopac+ Emulator\n\nCreated by Daniel Boris <dboris@comcast.net> - (c) 1997, 1998\nDeveloped by Andre de la Rocha <adlroc@users.sourceforge.net>\nArlindo M. de Oliveira <dgtec@users.sourceforge.net>\n\nOriginal O2EM project website:\nhttp://o2em.sourceforge.net\n\nO2EM-NG\n\nProject direction and Windows modernization:\nBengt-Ove Peltz\n\nTHIRD-PARTY TECHNOLOGY\n\nSDL3\nSQLite\nPDFium\nMicrosoft Visual Studio and Windows SDK", 1},
         {"special_thanks", "Special Thanks", "Videopac and Odyssey2 communities\n\nCollectors and archivists\n\nMark Guttenbrunner (Manopac)\nFor his extensive work on the original O2EM emulator and his invaluable contributions to understanding and preserving the Philips Videopac/Odyssey2 hardware. His research and emulation work remains an important technical reference for O2EM-NG.\n\nBrian Dehli - Tvspil.dk\nFor his kind assistance in locating rare Videopac documentation, and for his dedication to preserving Philips Videopac hardware, games and history through his extensive private collection at Tvspil.dk. His knowledge and willingness to help are greatly appreciated by the O2EM-NG project.", 2},
-        {"roadmap", "Roadmap", "BETA 3\nAbout and project information system\nCredits and Special Thanks\nShelf View status review\nFrontend polish\nRegression testing\nDocumentation and release package\n\nFUTURE\nAdd planned features and priorities here.", 3},
-        {"release_notes", "Release Notes", "0.24.0-beta - Beta 3\n\nAdd the final Beta 3 release notes here before packaging.\n\nOlder release history remains available in Docs/CHANGELOG.md.", 4}
+        {"roadmap", "Roadmap", "BETA 5\nNG emulation core\nG7000 / G7400 convergence\nC7010 special hardware\nCompatibility and regression testing\nDocumentation and release packaging\n\nFUTURE\nAdd planned features and priorities here.", 3},
+        {"release_notes", "Release Notes", "5.0.0 - Beta 5 (development candidate)\n\nNew NG emulation core, MCS48 CPU, unified scheduler/timebase, i8244/i8245 VDC, G7000 convergence, G7400/Videopac+ VPP and NG audio.\n\nOlder release history remains available in Docs/CHANGELOG.md.", 4}
     };
     Statement insert(api, handle.Get(),
         "INSERT OR IGNORE INTO project_pages(page_key,title,content,sort_order) VALUES(?,?,?,?);");
@@ -994,6 +994,33 @@ bool GameDatabase::InitializeProjectPages() const
         if (api.step(insert.Get()) != SQLITE_DONE) return false;
         api.reset(insert.Get());
         api.clearBindings(insert.Get());
+    }
+
+    // Refresh only untouched old defaults. A user-edited page is left alone.
+    struct MigratedPage { const char* key; const char* oldContent; const char* newContent; };
+    const MigratedPage migrated[] = {
+        {"about",
+         "O2EM-NG is a modern Windows continuation of the original O2EM emulator.\n\nMission\nPreserve the original emulation core while modernizing the surrounding Windows experience.\n\nProject principles\nCompatibility before features. Accuracy before speed. Preservation before convenience.\n\nPlatform\nWindows x64, C/C++, SDL3, SQLite and PDFium.",
+         "O2EM-NG\n\nBeta 5 \xE2\x80\x94 v5.0.0\n\nPowered by the new NG core"},
+        {"roadmap",
+         "BETA 3\nAbout and project information system\nCredits and Special Thanks\nShelf View status review\nFrontend polish\nRegression testing\nDocumentation and release package\n\nFUTURE\nAdd planned features and priorities here.",
+         "BETA 5\nNG emulation core\nG7000 / G7400 convergence\nC7010 special hardware\nCompatibility and regression testing\nDocumentation and release packaging\n\nFUTURE\nAdd planned features and priorities here."},
+        {"release_notes",
+         "0.24.0-beta - Beta 3\n\nAdd the final Beta 3 release notes here before packaging.\n\nOlder release history remains available in Docs/CHANGELOG.md.",
+         "5.0.0 - Beta 5 (development candidate)\n\nNew NG emulation core, MCS48 CPU, unified scheduler/timebase, i8244/i8245 VDC, G7000 convergence, G7400/Videopac+ VPP and NG audio.\n\nOlder release history remains available in Docs/CHANGELOG.md."}
+    };
+    Statement update(api, handle.Get(),
+        "UPDATE project_pages SET content=?, updated_at=datetime('now') "
+        "WHERE page_key=? COLLATE NOCASE AND content=?;");
+    if (!update) return false;
+    for (const MigratedPage& page : migrated)
+    {
+        BindText(api, update.Get(), 1, page.newContent);
+        BindText(api, update.Get(), 2, page.key);
+        BindText(api, update.Get(), 3, page.oldContent);
+        if (api.step(update.Get()) != SQLITE_DONE) return false;
+        api.reset(update.Get());
+        api.clearBindings(update.Get());
     }
     return true;
 }

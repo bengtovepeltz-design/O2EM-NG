@@ -7,8 +7,10 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath($ProjectDir)
 $manifest = Get-Content -LiteralPath (Join-Path $root 'tools/release-manifest.json') -Raw | ConvertFrom-Json
 $dist = Join-Path $root 'dist'
-if ($manifest.version -notmatch '^\d+\.\d+\.\d+-beta$') { throw 'Invalid release version' }
-$name = 'O2EM-NG-v' + $manifest.version
+if ($manifest.version -notmatch '^\d+\.\d+\.\d+([-+][0-9A-Za-z.]+)?$') { throw 'Invalid release version' }
+if ([string]::IsNullOrWhiteSpace($manifest.release)) { throw 'Release name is required' }
+$releaseTag = ($manifest.release -replace '\s+', '-')
+$name = 'O2EM-NG-' + $releaseTag + '-v' + $manifest.version
 $package = Join-Path $dist $name
 $stage = Join-Path $dist ($name + '.building-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
@@ -42,7 +44,7 @@ foreach ($folder in $manifest.emptyFolders) {
     New-Item -ItemType Directory -Path (Split-Path $dest) -Force | Out-Null
     Set-Content -LiteralPath $dest -Encoding UTF8 -Value 'User content belongs here. No BIOS, firmware, game ROMs or personal media are included.'
 }
-Set-Content -LiteralPath (Join-Path $stage 'VERSION.txt') -Encoding UTF8 -Value ($name + "`r`nBeta 4 - build package; see Docs for testing status.")
+Set-Content -LiteralPath (Join-Path $stage 'VERSION.txt') -Encoding UTF8 -Value ($name + "`r`n" + $manifest.release + " - build package; see Docs for testing status.")
 Get-ChildItem -LiteralPath $stage -File -Recurse | ForEach-Object {
     $sha = [Security.Cryptography.SHA256]::Create(); try { $hash = [BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($_.FullName))).Replace("-", "") } finally { $sha.Dispose() }
     $hash + '  ' + $_.FullName.Substring($stage.Length + 1)
@@ -61,5 +63,5 @@ Write-Host "Release package: $package"
 Write-Host "Release ZIP: $zip"
 
 # Inno Setup reads the same version/package chosen by the manifest.
-$innoInfo = '#define MyAppVersion "' + $manifest.version + '"' + "`r`n" + '#define PackageDirectory "..\dist\' + $name + '"'
+$innoInfo = '#define MyAppVersion "' + $manifest.version + '"' + "`r`n" + '#define MyAppRelease "' + $manifest.release + '"' + "`r`n" + '#define PackageDirectory "..\dist\' + $name + '"'
 Set-Content -LiteralPath (Join-Path $dist 'release-info.iss') -Value $innoInfo -Encoding UTF8

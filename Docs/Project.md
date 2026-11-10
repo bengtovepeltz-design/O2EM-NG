@@ -2,7 +2,7 @@
 
 This file is organised so the present state is easy to separate from history:
 
-- **CURRENT STATE** - the present working tree (2 October 2026).
+- **CURRENT STATE** - the present working tree (10 November 2026).
 - **CURRENT KNOWN ISSUES**.
 - **CURRENT DEVELOPMENT**.
 - Historical checkpoints and earlier development, kept for provenance.
@@ -11,89 +11,68 @@ This file is organised so the present state is easy to separate from history:
 The current working tree is authoritative; older sections below use "current"
 as it applied to the version described there.
 
-## CURRENT STATE - 2 October 2026
+## CURRENT STATE - 10 November 2026
 
 | Item | Value |
 |------|-------|
-| Version | v0.31.0-beta |
-| Release name | Beta 4 |
-| Release state | Published (current release) |
-| Previous published version | v0.30.0-beta (Beta 3) |
+| Version | v5.0.0 |
+| Release name | Beta 5 |
+| Release state | Development / release candidate (not publicly released) |
+| Previous published version | v0.31.0-beta (Beta 4) |
 | Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
 | Author | Bengt-Ove Peltz |
 
-The most recent completed work in the working tree is:
+The current working tree is the Beta 5 release candidate built around the new
+NG core:
 
-- **Win95 window chrome** (`frontend_chrome.h/.cpp`): the SDL window is
-  borderless and the frontend draws a custom client-side title bar (application
-  icon, white title text, minimize / maximize / close) and a gray menu bar
-  (File, Library, Settings, Tools, Help - a visual shell whose entries are not
-  yet wired to actions). Dragging the title bar moves the window, double-click
-  toggles maximize/restore, the buttons minimize / maximize / close, and the
-  edges resize the window. Fullscreen still works and there is no duplicate
-  native title bar. Layout constants: title bar 26 px, menu bar 22 px (48 px
-  chrome), banner margin 6 px, banner height 110 px, `TabsTop = 170`,
-  `ContentTop = 224`. The banner artwork is unchanged and now framed.
-- **My Collection** (`src/collection/collection_database.*`,
-  `src/frontend/frontend_collection.*`): a dedicated physical-collection page and
-  database `GAMEDATA/mycollection.db`, independent of `o2em-ng.db` (the main
-  database is read-only). Add / Edit / Remove, Mark / Unmark Wanted, search,
-  sorting, quantity and duplicates, statistics, UTF-8 CSV export, separate
-  cartridge / box / manual conditions, a UTF-8 multiline Notes editor with
-  clipboard support, and a compact Library summary panel with a Wanted (W)
-  column.
-- **UTF-8 SDL media paths** (`frontend_boxart.cpp`,
-  `src/frontend/frontend_screenshot.cpp`): paths are converted to UTF-8 before
-  SDL image calls, fixing file names containing non-ASCII characters. This is a
-  narrow SDL-facing fix and not a whole-architecture UTF-8 migration.
-- **Earlier Beta 4 work**: self-updater Phase 1 (central
-  `src/version.h`) and Phase 2 (CHECK UPDATES / VIEW RELEASE) with reliability
-  fixes; Library Folders and Collection Statistics; the integrated Cover / Media
-  viewer; the full-height scrollable Game Library; DELETE GAME DATA with
-  `suppressed_catalog_entries`; N / N+ catalogue identity separation; and the
-  VP31 / VP40 XROM work. See `CHANGELOG.md` for the itemised list.
+- **NG machine**: MCS48-NG CPU, unified scheduler/timebase, machine bus,
+  G7000/Odyssey² convergence and G7400/Videopac+ EF9340/EF9341/VPP support.
+- **NG audio device** and compatibility/regression improvements.
+- **C7010 Chess as NG special hardware**; the existing NSC800 module is attached
+  to the NG machine instead of falling back to the legacy core.
+- **Preserved frontend workflow**: Win95 window chrome, My Collection, library,
+  database, settings, media import, controller support and the existing input
+  bindings are unchanged.
+- **Core policy**: Beta 5 Debug and Release both default to NG. `O2EM_CORE=legacy`
+  remains an explicit A/B override.
+- **Version identity**: `src/version.h` is the single source for `Beta 5` /
+  `v5.0.0`; Windows numeric metadata is `5.0.0.0`.
 
 Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About,
 My Collection.
 
 ## CURRENT KNOWN ISSUES
 
-Carried over from earlier testing. Most have not been re-validated against the
-current working tree, so treat them as open until a fresh check is done.
+Beta 5 release-candidate status:
 
-- Library stale / phantom media texture issue.
-- VP48 Backgammon rendering / timing / flicker (flicker persisted despite the
-  confirmed final PAL timing).
-- VP59+ Helicopter Rescue regression / freeze.
-- G7400 / Videopac+ specific issues.
-- VP61 Interpol rendering differs from MAME.
-- AUTO PAL/NTSC behavior is not verified (the explicit PAL/NTSC override is
-  confirmed working).
-- C7010 relies on an approximate NSC800 instruction budget; exact hardware
-  timing is not established.
-- Audio reconstructs chip progression at frame end and does not fully timestamp
-  register events (see the MCS48 Phase 1 analysis under `Development/`).
-- One isolated 0030AB launch hang was reported; a rebuilt test ran and it has
-  not been reproduced since.
+- Audio is substantially improved but not yet subjectively 100%; further
+  refinement is deferred beyond this checkpoint.
+- Flash Point remains the single G7000 pixel-perfect matrix difference.
+- C7010 uses the existing approximate NSC800 instruction budget; exact hardware
+  timing has not been established.
+- VPP static-character orientation follows the readable legacy/BIOS convention;
+  MAME 0.289 currently renders the same static charset mirrored.
+- Real G7400 and analog audio hardware validation remains limited.
+- Beta testing continues for long C7010 games and broad title coverage.
 
 ## CURRENT DEVELOPMENT
 
-- **MCS48-NG**: a possible replacement CPU is under study behind a controlled
-  interface. The legacy `cpu.cpp` is still the active production CPU, pinned by
-  the standalone conformance harness in `tests/mcs48/` (4/4 positive controls,
-  12/12 expected legacy failures). Research notes live in `Development/`.
-- **Beta 4 is published**: v0.31.0-beta is the current public release.
-- Ongoing compatibility testing, follow-up fixes and community feedback.
+- **Beta 5 / v5.0.0 is the current development release candidate**.
+- Beta 5 Debug and Release both default to the NG core. `O2EM_CORE=legacy`
+  remains an explicit A/B override.
+- Beta 4 / v0.31.0-beta remains the previous published public release.
+- The emulation core is frozen for the Beta 5 release-candidate checkpoint;
+  remaining work is documentation, packaging and manual acceptance.
 
 ---
 
 ## Updater checkpoint - 20 September 2026 (self-updater Phases 1 and 2)
 
 Self-updater Phase 1 centralized the application version in src/version.h,
-the single authoritative definition (currently v0.31.0-beta). The Windows
-VERSIONINFO resource in O2EM-NG.rc is generated from it, the About page
-displays it and Settings shows "Current version: v0.31.0-beta". The
-executable carries numeric version 0.31.0.0 and product version string
+the single authoritative definition (at this checkpoint v0.31.0-beta). The
+Windows VERSIONINFO resource in O2EM-NG.rc is generated from it, the About page
+displayed it and Settings showed "Current version: v0.31.0-beta". The
+executable carried numeric version 0.31.0.0 and product version string
 0.31.0-beta.
 
 Self-updater Phase 2 added a manual CHECK UPDATES button to the Settings

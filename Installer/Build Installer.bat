@@ -4,7 +4,7 @@ cd /d "%~dp0"
 title O2EM-NG Installer Builder
 
 echo ========================================
-echo   O2EM-NG Beta 4 Installer Builder
+echo   O2EM-NG Beta 5 Installer Builder
 echo ========================================
 echo.
 echo BAT-filen har startat korrekt.

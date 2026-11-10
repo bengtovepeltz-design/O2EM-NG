@@ -1,7 +1,28 @@
 # Changelog
 
-## After v0.31.0-beta (Beta 4) - current development
+## 5.0.0 "Beta 5" - development candidate
 
+Beta 5 is the current development release candidate. It is not yet publicly
+released; Beta 4 / v0.31.0-beta remains the previous published release.
+
+### NG emulation core
+
+- New MCS48-NG CPU and machine bus.
+- Unified machine scheduler and timebase.
+- New i8244/i8245 VDC implementation.
+- G7000 / Magnavox Odyssey² convergence.
+- G7400 / Videopac+ EF9340/EF9341/VPP support, including corrected static
+  character orientation.
+- New NG audio device.
+- C7010 Chess supported as NG special hardware, with the existing NSC800 module
+  attached to the NG machine.
+
+### Preserved user workflow
+
+- Existing frontend, library, database, settings, import and controller
+  workflows remain in place.
+- Beta 5 uses the NG machine as the release-candidate engine in both Debug
+  and Release. `O2EM_CORE=legacy` remains an explicit A/B override.
 - Personal 0-5 star rating for each permanent catalogue entry, shown in the
   Library Game Information panel. Click a star to set the rating (1-5); click
   the currently selected final star again to clear it to "Not rated" (0). The
@@ -11,9 +32,18 @@
   Data; the new personal rating replaces it in Game Information. Existing
   legacy rating values (for example a stored "Not good") are not modified.
 
+### Compatibility and regression
+
+- Standard G7000, G7400/Videopac+ and C7010 regression suites added and
+  expanded.
+- NG-4 G7000 matrix: 142/143 pixel-perfect; Flash Point remains the single
+  G7000-only difference.
+- NG-5 G7400 matrix: 24/25 GREEN, 1 YELLOW.
+- Input integration, audio conformance and host-command coverage added.
+
 ## 0.31.0-beta "Beta 4" - Released
 
-Beta 4 is the current published release. The most recent work is listed first.
+Beta 4 is the previous published release. The most recent work is listed first.
 
 ### Win95 window chrome and framed banner
 

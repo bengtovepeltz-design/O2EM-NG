@@ -37,13 +37,13 @@ public:
     UpdateCheck& operator=(const UpdateCheck&) = delete;
 
     // Starts one background check unless one is already running.
-    // currentVersion: display form, e.g. "v0.31.0-beta" (from src/version.h).
+    // currentVersion: display form, e.g. "v5.0.0" (from src/version.h).
     void StartCheck(const std::string& currentVersion);
 
     // Poll from the UI thread: reads the current snapshot (cheap, mutex).
     State GetState() const;
     // Valid when GetState() == UpdateAvailable; display form with "v",
-    // e.g. "v0.32.0-beta". Empty otherwise.
+    // e.g. "v5.0.0". Empty otherwise.
     std::string GetLatestVersion() const;
     // Valid when GetState() == UpdateAvailable; GitHub release page URL.
     std::string GetReleaseUrl() const;
@@ -54,7 +54,7 @@ private:
     struct Result
     {
         State state = State::Idle;
-        std::string latestVersion; // display form, e.g. "v0.32.0-beta"
+        std::string latestVersion; // display form, e.g. "v5.0.0"
         std::string releaseUrl;    // https://github.com/... releases page
         std::string errorMessage;  // short reason for State::Error
     };
