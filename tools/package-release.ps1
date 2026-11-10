@@ -5,6 +5,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath($ProjectDir)
+function Get-Sha256([string]$Path) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($Path)))).Replace('-', '') }
+    finally { $sha.Dispose() }
+}
 $manifest = Get-Content -LiteralPath (Join-Path $root 'tools/release-manifest.json') -Raw | ConvertFrom-Json
 $dist = Join-Path $root 'dist'
 if ($manifest.version -notmatch '^\d+\.\d+\.\d+([-+][0-9A-Za-z.]+)?$') { throw 'Invalid release version' }
@@ -31,6 +36,15 @@ foreach ($file in $manifest.files) {
     if (-not [IO.Path]::IsPathRooted($source)) { $source = Join-Path $root $source }
     Include-File $source $file.destination
 }
+$seedSource = Join-Path $root 'Gamedata/o2em-ng.db'
+$seedDestination = Join-Path $stage 'GAMEDATA/o2em-ng.db'
+if (-not (Test-Path -LiteralPath $seedDestination -PathType Leaf)) { throw "Packaged seed missing: $seedDestination" }
+if ([string]::IsNullOrWhiteSpace($manifest.seedSha256)) { throw 'Manifest seedSha256 is required' }
+$seedSourceHash = Get-Sha256 $seedSource
+$seedPackagedHash = Get-Sha256 $seedDestination
+if ($seedSourceHash -ne $manifest.seedSha256) { throw "Approved seed hash mismatch: $seedSourceHash" }
+if ($seedPackagedHash -ne $manifest.seedSha256) { throw "Packaged seed hash mismatch: $seedPackagedHash" }
+Write-Host "Packaged seed verified: $seedPackagedHash"
 foreach ($folder in $manifest.contentFolders) {
     $source = $folder.source
     if (-not [IO.Path]::IsPathRooted($source)) { $source = Join-Path $root $source }
@@ -77,5 +91,5 @@ Write-Host "Release package: $package"
 Write-Host "Release ZIP: $zip"
 
 # Inno Setup reads the same version/package chosen by the manifest.
-$innoInfo = '#define MyAppVersion "' + $manifest.version + '"' + "`r`n" + '#define MyAppRelease "' + $manifest.release + '"' + "`r`n" + '#define PackageDirectory "..\dist\' + $name + '"'
+$innoInfo = '#define MyAppVersion "' + $manifest.version + '"' + "`r`n" + '#define MyAppRelease "' + $manifest.release + '"' + "`r`n" + '#define MyAppReleaseTag "' + $releaseTag + '"' + "`r`n" + '#define PackageDirectory "..\dist\' + $name + '"'
 Set-Content -LiteralPath (Join-Path $dist 'release-info.iss') -Value $innoInfo -Encoding UTF8

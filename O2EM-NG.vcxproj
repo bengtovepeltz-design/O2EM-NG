@@ -326,11 +326,15 @@ copy /Y "$(ProjectDir)assets\audio\reset_sound_g_7000.wav" "$(TargetDir)assets\a
     <None Include="assets\audio\reset_sound_g_7000.wav" />
   </ItemGroup>
   <ItemGroup><None Include="Docs\Project.md" /><None Include="Docs\CHANGELOG.md" /><None Include="Docs\Beta_4_v0.31.0_Quick start guide.md" /><None Include="Docs\Beta_5_v5.0.0_Quick start guide.md" /></ItemGroup>
+  <Target Name="StageReleaseSeed" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\stage-release-seed.ps1&quot; -ProjectDir &quot;$(ProjectDir).&quot; -OutDir &quot;$(OutDir).&quot;" />
+  </Target>
   <Target Name="PackageRelease" AfterTargets="Build" Condition="'$(Configuration)|$(Platform)' == 'Release|x64' and '$(DesignTimeBuild)' != 'true' and '$(SkipReleasePackaging)' != 'true'">
     <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)tools\package-release.ps1&quot; -ProjectDir &quot;$(ProjectDir).&quot; -TargetPath &quot;$(TargetPath)&quot; -RedistDir &quot;$(VCInstallDir)Redist\MSVC&quot;" />
   </Target>
   <ItemGroup>
     <None Include="tools\package-release.ps1" />
+    <None Include="tools\stage-release-seed.ps1" />
     <None Include="tools\release-manifest.json" />
     <None Include="Docs\Release packaging.md" />
   </ItemGroup><ItemGroup><ResourceCompile Include="O2EM-NG.rc" /><Image Include="assets\O2EM-NG.ico" /><Image Include="assets\O2EM-NG_Icon.png" /></ItemGroup><ItemGroup><None Include="Docs\readme.md" /></ItemGroup></Project>

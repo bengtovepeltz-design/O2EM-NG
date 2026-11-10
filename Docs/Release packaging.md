@@ -5,11 +5,26 @@ creates `dist/O2EM-NG-Beta-5-v5.0.0/` and a matching ZIP for the current
 development candidate.
 
 Edit `tools/release-manifest.json` to choose files, destinations, empty user folders,
-the version number and the release name. Relative sources are relative to the project directory;
+the version number, release name and approved seed hash. Relative sources are relative to the project directory;
 absolute sources currently point to this project's SDL SDK installation.
 The executable comes from MSBuild's TargetPath and the C++ runtime from its
 VCInstallDir redistributable folders. Missing required files fail the packaging step rather than
 silently creating an incomplete distribution.
+
+The authoritative seed is always `Gamedata/o2em-ng.db`. A Release build also stages
+that exact file into `x64/Release/GAMEDATA/o2em-ng.db` through
+`tools/stage-release-seed.ps1`, so running the Release build folder directly uses the
+same seed as the package. Any previous runtime database in that build-output folder is
+backed up as `o2em-ng.runtime-backup-<timestamp>.db` before it is replaced.
+
+`tools/package-release.ps1` verifies both the tracked seed and the packaged
+`GAMEDATA/o2em-ng.db` against the SHA256 in `release-manifest.json`. A mismatch fails
+the package instead of producing a wrong release. `x64/Release/GAMEDATA` is never used
+as the package source.
+
+A clean installation receives this seed. Upgrading an existing installation preserves
+the existing user `GAMEDATA/o2em-ng.db` by design; only a clean destination is
+guaranteed to start with the approved seed and empty My Collection.
 
 Only listed files and the approved content folders are included. The supplied
 GAMEDATA/o2em-ng.db catalogue is included. No local configuration, ROMs, BIOS,

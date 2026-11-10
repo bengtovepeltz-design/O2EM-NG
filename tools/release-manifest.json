@@ -1,6 +1,7 @@
 {
   "version": "5.0.0",
   "release": "Beta 5",
+  "seedSha256": "4032C0EA7D1595BC10DBB0B9A656E75FF32E57ACB7165E7DB538ED4C9CE5C049",
   "files": [
     {
       "source": "assets/O2EM-NG_Icon.png",
