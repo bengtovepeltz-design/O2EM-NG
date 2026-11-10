@@ -11,9 +11,17 @@ The executable comes from MSBuild's TargetPath and the C++ runtime from its
 VCInstallDir redistributable folders. Missing required files fail the packaging step rather than
 silently creating an incomplete distribution.
 
-Only listed files are included. The supplied GAMEDATA/o2em-ng.db catalogue is included. No local configuration, ROMs, BIOS,
-firmware, screenshots, PDB files or build logs are copied. The application uses the supplied catalogue and creates
-its own configuration. Empty content folders include README files.
+Only listed files and the approved content folders are included. The supplied
+GAMEDATA/o2em-ng.db catalogue is included. No local configuration, ROMs, BIOS,
+firmware, PDB files or build logs are copied. The application uses the supplied
+catalogue and creates its own configuration.
+
+The approved O2EM-NG screenshots prepared in `x64/Release/SCREENSHOTS` are copied
+to the package `SCREENSHOTS` folder. Only media extensions (`.png`, `.jpg`,
+`.jpeg`, `.webp`, `.gif`, `.mp4`) are taken from that folder. Temporary frame
+dumps, MAME/test captures, diff images, probe output and debugger screenshots are
+not part of the packaging source and are never copied from `tests/` or local
+capture folders. Empty content folders include README files.
 Each package has VERSION.txt and SHA256SUMS.txt.
 
 A previous package/ZIP is preserved with a `.previous-<timestamp>` suffix.

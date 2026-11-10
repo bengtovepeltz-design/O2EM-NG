@@ -75,6 +75,14 @@
       "destination": "Docs/Release packaging.md"
     }
   ],
+  "contentFolders": [
+    {
+      "source": "x64/Release/SCREENSHOTS",
+      "destination": "SCREENSHOTS",
+      "extensions": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4"],
+      "required": true
+    }
+  ],
   "runtimeDlls": [
     "msvcp140.dll",
     "vcruntime140.dll",
@@ -85,7 +93,6 @@
     "ROMS",
     "MANUALS",
     "BOXART",
-    "SCREENSHOTS",
     "CARTRIDGES"
   ]
 }

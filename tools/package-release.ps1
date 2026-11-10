@@ -31,6 +31,20 @@ foreach ($file in $manifest.files) {
     if (-not [IO.Path]::IsPathRooted($source)) { $source = Join-Path $root $source }
     Include-File $source $file.destination
 }
+foreach ($folder in $manifest.contentFolders) {
+    $source = $folder.source
+    if (-not [IO.Path]::IsPathRooted($source)) { $source = Join-Path $root $source }
+    if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        if ($folder.required) { throw "Required content folder missing: $source" }
+        continue
+    }
+    $allowed = @($folder.extensions | ForEach-Object { $_.ToLowerInvariant() })
+    Get-ChildItem -LiteralPath $source -File -Recurse | ForEach-Object {
+        if ($allowed.Count -gt 0 -and $allowed -notcontains $_.Extension.ToLowerInvariant()) { return }
+        $relative = $_.FullName.Substring($source.Length).TrimStart('\', '/')
+        Include-File $_.FullName (Join-Path $folder.destination $relative)
+    }
+}
 if (-not (Test-Path -LiteralPath (Join-Path $RedistDir 'x64'))) {
     $versions = @(Get-ChildItem -LiteralPath $RedistDir -Directory | Where-Object { $_.Name -match '^\d+\.\d+\.\d+$' } | Sort-Object { [version]$_.Name } -Descending)
     if (!$versions.Count) { throw "No C redistributable found in $RedistDir" }
