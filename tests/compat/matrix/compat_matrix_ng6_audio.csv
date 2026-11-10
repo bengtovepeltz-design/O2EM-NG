@@ -1,0 +1,9 @@
+case,rom,result,ng_period_or_freq,mame_period_or_freq,delta,width_delta,peak_ng_mame,note
+synth,D:\Project\O2EM-NG\tests\audio_ng\fixtures\audio_synth_2k.bin,PASS,296.00,296.00,0.00%,7.14%,15360/4097,synthetic 24-bit shift-register pulse train
+musician,D:\LaunchBox\Games\Philips Videopac+\vp_31.bin,PASS,25.00,25.00,0.00%,7.14%,15360/4093,VP31 Musician structured tones
+frogger,D:\LaunchBox\Games\Philips Videopac+\pb_frogger.bin,PASS,150.00,151.00,0.66%,1.30%,15360/4097,Frogger hop/collision sounds
+popeye,D:\LaunchBox\Games\Philips Videopac+\pb_popeye.bin,PASS,25.00,25.00,0.00%,0.00%,15360/4093,Popeye movement/collision sounds
+helicopter,D:\LaunchBox\Games\Philips Videopac+\vp_59_16.bin,PASS,150.00,150.00,0.00%,1.32%,15360/4100,VP59+ Helicopter Rescue
+rally,D:\LaunchBox\Games\Philips Videopac+\vp_60_16.bin,PASS,227.00,227.00,0.00%,0.00%,15360/4087,VP60 Rally
+qbert,D:\LaunchBox\Games\Philips Videopac+\pb_q-bert.bin,PASS,49.00,49.00,0.00%,3.85%,15360/4097,Q*bert rapid tone changes
+pickaxe,D:\LaunchBox\Games\Philips Videopac+\vp_43.bin,PASS,74.00,74.00,0.00%,0.00%,15360/4097,Pick Axe Pete noise/rock sounds

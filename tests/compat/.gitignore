@@ -1,0 +1,7 @@
+# Generated test-station artifacts (not source).
+captures/
+diff/
+traces/
+matrix/inventory_stdout.txt
+reports/legacy_grep.txt
+matrix/_*.csv

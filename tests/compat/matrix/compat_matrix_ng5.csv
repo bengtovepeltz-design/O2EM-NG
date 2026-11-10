@@ -1,0 +1,26 @@
+rom,title,system,bios,mapper,mame_reference,ng_boot,ng_gameplay,vdc_score,vpp_state,composite_iou,severity,first_divergence,note
+vp_01+.bin,"Race / Spin-Out / Cryptogram (Europe, plus)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp 3rcsocptpl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_06+.bin,"Ten Pin Bowling / Basketball (Europe, plus, prototype)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp 2bwlbsktpl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_11+.bin,"Cosmic Conflict (Europe, plus)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp cosmicpl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_20+.bin,"Stone Sling (Europe, plus)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp stonepl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_43+.bin,"Pickaxe Pete (Europe, plus)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp pickaxepl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_53+.bin,"Phantom House (Europe, prototype)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp phantom @500 no-input,OK,OK,1.0000,b_pin=0,1.0000,GREEN,,
+vp_54+.bin,"Loony Balloon (Europe, plus)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp loony @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_55+.bin,"Neutron Star (Europe, prototype)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp neutronp @500 no-input,OK,OK,1.0000,b_pin=0,1.0000,GREEN,,
+vp_56+.bin,Norseman (Europe),G7400/Videopac+,G7400 E20A9F41,standard,videopacp norseman @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_58+.bin,"Air Battle (Europe, prototype, set 1)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp airbattlp @500 no-input,OK,OK,1.0000,b_pin=0,1.0000,GREEN,,
+vp_59+.bin,Helicopter Rescue (Europe),G7400/Videopac+,G7400 E20A9F41,standard,videopacp helicopt @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_60+.bin,Trans American Rally (Europe),G7400/Videopac+,G7400 E20A9F41,standard,videopacp rally @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_62+.bin,"Clay Pigeon (Europe, plus, prototype, set 1)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp claypigpl @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+Exojet (198x)(Philips)(FR).bin,Exojet+ (France),G7400/Videopac+,G7400 E20A9F41,standard,videopacp exojet @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+Moto-Crash (France).bin,Moto-Crash+ (France),G7400/Videopac+,G7400 E20A9F41,standard,videopacp motocras @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,
+vp_Tutankham+.bin,"Tutankham (Europe, prototype)",G7400/Videopac+,G7400 E20A9F41,standard,videopacp tutank @500 no-input,OK,OK,0.9828,b_pin=0,0.9828,YELLOW,single horizon scanline at y=99 (A3=0x70 written mid-line),15/16 + titles are pixel-perfect. Tutankham's only difference is one background-colour scanline: the A3 write lands ~86 px earlier in NG than MAME on the horizon line; all other lines match.
+pal_flashpoint.bin,Flash Point (PAL conversion),G7400/Videopac+,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,b_pin=1,1.0000,GREEN,,NG-4 could not run this title without the G7400 VPP
+vp_01.bin,Race/Spin-out/Cryptogram,G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+Atlantis (1983)(Imagic)(EU-US).bin,"Atlantis (Europe, USA)",G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+Popeye (1983)(Parker Brothers)(EU).bin,Popeye (Europe),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+br_frogger.bin,Frogger (Brazil),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+br_popeye.bin,Popeye (Brazil),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+o2_40.bin,Type & Tell! (USA),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+pb_frogger.bin,Frogger (Europe),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
+pb_q-bert.bin,Q*bert (Europe),G7000 under G7400,G7400 E20A9F41,standard,videopacp raw cart @500 no-input,OK,OK,1.0000,"VPP enabled, standard cart",1.0000,GREEN,,standard G7000 cart on the G7400 machine; B pin low
