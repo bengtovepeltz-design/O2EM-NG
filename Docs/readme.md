@@ -27,14 +27,14 @@ released).** The previous published release remains
   preserved.
 
 Beta 4 remains the previous public release. Its Windows 95-style window,
-My Collection page, UTF-8 media paths and C7010 support are retained in Beta 5.
+My Real Collection page, UTF-8 media paths and C7010 support are retained in Beta 5.
 
 ## Features
 
 - Windows 95-style frontend: custom title bar and menu bar, framed banner,
   beveled gray panels and classic 3D buttons.
 - Game Library, launcher, favorites and editable game information.
-- **My Collection**: a separate page and database for your own physical Videopac
+- **My Real Collection**: a separate page and database for your own physical Videopac
   games, with per-component conditions (cartridge / box / manual), a wanted
   list, search, sorting and CSV export.
 - Library side panels: Library Folders (open the ROMs, Box Art, Screenshots,
@@ -50,7 +50,7 @@ My Collection page, UTF-8 media paths and C7010 support are retained in Beta 5.
 - Two-controller gameplay and in-game controller-port swapping.
 
 Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About and
-My Collection.
+My Real Collection.
 
 The catalogue is included; game ROMs, BIOS/firmware and cover/media files are not.
 Media appears when the user supplies matching files.

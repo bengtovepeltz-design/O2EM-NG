@@ -59,6 +59,9 @@ private:
         std::string errorMessage;  // short reason for State::Error
     };
 
+    static Result EvaluateResponse(const std::string& currentVersion,
+        const std::string& body, std::string error);
+
     static void WorkerMain(UpdateCheck* self, std::string currentVersion);
     // HTTPS GET returning the response body; false + short reason on error.
     // Not static: the read loop honors stop_ for clean shutdown.

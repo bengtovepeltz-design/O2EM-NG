@@ -92,7 +92,7 @@ namespace
             favorites, welcome;
         // Far-right column (present only when the media panel's aspect cap
         // leaves unused space right of Emulator Settings): Folders on top,
-        // Collection Statistics in the middle and the My Collection summary at
+        // Collection Statistics in the middle and the My Real Collection summary at
         // the bottom, matching the approved Library design.
         SDL_FRect folders{}, stats{}, collection{};
         bool hasRightColumn = false;
@@ -130,7 +130,7 @@ namespace
             const float right2X=right1X+sideW+gap;      // right sub-column
             const float rightSideW=rightEdge-right1X;
 
-            // Compact upper grid: fully reclaims the height for My Collection.
+            // Compact upper grid: fully reclaims the height for My Real Collection.
             const float row1H=195.0f;                   // Emulator Settings | Folders
             const float row2H=198.0f;                   // System Information | Statistics
             d.quick  ={right1X,d.cover.y,sideW,row1H};
@@ -144,7 +144,7 @@ namespace
                 (std::max)(140.0f,bottomBottom-collectionTop)};
             d.welcome=d.collection;   // alias for any legacy caller
 
-            // Bottom strip stops before My Collection: Quick Add / Recently
+            // Bottom strip stops before My Real Collection: Quick Add / Recently
             // Played / Favorites only span the left-hand columns.
             const float bottomLeft=c.x+margin;
             const float bottomRight=right1X-gap;
@@ -236,6 +236,19 @@ namespace
                 return false;
         }
         return true;
+    }
+
+    struct MetadataRows
+    {
+        SDL_FRect area;
+        int visible, maxScroll;
+    };
+    MetadataRows MetadataGeometry(const SDL_FRect& inner, int count)
+    {
+        SDL_FRect area{inner.x + 14.0f, inner.y + 94.0f,
+            inner.w - 28.0f, (std::max)(29.0f, inner.h - 146.0f)};
+        const int visible = (std::max)(1, static_cast<int>(area.h / 29.0f));
+        return {area, visible, (std::max)(0, count - visible)};
     }
 
     // Shared Win95 vertical scrollbar renderer (Favorites + Game Library):
@@ -491,7 +504,7 @@ bool FrontendApp::Initialize(StartupSplash* splash)
 
     collections_.Attach(&library_);
 
-    // My Collection: fully owned by CollectionPage. It creates and reads its
+    // My Real Collection: fully owned by CollectionPage. It creates and reads its
     // own database GAMEDATA/mycollection.db and only reads the main library
     // for reference metadata / cover reuse. The main DB is never modified.
     stage("Preparing interface...", 7);
@@ -537,6 +550,7 @@ bool FrontendApp::HandleEvent(const SDL_Event& event)
     switch (event.type)
     {
     case SDL_EVENT_QUIT:
+        if (!collectionPage_.CommitInline()) break;
         running_ = false;
         break;
 
@@ -729,12 +743,13 @@ void FrontendApp::MoveTab(int direction)
 
 void FrontendApp::SetActiveTab(FrontendTab tab)
 {
+    if (activeTab_==FrontendTab::MyCollection && tab!=activeTab_ && !collectionPage_.Deactivate(window_)) return;
     activeTab_ = tab;
     // Patch 0022a: only Import Center uses the full catalogue. Every other
     // tab keeps the Game Library limited to ROMs that are actually installed.
     collections_.SetShowUninstalled(tab == FrontendTab::Extras);
     if (tab == FrontendTab::About) SelectProjectPage(0);
-    // My Collection is a fully separate page, not an About project page. It
+    // My Real Collection is a fully separate page, not an About project page. It
     // reloads its own database so the table always reflects disk state.
     if (tab == FrontendTab::MyCollection) collectionPage_.Refresh();
     else collectionPage_.Deactivate(window_);
@@ -817,7 +832,7 @@ void FrontendApp::ActivateSelection()
     if (activeTab_ == FrontendTab::About)
         return; // system-owned project pages are read-only
 
-    // Enter/A on My Collection edits the selected entry (Phase B).
+    // Enter/A on My Real Collection edits the selected entry (Phase B).
     if (activeTab_ == FrontendTab::MyCollection)
     {
         collectionPage_.ActivateSelected();
@@ -1021,6 +1036,7 @@ void FrontendApp::GoBack()
         return;
     }
 
+    if (!collectionPage_.CommitInline()) return;
     running_ = false;
 }
 
@@ -1103,9 +1119,10 @@ void FrontendApp::HandleKeyDown(const SDL_KeyboardEvent& event)
         if (event.key == SDLK_UP) { MoveMetadataSelection(-1); return; }
         if (event.key == SDLK_DOWN) { MoveMetadataSelection(1); return; }
         if (event.key == SDLK_RETURN) { EditCurrentMetadataField(); return; }
+        return;
     }
 
-    // My Collection owns its own keyboard handling: search editing, row
+    // My Real Collection owns its own keyboard handling: search editing, row
     // navigation, dialogs. Keys it declines (Escape with nothing open,
     // Tab, Left/Right, shortcuts) fall through to the global handling.
     // The page edits state in place, so request a repaint whenever it
@@ -1200,7 +1217,7 @@ void FrontendApp::HandleTextInput(const SDL_TextInputEvent& event)
 void FrontendApp::HandleGamepadButtonDown(
     const SDL_GamepadButtonEvent& event)
 {
-    // My Collection: D-pad navigates rows, A edits, B closes/back.
+    // My Real Collection: D-pad navigates rows, A edits, B closes/back.
     if (activeTab_ == FrontendTab::MyCollection)
     {
         switch (event.button)
@@ -1351,6 +1368,11 @@ void FrontendApp::HandleMouseButtonDown(const SDL_MouseButtonEvent& event)
 {
     if (event.button != SDL_BUTTON_LEFT)
         return;
+    if (metadataEditMode_)
+    {
+        TryMetadataControlAt(event.x, event.y);
+        return; // modal ownership, including clicks outside the form
+    }
     // Custom Win95 chrome first: title bar (drag / buttons) and menu bar.
     if (TryChromeControlAt(event.x, event.y, event.clicks)) return;
     if (TryExitButtonAt(event.x, event.y)) return;
@@ -1380,6 +1402,17 @@ void FrontendApp::HandleMouseWheel(const SDL_MouseWheelEvent& event)
 {
     if (event.y == 0.0f)
         return;
+
+    if (metadataEditMode_)
+    {
+        int w=0,h=0; SDL_GetWindowSize(window_, &w, &h);
+        const auto c = FrontendPanels_Calculate(w,h).rightContent;
+        const SDL_FRect inner{c.x+18,c.y+18,c.w-36,c.h-36};
+        const auto rows = MetadataGeometry(inner, MetadataFieldCount);
+        metadataScroll_ = (std::clamp)(metadataScroll_ + (event.y > 0 ? -1 : 1), 0, rows.maxScroll);
+        redraw_ = true;
+        return; // consume at both limits; never scroll the background list
+    }
 
     if (activeTab_ == FrontendTab::Settings)
     {
@@ -1419,7 +1452,7 @@ void FrontendApp::HandleMouseWheel(const SDL_MouseWheelEvent& event)
 
         const auto layout = Dashboard(panels.rightContent);
 
-        // Library front-page My Collection summary panel: wheel scrolls its
+        // Library front-page My Real Collection summary panel: wheel scrolls its
         // compact list (Phase B).
         if (collectionPage_.HandleLibrarySummaryWheel(layout.collection,
                 mouseX, mouseY, event.y))
@@ -1494,6 +1527,7 @@ bool FrontendApp::TryExitButtonAt(float x, float y)
             windowWidth, windowHeight, x, y))
         return false;
 
+    if (!collectionPage_.CommitInline()) return true;
     running_ = false;
     return true;
 }
@@ -1562,6 +1596,7 @@ bool FrontendApp::TryChromeControlAt(float x, float y, int clicks)
         ToggleWindowMaximize();
         return true;
     case FrontendChrome::WindowButton::Close:
+        if (!collectionPage_.CommitInline()) return true;
         running_ = false;
         return true;
     default:
@@ -1977,7 +2012,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     drawGroup(layout.system, "System Information");
     drawGroup(layout.imports, "Library Quick Add");
     drawGroup(layout.recent, "Recently Played");
-    drawGroup(layout.collection, "My Collection");
+    drawGroup(layout.collection, "My Real Collection");
     if(layout.hasRightColumn)
     {
         drawGroup(layout.folders,
@@ -2043,6 +2078,17 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     };
     drawMediaButton(mediaBoxArt, "Box Art", boxArtActive);
     drawMediaButton(mediaScreenshots, "Screenshots", !boxArtActive);
+    const auto startButton=LibraryStartButtonRect(coverFrame);
+    DrawWin95Button(startButton, "START GAME", libraryStartPressed_);
+    if (!CanStartSelectedGame())
+    {
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Face);
+        const SDL_FRect face{startButton.x+3,startButton.y+3,startButton.w-6,startButton.h-6};
+        SDL_RenderFillRect(renderer_,&face);
+        Win95Theme::SetRenderColor(renderer_,Win95Theme::Shadow);
+        DrawText(renderer_,startButton.x+20,startButton.y+7,0.85f,"START GAME");
+    }
+
     if (boxArtActive && game && !game->boxArt.empty())
     {
         // Box Art mode's per-item DELETE: deletes ONLY the displayed cover.
@@ -2209,7 +2255,7 @@ void FrontendApp::DrawLibraryDashboard(const SDL_FRect& content)
     for(std::size_t i=0;i<recent.size() && i<4;++i)
         smallLine(layout.recent,30+24.0f*static_cast<float>(i),DisplayCatalogId(recent[i])+" "+recent[i]->title);
     if(recent.empty()) smallLine(layout.recent,30,"No games played yet");
-    // Library front-page My Collection summary (Phase B): compact list of
+    // Library front-page My Real Collection summary (Phase B): compact list of
     // collection entries plus owned/boxed/manuals counts. The group frame and
     // caption are drawn by drawGroup above.
     collectionPage_.DrawLibrarySummary(renderer_, layout.collection);
@@ -2719,6 +2765,12 @@ bool FrontendApp::TryProjectControlAt(float x, float y)
     const float margin = 14.0f;
     const SDL_FRect inner{content.x + margin + 4.0f, content.y + margin + 4.0f,
         content.w - margin * 2.0f - 8.0f, content.h - margin * 2.0f - 8.0f};
+    if (!projectPages_.empty() && projectPages_[projectPageIndex_].pageKey=="about" &&
+        x>=inner.x+22 && x<inner.x+232 && y>=inner.y+90 && y<inner.y+116)
+    {
+        ShellExecuteW(nullptr,L"open",L"https://github.com/bengtovepeltz-design/O2EM-NG",nullptr,nullptr,SW_SHOWNORMAL);
+        return true;
+    }
     const float gap = 4.0f;
     const float width = (inner.w - 24.0f - gap * 5.0f) / 6.0f;
     for (int i = 0; i < static_cast<int>(projectPages_.size()) && i < 6; ++i)
@@ -2810,7 +2862,7 @@ SDL_FRect FrontendApp::LibraryCoverMediaRect(const SDL_FRect& coverPanel) const
         coverPanel.x + 5.0f,
         coverPanel.y + 28.0f,
         coverPanel.w - 10.0f,
-        coverPanel.h - 100.0f};
+        (std::max)(50.0f, coverPanel.h - 132.0f)};
 }
 
 void FrontendApp::LibraryMediaButtonRects(const SDL_FRect& coverPanel,
@@ -2835,6 +2887,20 @@ SDL_FRect FrontendApp::LibraryBoxArtDeleteRect(const SDL_FRect& coverPanel) cons
         buttonWidth, 26.0f};
 }
 
+SDL_FRect FrontendApp::LibraryStartButtonRect(const SDL_FRect& panel) const
+{
+    const auto del = LibraryBoxArtDeleteRect(panel);
+    return {panel.x+(panel.w-132.0f)*0.5f, del.y+del.h+8.0f,132.0f,26.0f};
+}
+bool FrontendApp::CanStartSelectedGame() const
+{
+    const auto* game=GetSelectedGame();
+    if (!game) return false;
+    const auto path=game->romPath.empty() ? std::filesystem::path(game->rom.path) : game->romPath;
+    std::error_code ec;
+    return !path.empty() && std::filesystem::is_regular_file(path,ec) && !ec;
+}
+
 bool FrontendApp::TryLibraryMediaControlAt(float x, float y)
 {
     int windowWidth = 0;
@@ -2843,6 +2909,13 @@ bool FrontendApp::TryLibraryMediaControlAt(float x, float y)
     const FrontendPanelLayout panels = FrontendPanels_Calculate(windowWidth, windowHeight);
     const auto layout = Dashboard(panels.rightContent);
 
+    const auto start = LibraryStartButtonRect(layout.cover);
+    if (x >= start.x && x < start.x+start.w && y >= start.y && y < start.y+start.h)
+    {
+        libraryStartPressed_ = CanStartSelectedGame();
+        redraw_ = true;
+        return true;
+    }
     SDL_FRect boxArt{}, screenshots{};
     LibraryMediaButtonRects(layout.cover, boxArt, screenshots);
     const auto contains = [](const SDL_FRect& r, float px, float py)
@@ -2923,6 +2996,17 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
         windowResizeEdges_ = 0;
         redraw_ = true;
     }
+    if (libraryStartPressed_)
+    {
+        libraryStartPressed_ = false;
+        int w=0,h=0; SDL_GetWindowSize(window_,&w,&h);
+        const auto r=LibraryStartButtonRect(Dashboard(FrontendPanels_Calculate(w,h).rightContent).cover);
+        if (activeTab_==FrontendTab::Library && CanStartSelectedGame() &&
+            event.x>=r.x && event.x<r.x+r.w && event.y>=r.y && event.y<r.y+r.h)
+            ActivateSelection();
+        redraw_=true;
+        return;
+    }
     // Game Data push buttons: on release inside the same rect, run the
     // button's existing action; otherwise just restore the raised state.
     if (metadataButtonPressed_ >= 0)
@@ -2952,6 +3036,7 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
         }
         return;
     }
+    if (metadataEditMode_) return;
     if (folderOpenPressed_ >= 0)
     {
         const int pressed = folderOpenPressed_;
@@ -3042,7 +3127,7 @@ void FrontendApp::HandleMouseButtonUp(const SDL_MouseButtonEvent& event)
         return;
     }
 
-    // My Collection buttons/dialog: release completes the action.
+    // My Real Collection buttons/dialog: release completes the action.
     if (activeTab_ == FrontendTab::MyCollection && collectionPage_.HandleMouseUp(event.x, event.y))
     {
         redraw_ = true;
@@ -3674,6 +3759,7 @@ bool FrontendApp::TryLibraryFavoriteAt(float x, float y, bool activate)
             return false;
     }
 
+    KeepLibrarySelectionVisible();
     libraryDescriptionScroll_ = 0;
     redraw_ = true;
     if (activate)
@@ -3706,6 +3792,13 @@ void FrontendApp::MoveMetadataSelection(int direction)
     metadataSelected_ += direction;
     if (metadataSelected_ < 0) metadataSelected_ = MetadataFieldCount - 1;
     if (metadataSelected_ >= MetadataFieldCount) metadataSelected_ = 0;
+    int w=0,h=0; SDL_GetWindowSize(window_, &w, &h);
+    const auto c = FrontendPanels_Calculate(w,h).rightContent;
+    const auto rows = MetadataGeometry({c.x+18,c.y+18,c.w-36,c.h-36}, MetadataFieldCount);
+    if (metadataSelected_ < metadataScroll_) metadataScroll_ = metadataSelected_;
+    if (metadataSelected_ >= metadataScroll_+rows.visible)
+        metadataScroll_ = metadataSelected_-rows.visible+1;
+    metadataScroll_ = (std::clamp)(metadataScroll_,0,rows.maxScroll);
     redraw_ = true;
 }
 
@@ -3748,6 +3841,7 @@ void FrontendApp::BeginMetadataEdit()
     metadataWorkingCopy_ = *game;
     metadataManualPath_ = game->manual.empty() ? std::string() : game->manual.string();
     metadataSelected_ = 0;
+    metadataScroll_ = 0;
     metadataCaret_ = metadataWorkingCopy_.title.size();
     metadataEditMode_ = true;
     metadataTextInput_ = false;
@@ -4139,12 +4233,20 @@ bool FrontendApp::TryMetadataControlAt(float x, float y)
         }
         return false;
     }
-    const float firstY=c.y+58.0f;
-    for(int i=0;i<MetadataFieldCount;++i)
+    const SDL_FRect inner{c.x+18,c.y+18,c.w-36,c.h-36};
+    const auto rows = MetadataGeometry(inner, MetadataFieldCount);
+    metadataScroll_ = (std::clamp)(metadataScroll_, 0, rows.maxScroll);
+    if (x >= rows.area.x && x < rows.area.x+rows.area.w &&
+        y >= rows.area.y && y < rows.area.y+rows.visible*29.0f)
     {
-        float ry=firstY+i*29.0f;
-        if(x>=c.x+20 && x<c.x+c.w-20 && y>=ry-5 && y<ry+22)
-        { metadataSelected_=i; redraw_=true; if(i!=MetadataFieldCount-1) EditCurrentMetadataField(); return true; }
+        const int field = metadataScroll_ + static_cast<int>((y-rows.area.y)/29.0f);
+        if (field < MetadataFieldCount)
+        {
+            metadataSelected_ = field;
+            redraw_=true;
+            EditCurrentMetadataField();
+            return true;
+        }
     }
     // SAVE (1) / CANCEL (2) push buttons: arm on mouse-down, confirm on
     // mouse-up inside the same rect. Same inner math as the draw path.
@@ -4652,14 +4754,12 @@ void FrontendApp::DrawGameInformationTab(const SDL_FRect& content)
         "Short Description", "Game Description", "Trivia / History", "Manual Path"
     };
 
-    const float footerSpace = 48.0f;
-    const float firstRowY = inner.y + 98.0f;
-    const float availableHeight = inner.h - (firstRowY - inner.y) - footerSpace;
-    const float rowStep = (std::max)(18.0f,
-        (std::min)(29.0f, availableHeight / static_cast<float>(MetadataFieldCount)));
-
-    float y = firstRowY;
-    for (int index = 0; index < MetadataFieldCount; ++index)
+    const auto rows = MetadataGeometry(inner, MetadataFieldCount);
+    metadataScroll_ = (std::clamp)(metadataScroll_, 0, rows.maxScroll);
+    const float rowStep = 29.0f;
+    float y = rows.area.y + 4.0f;
+    for (int index = metadataScroll_; index < MetadataFieldCount &&
+         index < metadataScroll_ + rows.visible; ++index)
     {
         if (metadataEditMode_ && index == metadataSelected_)
         {
@@ -4830,36 +4930,6 @@ void FrontendApp::DrawAboutTab(const SDL_FRect& content)
 {
     DrawProjectPage(content);
 
-    // The primary About page carries the fixed product identity. It is not
-    // read from the editable project database, so it cannot drift with user
-    // data or an old database seed.
-    if (projectPages_.empty() ||
-        projectPages_[projectPageIndex_].pageKey != "about")
-        return;
-
-    const float margin = 14.0f;
-    const SDL_FRect frame{content.x + margin, content.y + margin,
-        content.w - margin * 2.0f, content.h - margin * 2.0f};
-    const SDL_FRect inner{frame.x + 4.0f, frame.y + 4.0f,
-        frame.w - 8.0f, frame.h - 8.0f};
-    const SDL_FRect textFrame{inner.x + 18.0f, inner.y + 126.0f,
-        inner.w - 36.0f, inner.h - 150.0f};
-    DrawSunkenFrame(renderer_, textFrame);
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::Window);
-    SDL_FRect textArea{textFrame.x + 8.0f, textFrame.y + 8.0f,
-        textFrame.w - 16.0f, textFrame.h - 16.0f};
-    SDL_RenderFillRect(renderer_, &textArea);
-
-    Win95Theme::SetRenderColor(renderer_, Win95Theme::WindowText);
-    float y = textArea.y + 24.0f;
-    DrawText(renderer_, textArea.x + 20.0f, y, 1.9f, "O2EM-NG");
-    y += 48.0f;
-    DrawText(renderer_, textArea.x + 20.0f, y, 1.25f,
-        std::string(O2emVersion::kReleaseName) + " \xE2\x80\x94 " +
-            O2emVersion::kAppVersion);
-    y += 38.0f;
-    DrawText(renderer_, textArea.x + 20.0f, y, 1.0f,
-        "Powered by the new NG core");
 }
 
 void FrontendApp::DrawCreditsTab(const SDL_FRect& content)
@@ -4906,6 +4976,9 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
     // Every project page is system-owned and view-only. Legacy project_pages
     // rows in o2em-ng.db are not used by this UI.
     const bool aboutPage = page.pageKey == "about";
+    if (aboutPage)
+        DrawWin95Button({inner.x+22,inner.y+90,210,26},"Official GitHub project",false);
+
     if (!aboutPage)
     {
         DrawText(renderer_, inner.x + 22.0f, inner.y + 94.0f, 0.9f,
@@ -4932,7 +5005,7 @@ void FrontendApp::DrawProjectPage(const SDL_FRect& content)
         if (specialName) DrawText(renderer_, textArea.x + 5.0f, y, 0.92f, lines[i]);
         y += 23.0f;
     }
-    if (!aboutPage && maxScroll > 0)
+    if (maxScroll > 0)
     {
         SDL_FRect track{textFrame.x + textFrame.w - 12.0f, textArea.y, 6.0f, textArea.h};
         Win95Theme::SetRenderColor(renderer_, Win95Theme::Face); SDL_RenderFillRect(renderer_, &track);

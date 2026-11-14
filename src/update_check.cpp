@@ -117,48 +117,112 @@ int CompareVersionParts(const int a[3], const int b[3])
     return 0;
 }
 
-// ---- minimal JSON field extraction --------------------------------------
-//
-// The releases response is a small JSON document; this extracts the value
-// of the first occurrence of a simple string field ("tag_name":"...").
-// Only flat "key":"value" pairs are recognized — enough for tag_name, no
-// JSON framework. Malformed input yields an empty string.
-std::string ExtractFirstStringField(
-    const std::string& json, const char* field)
+// Validate the complete release response; only the first release's own tag
+// counts. Nested assets/body strings cannot masquerade as release metadata.
+struct ReleaseJson
 {
-    const std::string needle = std::string("\"") + field + "\"";
-    std::string::size_type pos = json.find(needle);
-    while (pos != std::string::npos)
+    const std::string& text;
+    size_t pos=0;
+    std::string tag;
+    void Space() { while(pos<text.size() && std::strchr(" \t\r\n",text[pos])) ++pos; }
+    bool Take(char c) { Space(); if(pos<text.size() && text[pos]==c){++pos;return true;} return false; }
+    bool String(std::string& out)
     {
-        pos = json.find(':', pos + needle.size());
-        if (pos == std::string::npos)
-            return {};
-        ++pos;
-        while (pos < json.size() &&
-            (json[pos] == ' ' || json[pos] == '\t' || json[pos] == '\r' ||
-                json[pos] == '\n'))
-            ++pos;
-        if (pos < json.size() && json[pos] == '"')
+        out.clear(); if(!Take('"')) return false;
+        while(pos<text.size())
         {
-            std::string value;
-            ++pos;
-            while (pos < json.size() && json[pos] != '"')
+            unsigned char c=text[pos++];
+            if(c=='"') return true;
+            if(c<32) return false;
+            if(c=='\\')
             {
-                if (json[pos] == '\\' && pos + 1 < json.size())
+                if(pos==text.size()) return false;
+                c=text[pos++];
+                if(c=='u')
                 {
-                    // Minimal escape handling: keep the next raw character.
-                    value += json[pos + 1];
-                    pos += 2;
-                    continue;
+                    unsigned value=0;
+                    for(int i=0;i<4;++i)
+                    {
+                        if(pos==text.size()) return false;
+                        char h=text[pos++];
+                        int n=h>='0'&&h<='9'?h-'0':h>='a'&&h<='f'?h-'a'+10:h>='A'&&h<='F'?h-'A'+10:-1;
+                        if(n<0) return false;
+                        value=value*16+n;
+                    }
+                    c=value<128?static_cast<unsigned char>(value):'?';
                 }
-                value += json[pos++];
+                else
+                {
+                    const char* escapes="\"\\/bfnrt";
+                    const char* found=std::strchr(escapes,c);
+                    if(!found) return false;
+                    c="\"\\/\b\f\n\r\t"[found-escapes];
+                }
             }
-            return value;
+            out+=static_cast<char>(c);
         }
-        pos = json.find(needle, pos); // not a string value; keep searching
+        return false;
     }
-    return {};
-}
+    bool Value(int depth,bool release=false)
+    {
+        if(depth>64) return false;
+        Space(); if(pos==text.size()) return false;
+        if(text[pos]=='{')
+        {
+            ++pos; if(Take('}')) return true;
+            do {
+                std::string key,value;
+                if(!String(key) || !Take(':')) return false;
+                Space();
+                if(release && key=="tag_name") {if(!String(tag)) return false;}
+                else if(!Value(depth+1)) return false;
+                if(Take('}')) return true;
+            } while(Take(','));
+            return false;
+        }
+        if(text[pos]=='[')
+        {
+            ++pos; if(Take(']')) return true;
+            do { if(!Value(depth+1)) return false; if(Take(']')) return true; } while(Take(','));
+            return false;
+        }
+        if(text[pos]=='"') {std::string ignored;return String(ignored);}
+        for(const char* word:{"true","false","null"})
+        {
+            size_t n=std::strlen(word);
+            if(text.compare(pos,n,word)==0){pos+=n;return true;}
+        }
+        if(text[pos]=='-') ++pos;
+        if(pos==text.size()) return false;
+        if(text[pos]=='0') ++pos;
+        else
+        {
+            if(text[pos]<'1'||text[pos]>'9') return false;
+            while(pos<text.size() && text[pos]>='0'&&text[pos]<='9') ++pos;
+        }
+        if(pos<text.size() && text[pos]=='.')
+        {
+            ++pos;size_t first=pos;
+            while(pos<text.size()&&text[pos]>='0'&&text[pos]<='9') ++pos;
+            if(pos==first)return false;
+        }
+        if(pos<text.size()&&(text[pos]=='e'||text[pos]=='E'))
+        {
+            ++pos;if(pos<text.size()&&(text[pos]=='+'||text[pos]=='-'))++pos;
+            size_t first=pos;while(pos<text.size()&&text[pos]>='0'&&text[pos]<='9')++pos;
+            if(pos==first)return false;
+        }
+        return true;
+    }
+    bool Parse()
+    {
+        if(!Take('[')) return false;
+        Space(); if(pos==text.size() || text[pos]!='{') return false;
+        if(!Value(1,true)) return false;
+        while(Take(',')) if(!Value(1)) return false;
+        return Take(']') && (Space(),pos==text.size()) && !tag.empty();
+    }
+};
 
 // "v5.0.0" | "0.32.0-beta" | "0.32.0" -> "v5.0.0"
 std::string NormalizeDisplayTag(std::string tag)
@@ -296,21 +360,18 @@ bool UpdateCheck::HttpsGet(const wchar_t* host, const wchar_t* path,
 
 // ---- worker -------------------------------------------------------------
 
-void UpdateCheck::WorkerMain(UpdateCheck* self,
-    std::string currentVersion)
+UpdateCheck::Result UpdateCheck::EvaluateResponse(const std::string& currentVersion,
+    const std::string& body, std::string error)
 {
-    std::string body;
-    std::string error;
-    const bool ok = self->HttpsGet(kApiHost, kReleasesPath, body, error);
-
     Result finished;
-    if (ok)
+    if (error.empty())
     {
         // Published, newest-first. Unauthenticated responses never include
         // draft releases, so [0] is the newest PUBLIC release. A release
         // marked prerelease=true still appears here (that is how Beta 4 /
         // v0.31.0-beta was published); only /releases/latest filters those.
-        const std::string tag = ExtractFirstStringField(body, "tag_name");
+        ReleaseJson json{body};
+        const std::string tag = json.Parse() ? json.tag : std::string();
         int latestParts[3] = {0, 0, 0};
         int currentParts[3] = {0, 0, 0};
         if (tag.empty())
@@ -343,15 +404,21 @@ void UpdateCheck::WorkerMain(UpdateCheck* self,
         }
     }
 
+    if (!error.empty()) finished.state=State::Error;
+    finished.errorMessage=error;
+    return finished;
+}
+
+void UpdateCheck::WorkerMain(UpdateCheck* self, std::string currentVersion)
+{
+    std::string body,error;
+    const bool ok=self->HttpsGet(kApiHost,kReleasesPath,body,error);
+    Result finished=EvaluateResponse(currentVersion,body,ok ? std::string() : error);
     {
         std::lock_guard<std::mutex> lock(self->mutex_);
-        if (self->stop_)
-            return; // app is shutting down; drop the result
-        if (!ok)
-            finished.state = State::Error;
-        finished.errorMessage = error;
-        self->result_ = std::move(finished);
-        self->busy_ = false;
+        if (self->stop_) return;
+        self->result_=std::move(finished);
+        self->busy_=false;
     }
 }
 

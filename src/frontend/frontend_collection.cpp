@@ -189,7 +189,7 @@ namespace
     }
 
     // Small Win95 checkbox with a green tick, used by the Library front-page
-    // My Collection summary (matches the approved overview panel).
+    // My Real Collection summary (matches the approved overview panel).
     void DrawSummaryCheck(SDL_Renderer* renderer, const SDL_FRect& rect, bool checked)
     {
         Win95Theme::SetRenderColor(renderer, Win95Theme::Window);
@@ -463,7 +463,7 @@ namespace
     void DrawMultilineNotes(SDL_Renderer* renderer, const SDL_FRect& box,
         const std::string& text, std::size_t caret, bool showCaret,
         int& scroll, std::size_t selA = 0, std::size_t selB = 0,
-        bool hasSelection = false)
+        bool hasSelection = false, bool followCaret = true)
     {
         Win95Theme::SetRenderColor(renderer, Win95Theme::Window);
         SDL_RenderFillRect(renderer, &box);
@@ -481,9 +481,9 @@ namespace
             (box.h - kNotesPad * 2.0f) / kNotesLineHeight));
 
         const int caretLine = Utf8CaretLine(text, caret);
-        if (caretLine < scroll)
+        if (followCaret && caretLine < scroll)
             scroll = caretLine;
-        else if (caretLine >= scroll + visibleLines)
+        else if (followCaret && caretLine >= scroll + visibleLines)
             scroll = caretLine - visibleLines + 1;
         scroll = (std::clamp)(scroll, 0,
             (std::max)(0, totalLines - visibleLines));
@@ -610,6 +610,17 @@ namespace
         if (field == DF_BoxCondition) return entry.boxCondition;
         if (field == DF_ManualCondition) return entry.manualCondition;
         return entry.cartridgeCondition;
+    }
+
+    bool NormalizeCollectionEntry(CollectionEntry& entry)
+    {
+        if (entry.title.empty()) return false;
+        if (!entry.cartridge) entry.cartridgeCondition.clear();
+        if (!entry.box) entry.boxCondition.clear();
+        if (!entry.manual) entry.manualCondition.clear();
+        entry.quantity = (std::max)(0,entry.quantity);
+        if (entry.owned && entry.quantity==0) entry.quantity=1;
+        return true;
     }
 
     struct DialogLayout
@@ -838,9 +849,9 @@ namespace
         layout.visibleRows = (std::max)(1, static_cast<int>(layout.list.h / 28.0f));
 
         const float gapStats = 12.0f;
-        float detailsH = tableH * 0.66f;
-        detailsH = (std::min)(detailsH, tableH - gapStats - 110.0f);
-        detailsH = (std::max)(detailsH, (std::min)(tableH - gapStats, 120.0f));
+        // At supported windowed sizes reserve a compact statistics strip so
+        // the editable Notes field cannot overlap the statistics panel.
+        float detailsH = tableH < 580.0f ? tableH-gapStats-104.0f : tableH*0.66f;
         layout.details = {layout.table.x + layout.table.w + gap,
             layout.table.y, detailsW, detailsH};
         layout.stats = {layout.details.x, layout.details.y + detailsH + gapStats,
@@ -1192,7 +1203,7 @@ void CollectionPage::SetStatus(std::string text)
 {
     status_ = std::move(text);
     if (!status_.empty())
-        std::printf("O2EM-NG: My Collection - %s\n", status_.c_str());
+        std::printf("O2EM-NG: My Real Collection - %s\n", status_.c_str());
 }
 
 SDL_FRect CollectionPage::ContentRect() const
@@ -1225,7 +1236,7 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
 
     Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
     UiFont_DrawText(renderer, layout.inner.x + 22.0f, layout.inner.y + 11.0f,
-        31.0f, "My Collection");
+        31.0f, "My Real Collection");
     UiFont_DrawText(renderer, layout.inner.x + 24.0f, layout.inner.y + 52.0f,
         15.0f,
         "Manage your own physical Videopac collection "
@@ -1238,7 +1249,7 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
         {
             Win95Theme::SetRenderColor(renderer, Win95Theme::Shadow);
             UiFont_DrawText(renderer, layout.search.x + 6.0f,
-                layout.search.y + 5.0f, 13.0f, "Search my collection...");
+                layout.search.y + 5.0f, 13.0f, "Search my real collection...");
         }
         DrawMagnifier(renderer, layout.search.x + layout.search.w - 16.0f,
             layout.search.y + layout.search.h * 0.5f - 1.0f);
@@ -1400,6 +1411,14 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
     DrawGroupPanel(renderer, layout.details, "Game Details");
     const CollectionEntry* selectedEntry =
         (selected >= 0 && selected < count) ? &entries_[view_[selected]] : nullptr;
+    inlineFields_.clear();
+    if (selectedEntry)
+    {
+        if (!inlineDirty_ && (inlineEntry_.id != selectedEntry->id || (inlineFocus_ < 0 && inlineCombo_ < 0)))
+            inlineEntry_ = *selectedEntry;
+        if (inlineEntry_.id == selectedEntry->id)
+            selectedEntry = &inlineEntry_;
+    }
     const GameInfo* reference = selectedEntry
         ? FindReferenceGame(*selectedEntry) : nullptr;
 
@@ -1408,7 +1427,7 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
     const float dLeft = layout.details.x + dPad;
     const float dRight = layout.details.x + layout.details.w - dPad;
     const float detailsWidth = dRight - dLeft;
-    const float detailRowH = 24.0f;
+    const float detailRowH = layout.details.h < 365.0f ? 20.0f : 24.0f;
     static const char* const detailFieldLabels[3] = {
         "Catalog ID:", "Title:", "Region:"
     };
@@ -1475,8 +1494,9 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
         const float y = dTop + static_cast<float>(i) * detailRowH;
         Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
         DrawText(renderer, rightColX, y + 3.0f, 0.9f, detailFieldLabels[i]);
-        DrawField(renderer, {rightColX + detailLabelW, y, rightFieldW, 20.0f},
-            fieldValues[i], fieldCombos[i]);
+        const SDL_FRect field{rightColX+detailLabelW,y,rightFieldW,20.0f};
+        inlineFields_.push_back({i==0 ? DF_CatalogId : i==1 ? DF_Title : DF_Region,field});
+        DrawField(renderer, field, fieldValues[i], fieldCombos[i]);
     }
 
     const bool present[3] = {
@@ -1494,6 +1514,7 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
         const float y = dTop + static_cast<float>(3 + i) * detailRowH;
         Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
         DrawText(renderer, rightColX, y + 2.0f, 0.9f, detailPresenceLabels[i]);
+        inlineFields_.push_back({DF_Cartridge+i,{rightColX+detailLabelW,y+2,14,14}});
         DrawCheckBox(renderer, {rightColX + detailLabelW, y + 2.0f, 14.0f, 14.0f},
             present[i]);
         Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
@@ -1512,12 +1533,19 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
             value = "Not present";
         else
             value = conditions[i].empty() ? "-" : conditions[i];
-        DrawField(renderer, {rightColX + detailLabelW, y, rightFieldW, 20.0f},
-            value, false);
+        const SDL_FRect field{rightColX+detailLabelW,y,rightFieldW,20.0f};
+        inlineFields_.push_back({DF_CartridgeCondition+i,field});
+        DrawField(renderer, field, value, present[i]);
     }
 
+    const SDL_FRect ownedBox{dLeft,dTop+coverH+6,14,14};
+    inlineFields_.push_back({DF_Owned,ownedBox});
+    DrawCheckBox(renderer,ownedBox,selectedEntry && selectedEntry->owned);
+    Win95Theme::SetRenderColor(renderer,Win95Theme::WindowText);
+    DrawText(renderer,dLeft+20,ownedBox.y,0.85f,"Owned");
     const float topSectionH = (std::max)(coverH, 9.0f * detailRowH);
     const float lowerTop = dTop + topSectionH + 8.0f;
+    const float lowerRowH = detailRowH < 24.0f ? 24.0f : 28.0f;
     static const char* const lowerRowLabels[3] = {
         "Purchase source:", "Date added:", "Shelf / Storage:"
     };
@@ -1539,10 +1567,12 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
     const auto drawLowerRow = [&](int index, const char* label,
         const std::string& value) -> float
     {
-        const float y = lowerTop + static_cast<float>(index) * 28.0f;
+        const float y = lowerTop + static_cast<float>(index) * lowerRowH;
         Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
         DrawText(renderer, dLeft, y + 3.0f, 0.92f, label);
-        DrawField(renderer, {lowerFieldX, y, lowerFieldW, 21.0f}, value, false);
+        const SDL_FRect field{lowerFieldX,y,lowerFieldW,21};
+        inlineFields_.push_back({index==0 ? DF_PurchaseSource : index==1 ? DF_DateAdded : DF_Shelf,field});
+        DrawField(renderer, field, value, false);
         return y;
     };
 
@@ -1569,12 +1599,13 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
     drawLowerRow(2, "Shelf / Storage:",
         selectedEntry ? selectedEntry->storageLocation : std::string());
 
-    const float notesY = lowerTop + 3.0f * 28.0f;
+    const float notesY = lowerTop + 3.0f * lowerRowH;
     const float notesH = (std::max)(24.0f,
         layout.details.y + layout.details.h - 10.0f - notesY);
     Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
     DrawText(renderer, dLeft, notesY + 3.0f, 0.92f, "Notes:");
     const SDL_FRect notesBox{lowerFieldX, notesY, lowerFieldW, notesH};
+    inlineFields_.push_back({DF_Notes,notesBox});
     DrawField(renderer, notesBox, "", false);
     {
         const std::string notes = selectedEntry ? selectedEntry->notes : std::string();
@@ -1633,7 +1664,19 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
     const float statsValueX = statsLabelX + 150.0f;
     const float statsTop = layout.stats.y + 32.0f;
     const float statsRowH = (std::max)(16.0f, (layout.stats.h - 38.0f) / 6.0f);
-    for (int i = 0; i < 6; ++i)
+    if (layout.stats.h < 130.0f)
+    {
+        const char* labels[6]={"Cartridges:","Boxed:","Manuals:","Complete:","Duplicates:","Wanted:"};
+        const int counts[6]={stats_.ownedCartridges,stats_.boxedGames,stats_.manuals,stats_.complete,stats_.duplicates,stats_.wanted};
+        for(int i=0;i<6;++i)
+        {
+            const float x=layout.stats.x+10+(i%2)*layout.stats.w*0.5f;
+            const float y=layout.stats.y+28+(i/2)*23.0f;
+            Win95Theme::SetRenderColor(renderer,Win95Theme::WindowText);
+            DrawText(renderer,x,y,0.8f,std::string(labels[i])+" "+std::to_string(counts[i]));
+        }
+    }
+    else for (int i = 0; i < 6; ++i)
     {
         const float y = statsTop + static_cast<float>(i) * statsRowH;
         Win95Theme::SetRenderColor(renderer, Win95Theme::WindowText);
@@ -1651,6 +1694,7 @@ void CollectionPage::Draw(SDL_Renderer* renderer, const SDL_FRect& content)
         DrawWin95ButtonBody(renderer, layout.buttons[i], buttonLabels[i],
             buttonPressed_ == i);
 
+    if (!dialogOpen_) DrawInlineFocus(renderer);
     if (dialogOpen_)
         DrawDialog(renderer, content);
 }
@@ -1923,6 +1967,10 @@ bool CollectionPage::HandleMouseDown(float x, float y, int clicks)
     if (dialogOpen_)
         return HandleDialogMouseDown(content, x, y);
 
+    if (HandleInlineMouse(x,y)) return true;
+    if (!CommitInline()) return true;
+    inlineFocus_=-1; inlineCombo_=-1;
+    if (window_) SDL_StopTextInput(window_);
     const MyCollectionLayout layout = LayoutMyCollection(content);
     const auto inside = [x, y](const SDL_FRect& r)
     {
@@ -2073,6 +2121,15 @@ bool CollectionPage::HandleMouseWheel(float x, float y, float deltaY)
         return true;
     }
 
+    if (inlineFocus_ >= 0 || inlineCombo_ >= 0)
+    {
+        if (inlineFocus_ == DF_Notes)
+        {
+            inlineNotesScroll_=(std::max)(0,inlineNotesScroll_+(deltaY>0?-1:1));
+            inlineNotesManualScroll_=true;
+        }
+        return true;
+    }
     const SDL_FRect content = ContentRect();
     const MyCollectionLayout layout = LayoutMyCollection(content);
     const auto inside = [x, y](const SDL_FRect& r)
@@ -2095,6 +2152,9 @@ bool CollectionPage::HandleKeyDown(const SDL_KeyboardEvent& event)
 {
     if (dialogOpen_)
         return HandleDialogKeyDown(event);
+
+    if (inlineFocus_ >= 0 || inlineCombo_ >= 0)
+        return HandleInlineKey(event);
 
     if (searchFocused_)
     {
@@ -2161,6 +2221,7 @@ bool CollectionPage::HandleKeyDown(const SDL_KeyboardEvent& event)
 
 void CollectionPage::MoveSelection(int direction)
 {
+    if (!CommitInline()) return;
     const int count = static_cast<int>(view_.size());
     if (count == 0)
         return;
@@ -2178,6 +2239,7 @@ void CollectionPage::MoveSelection(int direction)
 
 void CollectionPage::ActivateSelected()
 {
+    if (!CommitInline()) return;
     if (SelectedEntry())
         OpenEditDialog();
     else
@@ -2186,6 +2248,7 @@ void CollectionPage::ActivateSelected()
 
 bool CollectionPage::CancelOrBack()
 {
+    if (!CommitInline()) return true;
     if (dialogOpen_)
     {
         CloseDialog(window_);
@@ -2203,8 +2266,11 @@ bool CollectionPage::CancelOrBack()
     return false;
 }
 
-void CollectionPage::Deactivate(SDL_Window* window)
+bool CollectionPage::Deactivate(SDL_Window* window)
 {
+    if (!CommitInline()) return false;
+    inlineFocus_=-1; inlineCombo_=-1;
+    if (window) SDL_StopTextInput(window);
     if (dialogOpen_)
         CloseDialog(window);
     if (searchFocused_)
@@ -2212,12 +2278,27 @@ void CollectionPage::Deactivate(SDL_Window* window)
         searchFocused_ = false;
         if (window) SDL_StopTextInput(window);
     }
+    return true;
 }
 
 bool CollectionPage::HandleTextInput(const SDL_TextInputEvent& event)
 {
     if (dialogOpen_)
         return HandleDialogTextInput(event);
+    if (inlineFocus_ >= 0 && event.text)
+    {
+        if (auto* text=InlineString(inlineFocus_))
+        {
+            if (inlineSelectAll_) {text->clear();inlineCaret_=0;inlineSelectAll_=false;}
+            inlineCaret_=(std::min)(inlineCaret_,text->size());
+            inlineNotesManualScroll_=false;
+            text->insert(inlineCaret_,event.text);
+            inlineCaret_+=std::char_traits<char>::length(event.text);
+            inlineDirty_=true;
+            SetStatus("Unsaved details - Enter or click outside to save; Ctrl+Enter in Notes.");
+        }
+        return true;
+    }
     if (!searchFocused_ || !event.text)
         return false;
 
@@ -2989,26 +3070,12 @@ void CollectionPage::SaveDialog()
         }
     }
 
-    if (entry.title.empty())
+    entry.quantity = std::atoi(dialogQuantityText_.c_str());
+    if (!NormalizeCollectionEntry(entry))
     {
         SetStatus("A title is required.");
         return;
     }
-
-    // Never persist a condition for a component that is not present: unchecking
-    // Cartridge/Box/Manual clears its condition on save.
-    if (!entry.cartridge)
-        entry.cartridgeCondition.clear();
-    if (!entry.box)
-        entry.boxCondition.clear();
-    if (!entry.manual)
-        entry.manualCondition.clear();
-
-    entry.quantity = std::atoi(dialogQuantityText_.c_str());
-    if (entry.quantity < 0)
-        entry.quantity = 0;
-    if (entry.owned && entry.quantity == 0)
-        entry.quantity = 1;
 
     long long savedId = entry.id;
     if (wasEditing)
@@ -3085,7 +3152,7 @@ void CollectionPage::RemoveSelected()
     const std::string title = ResolvedTitle(*selected);
     const std::string catalog = selected->catalogId;
 
-    std::string message = "Remove this item from My Collection?\n\n";
+    std::string message = "Remove this item from My Real Collection?\n\n";
     if (!catalog.empty())
         message += "No. " + catalog + "  ";
     message += title;
@@ -3099,7 +3166,7 @@ void CollectionPage::RemoveSelected()
             SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 
     if (MessageBoxA(owner, message.c_str(),
-            "O2EM-NG - Remove from My Collection",
+            "O2EM-NG - Remove from My Real Collection",
             MB_YESNO | MB_ICONQUESTION) != IDYES)
     {
         SetStatus("Remove cancelled.");
@@ -3136,7 +3203,7 @@ void CollectionPage::ExportCsv()
     dialog.lpstrFilter = L"CSV files (*.csv)\0*.csv\0All files (*.*)\0*.*\0";
     dialog.nFilterIndex = 1;
     dialog.lpstrDefExt = L"csv";
-    dialog.lpstrTitle = L"Export My Collection";
+    dialog.lpstrTitle = L"Export My Real Collection";
     dialog.Flags = OFN_OVERWRITEPROMPT | OFN_HIDEREADONLY | OFN_NOCHANGEDIR;
 
     if (!GetSaveFileNameW(&dialog))
@@ -3232,7 +3299,7 @@ void CollectionPage::DrawLibrarySummary(SDL_Renderer* renderer,
         return;
 
     // The Library dashboard draws the surrounding Win95 group frame and its
-    // "My Collection" caption; this method renders only the panel contents.
+    // "My Real Collection" caption; this method renders only the panel contents.
     //
     // Column geometry is defined ONCE here and shared by the header and the
     // data rows so the status boxes line up exactly under Cart / Box / Manual / W.
@@ -3327,7 +3394,7 @@ void CollectionPage::DrawLibrarySummary(SDL_Renderer* renderer,
     {
         Win95Theme::SetRenderColor(renderer, Win95Theme::Shadow);
         DrawText(renderer, innerX, listTop + (rowH - rowTextH) * 0.5f, rowScale,
-            "No entries yet - open My Collection to add.");
+            "No entries yet - open My Real Collection to add.");
     }
     else
     {
@@ -3359,7 +3426,7 @@ void CollectionPage::DrawLibrarySummary(SDL_Renderer* renderer,
     }
 
     // Win95 vertical scrollbar is always present; it fills the track when the
-    // list is not scrollable, matching the main My Collection table.
+    // list is not scrollable, matching the main My Real Collection table.
     {
         const SDL_FRect track{panel.x + panel.w - 6.0f, listTop, 5.0f,
             listBottom - listTop};
@@ -3401,4 +3468,190 @@ bool CollectionPage::HandleLibrarySummaryWheel(const SDL_FRect& panel,
     summaryScroll_ = (std::clamp)(summaryScroll_ + (deltaY > 0.0f ? -1 : 1),
         0, maxScroll);
     return true;
+}
+
+// Inline Game Details uses the same collection records and normalization as Edit Entry.
+std::string* CollectionPage::InlineString(int field)
+{
+    switch(field)
+    {
+    case DF_CatalogId:return &inlineEntry_.catalogId;
+    case DF_Title:return &inlineEntry_.title;
+    case DF_Region:return &inlineEntry_.region;
+    case DF_CartridgeCondition:return &inlineEntry_.cartridgeCondition;
+    case DF_BoxCondition:return &inlineEntry_.boxCondition;
+    case DF_ManualCondition:return &inlineEntry_.manualCondition;
+    case DF_PurchaseSource:return &inlineEntry_.purchaseSource;
+    case DF_DateAdded:return &inlineEntry_.dateAdded;
+    case DF_Shelf:return &inlineEntry_.storageLocation;
+    case DF_Notes:return &inlineEntry_.notes;
+    default:return nullptr;
+    }
+}
+bool CollectionPage::CommitInline()
+{
+    if (!inlineDirty_) return true;
+    CollectionEntry entry=inlineEntry_;
+    if (!NormalizeCollectionEntry(entry))
+    { SetStatus("A title is required. Details have not been saved.");return false; }
+    if (!database_.UpdateEntry(entry))
+    { SetStatus("Could not save Game Details. Edits retained; retry before leaving.");return false; }
+    inlineEntry_=entry;
+    inlineDirty_=false;
+    const auto id=entry.id;
+    Refresh(); SelectEntryById(id);
+    SetStatus("Game Details saved.");
+    return true;
+}
+bool CollectionPage::HandleInlineMouse(float x,float y)
+{
+    const auto inside=[x,y](const SDL_FRect& r){return x>=r.x && x<r.x+r.w && y>=r.y && y<r.y+r.h;};
+    if (inlineCombo_ >= 0)
+    {
+        if (inside(inlinePopup_))
+        {
+            const auto& values=IsConditionField(inlineCombo_) ? CollectionDatabase::ConditionValues() : CollectionDatabase::RegionValues();
+            int row=static_cast<int>((y-inlinePopup_.y)/22);
+            if (row>=0 && row<static_cast<int>(values.size()))
+            { *InlineString(inlineCombo_)=values[row];inlineDirty_=true;CommitInline(); }
+            inlineCombo_=-1;inlineFocus_=-1;return true;
+        }
+        inlineCombo_=-1;
+    }
+    if (!SelectedEntry()) return false;
+    for (const auto& item:inlineFields_)
+    {
+        if (!inside(item.second)) continue;
+        const int field=item.first;
+        if (field==inlineFocus_) return true;
+        if (!CommitInline()) return true;
+        searchFocused_=false;
+        if (window_) SDL_StopTextInput(window_);
+        inlineFocus_=-1; inlineSelectAll_=false;
+        bool* check=nullptr;
+        if (field==DF_Owned) check=&inlineEntry_.owned;
+        if (field==DF_Cartridge) check=&inlineEntry_.cartridge;
+        if (field==DF_Box) check=&inlineEntry_.box;
+        if (field==DF_Manual) check=&inlineEntry_.manual;
+        if (check) { *check=!*check; inlineDirty_=true;CommitInline(); return true; }
+        if (IsConditionField(field) && !ConditionComponentPresent(inlineEntry_,field)) return true;
+        if (field==DF_Region || IsConditionField(field))
+        {
+            inlineCombo_=field;
+            const auto& values=IsConditionField(field) ? CollectionDatabase::ConditionValues() : CollectionDatabase::RegionValues();
+            const auto selected=std::find(values.begin(),values.end(),*InlineString(field));
+            inlineComboSelection_=selected==values.end()?0:static_cast<int>(selected-values.begin());
+            return true;
+        }
+        if (auto* text=InlineString(field))
+        {
+            inlineFocus_=field;inlineCaret_=text->size();inlineNotesScroll_=0;inlineNotesManualScroll_=false;
+            if (window_) SDL_StartTextInput(window_);
+            SetStatus(field==DF_DateAdded ? "Date format: YYYY-MM-DD. Enter or click outside to save." : "Enter or click outside to save; Ctrl+Enter in Notes.");
+        }
+        return true;
+    }
+    return false;
+}
+bool CollectionPage::HandleInlineKey(const SDL_KeyboardEvent& event)
+{
+    const bool ctrl=(event.mod & SDL_KMOD_CTRL)!=0;
+    if (inlineCombo_>=0)
+    {
+        const auto& values=IsConditionField(inlineCombo_) ? CollectionDatabase::ConditionValues() : CollectionDatabase::RegionValues();
+        if(event.key==SDLK_UP) inlineComboSelection_=(std::max)(0,inlineComboSelection_-1);
+        if(event.key==SDLK_DOWN) inlineComboSelection_=(std::min)(static_cast<int>(values.size())-1,inlineComboSelection_+1);
+        if(event.key==SDLK_HOME) inlineComboSelection_=0;
+        if(event.key==SDLK_END) inlineComboSelection_=static_cast<int>(values.size())-1;
+        if(event.key==SDLK_ESCAPE) inlineCombo_=-1;
+        else if(event.key==SDLK_RETURN)
+        {
+            *InlineString(inlineCombo_)=values[inlineComboSelection_];inlineDirty_=true;
+            if(CommitInline()) inlineCombo_=-1;
+        }
+        return true;
+    }
+    inlineNotesManualScroll_=false;
+    auto* text=InlineString(inlineFocus_);
+    if (!text) return true;
+    inlineCaret_=(std::min)(inlineCaret_,text->size());
+    if (event.key==SDLK_ESCAPE)
+    {
+        // Escape releases focus only after a successful save; no silent discard.
+        if (CommitInline()) {inlineFocus_=-1;if(window_)SDL_StopTextInput(window_);}
+        return true;
+    }
+    if ((event.key==SDLK_RETURN && (inlineFocus_!=DF_Notes || ctrl)) || event.key==SDLK_TAB || (ctrl && event.key==SDLK_S))
+    {
+        if (CommitInline()) {inlineFocus_=-1;if(window_)SDL_StopTextInput(window_);}
+        return true;
+    }
+    if(ctrl && event.key==SDLK_A) {inlineSelectAll_=true;return true;}
+    if(ctrl && (event.key==SDLK_C || event.key==SDLK_X))
+    {if(inlineSelectAll_) {SDL_SetClipboardText(text->c_str());if(event.key==SDLK_X){text->clear();inlineCaret_=0;inlineDirty_=true;inlineSelectAll_=false;}} return true;}
+    if(ctrl && event.key==SDLK_V)
+    {
+        char* clip=SDL_GetClipboardText();
+        if(clip){if(inlineSelectAll_){text->clear();inlineCaret_=0;inlineSelectAll_=false;} std::string value=clip;SDL_free(clip);
+            if(inlineFocus_!=DF_Notes) value.erase(std::remove_if(value.begin(),value.end(),[](char c){return c=='\r'||c=='\n';}),value.end());
+            text->insert(inlineCaret_,value);inlineCaret_+=value.size();inlineDirty_=true;}
+        return true;
+    }
+    if(event.key==SDLK_RETURN && inlineFocus_==DF_Notes) {text->insert(inlineCaret_,"\n");inlineCaret_++;inlineDirty_=true;return true;}
+    if(event.key==SDLK_LEFT) {inlineCaret_=Utf8Prev(*text,inlineCaret_);inlineSelectAll_=false;}
+    else if(event.key==SDLK_RIGHT) {inlineCaret_=Utf8Next(*text,inlineCaret_);inlineSelectAll_=false;}
+    else if(event.key==SDLK_HOME) {inlineCaret_=0;inlineSelectAll_=false;}
+    else if(event.key==SDLK_END) {inlineCaret_=text->size();inlineSelectAll_=false;}
+    else if(event.key==SDLK_BACKSPACE || event.key==SDLK_DELETE)
+    {
+        if(inlineSelectAll_) {text->clear();inlineCaret_=0;inlineSelectAll_=false;}
+        else if(event.key==SDLK_BACKSPACE && inlineCaret_>0) {const auto p=Utf8Prev(*text,inlineCaret_);text->erase(p,inlineCaret_-p);inlineCaret_=p;}
+        else if(event.key==SDLK_DELETE) text->erase(inlineCaret_,Utf8Next(*text,inlineCaret_)-inlineCaret_);
+        inlineDirty_=true;
+    }
+    return true; // no text/navigation shortcuts leak to the frontend
+}
+void CollectionPage::DrawInlineFocus(SDL_Renderer* renderer)
+{
+    if(!SelectedEntry()) return;
+    for(const auto& item:inlineFields_)
+    {
+        if(item.first==inlineFocus_)
+        {
+            const auto& r=item.second;
+            auto* text=InlineString(inlineFocus_);
+            if(inlineFocus_==DF_Notes && text)
+                DrawMultilineNotes(renderer,r,*text,inlineCaret_,!inlineNotesManualScroll_,inlineNotesScroll_,0,text->size(),inlineSelectAll_,!inlineNotesManualScroll_);
+            Win95Theme::SetRenderColor(renderer,Win95Theme::ActiveTitle);
+            SDL_RenderRect(renderer,&r);
+            if (text && inlineFocus_!=DF_Notes)
+            {
+                float width=0,height=0;
+                UiFont_MeasureText(16.5f*0.85f,text->substr(0,inlineCaret_).c_str(),&width,&height);
+                const float caret=r.x+5+(std::min)(width,r.w-12);
+                SDL_RenderLine(renderer,caret,r.y+3,caret,r.y+r.h-3);
+            }
+            if(inlineSelectAll_ && inlineFocus_!=DF_Notes) SDL_RenderLine(renderer,r.x+4,r.y+r.h-3,r.x+r.w-4,r.y+r.h-3);
+        }
+        if(item.first==inlineCombo_)
+        {
+            const auto& values=IsConditionField(inlineCombo_) ? CollectionDatabase::ConditionValues() : CollectionDatabase::RegionValues();
+            const auto& r=item.second;
+            const auto content=ContentRect();
+            const float height=22.0f*values.size();
+            inlinePopup_={r.x,(std::min)(r.y+r.h,content.y+content.h-height-4),r.w,height};
+            Win95Theme::SetRenderColor(renderer,Win95Theme::Window);
+            SDL_RenderFillRect(renderer,&inlinePopup_);
+            Win95Theme::SetRenderColor(renderer,Win95Theme::WindowText);
+            SDL_RenderRect(renderer,&inlinePopup_);
+            for(int n=0;n<static_cast<int>(values.size());n++)
+            {
+                SDL_FRect row{inlinePopup_.x+1,inlinePopup_.y+n*22+1,inlinePopup_.w-2,21};
+                Win95Theme::SetRenderColor(renderer,n==inlineComboSelection_ ? Win95Theme::SelectedItem : Win95Theme::Window);
+                SDL_RenderFillRect(renderer,&row);
+                Win95Theme::SetRenderColor(renderer,n==inlineComboSelection_ ? Win95Theme::SelectedItemText : Win95Theme::WindowText);
+                DrawText(renderer,r.x+4,inlinePopup_.y+n*22+3,0.85f,values[n].empty()?"-":values[n]);
+            }
+        }
+    }
 }

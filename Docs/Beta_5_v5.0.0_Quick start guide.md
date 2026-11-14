@@ -37,14 +37,14 @@ guarantee that every file will be identified correctly.
 - Existing frontend, library, database and controller workflows preserved.
 - Compatibility and regression improvements across standard and Plus titles.
 
-## Window and My Collection
+## Window and My Real Collection
 
 The main window uses a Windows 95-style title bar (with minimize, maximize/restore
 and close) and a File / Library / Settings / Tools / Help menu bar. You can drag
 the title bar to move the window, double-click it to maximize or restore, and drag
 the window edges to resize.
 
-**My Collection** is a separate page for your own physical Videopac games. It uses
+**My Real Collection** is a separate page for your own physical Videopac games. It uses
 its own database, kept apart from the main game catalogue, which stays read-only.
 From this page you can:
 
@@ -55,7 +55,7 @@ From this page you can:
 - Link an entry to a library game so its title, number and box art are reused.
 - Export the list as a CSV file.
 
-Nothing from My Collection is written into the main catalogue, and no cover or
+Nothing from My Real Collection is written into the main catalogue, and no cover or
 metadata is copied into it.
 
 ## C7010 Chess setup

@@ -65,7 +65,8 @@ public:
     bool IsDialogOpen() const noexcept { return dialogOpen_; }
 
     // Called when leaving the tab: closes any dialog and stops text input.
-    void Deactivate(SDL_Window* window);
+    bool Deactivate(SDL_Window* window);
+    bool CommitInline();
 
 private:
     struct CatalogKey
@@ -104,6 +105,22 @@ private:
     std::string* DialogFieldString(int field);
 
     SDL_FRect ContentRect() const;
+
+    std::string* InlineString(int field);
+    bool HandleInlineMouse(float x, float y);
+    bool HandleInlineKey(const SDL_KeyboardEvent& event);
+    void DrawInlineFocus(SDL_Renderer* renderer);
+    CollectionEntry inlineEntry_;
+    int inlineFocus_ = -1;
+    int inlineCombo_ = -1;
+    int inlineComboSelection_ = 0;
+    bool inlineNotesManualScroll_ = false;
+    int inlineNotesScroll_ = 0;
+    bool inlineDirty_ = false;
+    bool inlineSelectAll_ = false;
+    std::size_t inlineCaret_ = 0;
+    SDL_FRect inlinePopup_{};
+    std::vector<std::pair<int, SDL_FRect>> inlineFields_;
 
     // ---- persistent state -------------------------------------------------
     CollectionDatabase database_;

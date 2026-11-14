@@ -9,7 +9,7 @@ namespace
 {
     constexpr std::array<const char*, static_cast<size_t>(FrontendTab::Count)> Tabs = {
         "Library", "Edit Game Data", "Import Center",
-        "Manual", "Settings", "About", "My Collection"
+        "Manual", "Settings", "About", "My Real Collection"
     };
 
     void DrawRaisedEdge(SDL_Renderer* renderer, const SDL_FRect& rect)

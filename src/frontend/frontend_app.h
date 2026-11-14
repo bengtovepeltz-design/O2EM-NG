@@ -88,6 +88,8 @@ private:
     bool metadataEditMode_ = false;
     bool metadataTextInput_ = false;
     int metadataSelected_ = 0;
+    int metadataScroll_ = 0;
+    bool libraryStartPressed_ = false;
     std::size_t metadataCaret_ = 0;
     // Game Data push buttons (EDIT GAME DATA / SAVE / CANCEL) currently held
     // down, else -1. Same Win95 pressed-state idiom as the Quick Add buttons.
@@ -233,6 +235,8 @@ private:
     // selection movement or collection/view changes; never fights wheel
     // scrolling because it only runs when the selection itself moves.
     void KeepLibrarySelectionVisible();
+    SDL_FRect LibraryStartButtonRect(const SDL_FRect& panel) const;
+    bool CanStartSelectedGame() const;
     bool TryLibraryFavoriteAt(float x, float y, bool activate);
     // Personal rating stars in the Library Game Information panel.
     bool TryLibraryRatingAt(float x, float y);
