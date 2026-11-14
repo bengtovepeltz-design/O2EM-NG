@@ -6,6 +6,7 @@
 [Setup]
 AppId={{E8C65F7D-8F6E-4A4A-A271-BA3BBDBA67C1}
 AppName={#MyAppName}
+AppVerName={#MyAppName} {#MyAppRelease} v{#MyAppVersion}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\O2EM-NG
@@ -23,6 +24,11 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
+VersionInfoVersion={#MyAppVersion}.0
+VersionInfoProductVersion={#MyAppVersion}.0
+VersionInfoProductName={#MyAppName}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} {#MyAppRelease} v{#MyAppVersion} Setup
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

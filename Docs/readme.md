@@ -5,14 +5,40 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Current development: Beta 5 / v5.0.0 (release candidate, not yet publicly
-released).** The previous published release remains
-[v0.31.0-beta (Beta 4)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v0.31.0-beta).
+**Current release: Beta 5 / v5.0.1 UI update.** The previous published release
+is [v5.0.0 (Beta 5)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v5.0.0).
+This update focuses on the Windows frontend and collection usability; the NG
+emulation engines are unchanged.
 
 [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
-[Quick start](Beta_5_v5.0.0_Quick%20start%20guide.md) |
+[Quick start](Beta_5_v5.0.1_Quick%20start%20guide.md) |
 [Changelog](CHANGELOG.md) |
 [Project notes](Project.md)
+
+## What's new in v5.0.1
+
+- **Edit Game Data:** corrected mouse row activation; rendering and hit-testing
+  now share the same row geometry.
+- **Edit Game Data input focus:** Game Library input is locked while the editor
+  is open, preventing accidental library scrolling or game changes.
+- **Check Updates:** improved JSON parsing and error handling; invalid responses
+  and network failures are no longer reported as successful checks.
+- **About:** expanded project, O2EM heritage, NG architecture, hardware and
+  preservation information.
+- **Recently Played and Favorites:** the Game Library scrolls to the selected
+  entry when needed.
+- **START GAME:** added below DELETE in Cover / Media, using the existing launch
+  function.
+- **My Real Collection:** the collection page has been renamed; existing data is
+  preserved.
+- **Direct collection editing:** Game Details can be edited without opening the
+  separate Edit Entry dialog.
+
+Known minor limitation: the mouse wheel does not scroll inside Edit Game Data;
+the Game Library remains locked while the editor is open.
+
+The NG emulation engines, C7010 support, audio and timing are unchanged in this
+UI update.
 
 ## What's new in Beta 5
 
@@ -26,8 +52,9 @@ released).** The previous published release remains
 - Existing frontend, library, database, settings and controller workflows are
   preserved.
 
-Beta 4 remains the previous public release. Its Windows 95-style window,
-My Real Collection page, UTF-8 media paths and C7010 support are retained in Beta 5.
+Beta 5 v5.0.0 remains the previous public release. Its Windows 95-style window,
+UTF-8 media paths and C7010 support are retained in v5.0.1, along with the
+renamed My Real Collection page.
 
 ## Features
 

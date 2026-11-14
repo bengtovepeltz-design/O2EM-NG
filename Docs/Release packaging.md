@@ -1,8 +1,8 @@
 # Release packaging
 
 Build **Release | x64** in Visual Studio. After a successful build, `PackageRelease`
-creates `dist/O2EM-NG-Beta-5-v5.0.0/` and a matching ZIP for the current
-development candidate.
+creates `dist/O2EM-NG-Beta-5-v5.0.1/` and a matching ZIP for the current
+UI update release.
 
 Edit `tools/release-manifest.json` to choose files, destinations, empty user folders,
 the version number, release name and approved seed hash. Relative sources are relative to the project directory;
@@ -52,8 +52,11 @@ Debug builds are unaffected. To build Release without packaging, pass
 
 After packaging, run `Installer/Build Installer.bat` with Inno Setup 7 or 6 installed.
 The installer reads `dist/release-info.iss`, generated from the same manifest version
-and release name, and consumes the prepared package. The current candidate output is
-`O2EM-NG-Beta-5-v5.0.0-Setup.exe`. It does not copy your development configuration.
+and release name, and consumes the prepared package. The current output is
+`O2EM-NG-Beta-5-v5.0.1-Setup.exe`. It does not copy your development configuration.
+The installer uses the established `AppId` and default user installation directory, so
+an existing v5.0.0 installation is upgraded in place while the user catalogue,
+collection, settings, ROMs and media are preserved.
 The supplied database seeds new installations; an existing user database is preserved
 on upgrade and uninstall. On first Beta 5 startup, the application merges the packaged
 system catalogue into the preserved user database and writes current schema version 5.
@@ -65,6 +68,9 @@ Packaging does not publish to GitHub. Test the package and installer on a clean
 Windows PC before distributing them.
 
 The installer installs for the current user in %LOCALAPPDATA%\Programs\O2EM-NG without administrator rights.
+The installer display name includes the Beta 5 release identity and the v5.0.1
+application version; the installed executable carries Windows file/product version
+5.0.1.0.
 This is required because imports, the catalogue and settings are stored beside the executable.
 It does not reuse the earlier Program Files installation directory. Existing data in an old
 Program Files installation is not moved or removed automatically; copy any personal data

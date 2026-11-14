@@ -1,7 +1,7 @@
 # O2EM-NG Beta 4 - v0.31.0-beta Quick Start Guide
 
 > Archived guide for the published Beta 4 release. For current development, see
-> the [Beta 5 / v5.0.0 guide](Beta_5_v5.0.0_Quick%20start%20guide.md).
+> the [Beta 5 / v5.0.1 guide](Beta_5_v5.0.1_Quick%20start%20guide.md).
 
 This guide covers the published v0.31.0-beta (Beta 4) release.
 Beta 4 adds C7010 Chess support and fixes the misplaced/disappearing pieces and

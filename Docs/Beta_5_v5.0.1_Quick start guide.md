@@ -1,14 +1,38 @@
-# O2EM-NG Beta 5 - v5.0.0 Quick Start Guide
+# O2EM-NG Beta 5 - v5.0.1 UI Update Quick Start Guide
 
-This guide covers the **Beta 5 / v5.0.0 development candidate**.
+This guide covers the **Beta 5 / v5.0.1 UI update**.
 
-Beta 5 is not yet a public release. The previous published release remains
-**Beta 4 / v0.31.0-beta**. Beta 5 introduces the new NG emulation core and the
-compatibility work built around it.
+The previous published release is **Beta 5 / v5.0.0**. This update focuses on
+the Windows frontend, game library usability and collection editing. The NG
+emulation engines, C7010 support, audio and timing are unchanged.
+
+## What's new in v5.0.1
+
+- **Edit Game Data:** corrected mouse row activation; rendering and hit-testing
+  now share the same row geometry.
+- **Edit Game Data input focus:** Game Library input is locked while the editor
+  is open, preventing accidental library scrolling or game changes.
+- **Check Updates:** improved JSON parsing and error handling. Invalid responses
+  and network failures are no longer reported as successful checks.
+- **About:** expanded project, O2EM heritage, NG architecture, hardware and
+  preservation information.
+- **Recently Played:** the Game Library scrolls to the selected game.
+- **Favorites:** the Game Library scrolls to the selected favorite.
+- **START GAME:** added below DELETE in Cover / Media, using the existing launch
+  function and disabled when the selected game cannot be launched.
+- **My Real Collection:** the former My Collection page has been renamed; the
+  existing database and collection data are preserved.
+- **Direct collection editing:** Game Details can be edited without opening the
+  separate Edit Entry dialog. Changes are saved using the existing persistence
+  and validation logic.
+
+Known minor limitation: the mouse wheel does not scroll inside Edit Game Data.
+Game Library input is locked while the editor is open, preventing accidental
+changes to the selected game.
 
 ## Installation
 
-1. Install the Beta 5 development package or extract its portable ZIP.
+1. Install the O2EM-NG Beta 5 v5.0.1 package or extract its portable ZIP.
 2. Place your compatible, legally obtained console BIOS in the **BIOS** folder.
 3. Place your game ROMs in **ROMS** and select the matching console BIOS in Settings.
 4. Run **O2EM-NG.exe**. The frontend creates its local database and lists your games.
@@ -116,8 +140,8 @@ Keyboard **Y / YES** is a chess choice; **Xbox Y** is the controller-port shortc
 - F5 reset, return to the library and controller-port swapping.
 - Both PAL and NTSC configurations where applicable.
 
-Beta 5 is a release candidate. Report any game, BIOS, region, controller and exact
-reproduction steps that differ from expected behavior.
+v5.0.1 is a UI and usability update to Beta 5. Report any game, BIOS, region,
+controller and exact reproduction steps that differ from expected behavior.
 
 ## Reporting a problem
 

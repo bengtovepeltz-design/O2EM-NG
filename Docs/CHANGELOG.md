@@ -1,9 +1,52 @@
 # Changelog
 
-## 5.0.0 "Beta 5" - development candidate
+## 5.0.1 "Beta 5" - UI update
 
-Beta 5 is the current development release candidate. It is not yet publicly
-released; Beta 4 / v0.31.0-beta remains the previous published release.
+This is a Windows frontend and usability update to Beta 5. The NG emulation
+engines, C7010 support, audio and timing are unchanged.
+
+### Edit Game Data
+
+- Corrected mouse row activation; rendering and hit-testing now share the same
+  row geometry.
+- Game Library input is locked while Edit Game Data is open, preventing
+  accidental library scrolling or changes to the selected game.
+
+### Check Updates
+
+- Improved GitHub JSON parsing and error handling.
+- Invalid responses and network failures are no longer reported as successful
+  update checks.
+- The existing asynchronous WinHTTP implementation and numeric
+  major/minor/patch comparison remain intact.
+
+### About and Game Library
+
+- Expanded the About page with project, O2EM heritage, NG architecture,
+  supported hardware, preservation goals and project links.
+- Recently Played automatically scrolls the Game Library to the selected game.
+- Favorites automatically scrolls to the selected favorite without unnecessary
+  movement when the entry is already visible.
+- Added a START GAME button below DELETE in Cover / Media, using the existing
+  launch function and disabled when the selected game cannot be launched.
+
+### My Real Collection
+
+- Renamed the user-facing My Collection feature to My Real Collection; the
+  existing database schema and collection data are preserved.
+- Game Details can be edited directly without opening the separate Edit Entry
+  dialog. Existing persistence and validation logic is reused.
+
+### Known minor limitation
+
+- The mouse wheel does not scroll inside Edit Game Data. Game Library input is
+  locked while the editor is open, preventing accidental changes to the
+  selected game. This limitation is accepted for v5.0.1.
+
+## 5.0.0 "Beta 5" - released
+
+Beta 5 is the initial public Beta 5 release. It is built around the new NG
+emulation core; Beta 4 / v0.31.0-beta remains the previous release.
 
 ### NG emulation core
 

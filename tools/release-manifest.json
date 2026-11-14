@@ -1,5 +1,5 @@
 {
-  "version": "5.0.0",
+  "version": "5.0.1",
   "release": "Beta 5",
   "seedSha256": "5E65DA91699232359ABA40D65ABBB39BFB792169591B29D656B2C05D59B209AC",
   "files": [
@@ -68,8 +68,12 @@
       "destination": "Docs/CHANGELOG.md"
     },
     {
-      "source": "Docs/Beta_5_v5.0.0_Quick start guide.md",
-      "destination": "Docs/Beta_5_v5.0.0_Quick start guide.md"
+      "source": "Docs/Beta_5_v5.0.1_Quick start guide.md",
+      "destination": "Docs/Beta_5_v5.0.1_Quick start guide.md"
+    },
+    {
+      "source": "Docs/Release notes v5.0.1.md",
+      "destination": "Docs/Release notes v5.0.1.md"
     },
     {
       "source": "Docs/readme.md",

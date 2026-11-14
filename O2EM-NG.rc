@@ -1,7 +1,7 @@
 // O2EM-NG.rc - application resources
 //
 // VERSIONINFO is generated from src/version.h (single authoritative version
-// source). Windows numeric FILEVERSION/PRODUCTVERSION carry 5.0.0.0; the
+// source). Windows numeric FILEVERSION/PRODUCTVERSION carry 5.0.1.0; the
 // descriptive release name ("Beta 5") lives in the string block only.
 
 #include "src/version.h"

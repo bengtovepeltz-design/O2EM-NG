@@ -2,7 +2,7 @@
 
 This file is organised so the present state is easy to separate from history:
 
-- **CURRENT STATE** - the present working tree (10 November 2026).
+- **CURRENT STATE** - the present working tree (14 November 2026).
 - **CURRENT KNOWN ISSUES**.
 - **CURRENT DEVELOPMENT**.
 - Historical checkpoints and earlier development, kept for provenance.
@@ -11,38 +11,39 @@ This file is organised so the present state is easy to separate from history:
 The current working tree is authoritative; older sections below use "current"
 as it applied to the version described there.
 
-## CURRENT STATE - 10 November 2026
+## CURRENT STATE - 14 November 2026
 
 | Item | Value |
 |------|-------|
-| Version | v5.0.0 |
+| Version | v5.0.1 |
 | Release name | Beta 5 |
-| Release state | Development / release candidate (not publicly released) |
-| Previous published version | v0.31.0-beta (Beta 4) |
+| Release state | UI update / release candidate |
+| Previous published version | v5.0.0 (Beta 5) |
 | Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
 | Author | Bengt-Ove Peltz |
 
-The current working tree is the Beta 5 release candidate built around the new
-NG core:
+The current working tree is the Beta 5 v5.0.1 UI update, built on the frozen NG
+core. The emulation engines are unchanged from v5.0.0:
 
 - **NG machine**: MCS48-NG CPU, unified scheduler/timebase, machine bus,
   G7000/Odyssey² convergence and G7400/Videopac+ EF9340/EF9341/VPP support.
 - **NG audio device** and compatibility/regression improvements.
 - **C7010 Chess as NG special hardware**; the existing NSC800 module is attached
   to the NG machine instead of falling back to the legacy core.
-- **Preserved frontend workflow**: Win95 window chrome, My Collection, library,
-  database, settings, media import, controller support and the existing input
-  bindings are unchanged.
+- **Preserved frontend workflow**: Win95 window chrome, library, database,
+  settings, media import, controller support and the existing input bindings are
+  retained. My Collection is now the user-facing My Real Collection page.
 - **Core policy**: Beta 5 Debug and Release both default to NG. `O2EM_CORE=legacy`
   remains an explicit A/B override.
 - **Version identity**: `src/version.h` is the single source for `Beta 5` /
-  `v5.0.0`; Windows numeric metadata is `5.0.0.0`.
-- **Safe upgrade**: Beta 4 databases are migrated in place with automatic
-  backups; personal data is preserved. System project pages are compiled into
-  the application and are read-only in the public UI.
+  `v5.0.1`; Windows numeric metadata is `5.0.1.0`.
+- **Safe upgrade**: existing Beta 4 / Beta 5 v5.0.0 databases are preserved and
+  migrated in place with automatic backups; personal data is preserved. System
+  project pages are compiled into the application and are read-only in the
+  public UI.
 
 Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About,
-My Collection.
+My Real Collection.
 
 ## CURRENT KNOWN ISSUES
 
@@ -57,15 +58,19 @@ Beta 5 release-candidate status:
   MAME 0.289 currently renders the same static charset mirrored.
 - Real G7400 and analog audio hardware validation remains limited.
 - Beta testing continues for long C7010 games and broad title coverage.
+- The mouse wheel does not scroll inside Edit Game Data; Game Library input is
+  locked while the editor is open, preventing accidental changes to the selected
+  game. This minor limitation is accepted for v5.0.1.
 
 ## CURRENT DEVELOPMENT
 
-- **Beta 5 / v5.0.0 is the current development release candidate**.
+- **Beta 5 / v5.0.1 is the current UI update release candidate**.
 - Beta 5 Debug and Release both default to the NG core. `O2EM_CORE=legacy`
   remains an explicit A/B override.
-- Beta 4 / v0.31.0-beta remains the previous published public release.
-- The emulation core is frozen for the Beta 5 release-candidate checkpoint;
-  remaining work is documentation, packaging and manual acceptance.
+- Beta 5 / v5.0.0 is the previous published public release; this update does
+  not change the NG emulation engines, C7010, audio or timing.
+- Remaining work is documentation, packaging, installer verification and
+  manual release acceptance.
 
 ---
 
