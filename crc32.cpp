@@ -14,6 +14,13 @@
  *   CRC32 functions used to identify files
  */
 
+/*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This file is derived from the original O2EM source and has been modified
+ * for O2EM-NG. See Docs/CHANGELOG.md for the dated history. O2EM-NG
+ * modifications: Copyright (c) 2026 Bengt-Ove Peltz. See Docs/COPYRIGHTS.txt.
+ */
+
 // Some stuff ported from here:
 // http://www.opensource.apple.com/source/xnu/xnu-1504.7.4/bsd/libkern/crc32.c
 

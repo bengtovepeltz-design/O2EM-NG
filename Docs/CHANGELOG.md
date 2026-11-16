@@ -1,5 +1,55 @@
 # Changelog
 
+## 5.0.2 "Beta 5" - Licensing and attribution update
+
+This is a licensing, copyright, attribution and source-provenance update. The
+NG emulation engines, C7010 support, audio, video, timing, input, databases and
+collections are unchanged.
+
+### Copyright and notices
+
+- Restored the exact original O2EM copyright notice in `Docs/COPYRIGHTS.txt`
+  alongside the unchanged Clarified Artistic License text.
+- Added prominent Clarified Artistic License section 3 modification notices to
+  the modified O2EM-derived source files.
+- Added the complete MAME BSD 3-Clause notice, copyright holders and disclaimer
+  in `Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt`.
+- Added MAME provenance headers to the adapted VDC/VPP source files and to the
+  embedded i8244 character ROM.
+- Added the O2EM provenance header to the embedded EF9340 character table.
+- Corrected inaccurate "independent implementation / no verbatim source copy"
+  claims for the adapted VDC/VPP portions.
+
+### Third-party notices
+
+- Added `Docs/Licenses/LICENSE.SDL3_ttf.txt`.
+- Added `Docs/Licenses/LICENSE.Microsoft-VCRuntime.txt`.
+- Added `Docs/THIRD_PARTY_NOTICES.md` with the component mapping.
+- Verified SDL3, SDL3_image, PDFium and the Microsoft runtime notices in the
+  distributed package.
+
+### Provenance and credits
+
+- Added `Docs/SOURCE_PROVENANCE.md` as the permanent component-level register.
+- Added `Docs/CREDITS.md` as the canonical credits source.
+- Added a root `LICENSE` component-licensing index and a root `README.md`.
+- Documented the dual O2EM/MAME provenance of the 512-byte i8244 character ROM
+  (identical bytes in O2EM `cset.c`, CRC32 `B46A3F31`).
+- Documented the O2EM provenance of the 2,560-byte EF9340 character table.
+- Recorded the remaining open questions: underlying hardware-ROM copyright,
+  gameplay screenshot/video rights, and Microsoft runtime notice requirements.
+
+### Application
+
+- Expanded the About, Credits and Special Thanks pages.
+- Release Notes now describe the v5.0.2 licensing update.
+- Version is `5.0.2`; Windows numeric metadata is `5.0.2.0`.
+
+### Packaging
+
+- The installer and portable package now include the credits, provenance,
+  third-party notices and all applicable licence texts.
+
 ## 5.0.1 "Beta 5" - UI update
 
 This is a Windows frontend and usability update to Beta 5. The NG emulation

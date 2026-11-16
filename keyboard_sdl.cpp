@@ -1,3 +1,10 @@
+/*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This file replaces the original O2EM keyboard source with an SDL3/NG
+ * input integration. O2EM-NG modifications: Copyright (c) 2026 Bengt-Ove
+ * Peltz. See Docs/COPYRIGHTS.txt.
+ */
+
 #include "keyboard_sdl.h"
 #include "input_manager.h"
 

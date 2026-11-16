@@ -4,26 +4,175 @@
 namespace {
 
 const char* kAbout = "O2EM-NG\n" O2EM_RELEASE_NAME " - v" O2EM_VERSION_STRING "\n\n"
-    "HERITAGE\n"
-    "O2EM-NG builds on O2EM, the Odyssey2 / Videopac emulator created by Daniel Boris in 1997 and developed by Andre de la Rocha and Arlindo M. de Oliveira. The original project's work and credits remain part of our heritage.\n\n"
-    "PRESERVATION AND PURPOSE\n"
-    "Developed by Bengt-Ove Peltz, O2EM-NG combines a practical Windows frontend with ongoing preservation of Philips Videopac and Magnavox Odyssey2 games, documentation and hardware knowledge. Its familiar Windows 95 presentation keeps the library, media and personal collection close at hand.\n\n"
-    "THE NG GENERATION\n"
-    "Beta 5 brings the new NG machine architecture: a deterministic scheduler, MCS-48 processor, i8244/i8245 video, synchronized audio and integrated expansion hardware. The frontend and existing library data remain separate from the emulation engines.\n\n"
-    "HARDWARE\n"
-    "The project includes G7000 / Odyssey2, G7400 / Videopac+, Jopac, C7010 Chess Module and The Voice support. BIOS, expansion firmware and voice samples are required where applicable and are supplied separately. Compatibility varies by title and hardware feature; this is not a claim of perfect emulation.\n\n"
-    "PROJECT AND COPYRIGHT\n"
-    "O2EM-NG development: Copyright (c) 2026 Bengt-Ove Peltz. Official source, releases and issue tracker: github.com/bengtovepeltz-design/O2EM-NG (link above).\n\n"
-    "Original O2EM material retains its Clarified Artistic License and original notices; NG components also carry their individual license notices, including BSD-3-Clause. Consult Docs/COPYRIGHTS.txt and the source/third-party notices for details. Credits and Special Thanks remain available on their own pages.";
+    R"TXT(HERITAGE
+O2EM-NG builds on O2EM, the Odyssey2 / Videopac emulator created by Daniel Boris in 1997 and developed by Andre de la Rocha and Arlindo M. de Oliveira. The original project's work and credits remain part of our heritage.
+
+PRESERVATION AND PURPOSE
+Developed by Bengt-Ove Peltz, O2EM-NG combines a practical Windows frontend with ongoing preservation of Philips Videopac and Magnavox Odyssey2 games, documentation and hardware knowledge. Its familiar Windows 95 presentation keeps the library, media and personal collection close at hand.
+
+THE NG GENERATION
+Beta 5 brings the NG machine architecture: a deterministic scheduler, MCS-48 processor, i8244/i8245 video, synchronized audio and integrated expansion hardware. The frontend and library data remain separate from the emulation engines.
+
+SOURCE PROVENANCE
+O2EM-NG contains original O2EM heritage, independently developed O2EM-NG components, permitted adaptations of MAME BSD-3-Clause source code and third-party libraries. The independently developed components include the MCS48-NG CPU, the NG machine architecture, the audio device and the C7010 Chess Module. Parts of the Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP implementations are adapted from MAME. See Docs/SOURCE_PROVENANCE.md and Docs/THIRD_PARTY_NOTICES.md.
+
+HARDWARE
+The project includes G7000 / Odyssey2, G7400 / Videopac+, Jopac, C7010 Chess Module and The Voice support. BIOS, expansion firmware and voice samples are required where applicable and are supplied separately. Compatibility varies by title and hardware feature; this is not a claim of perfect emulation.
+
+PROJECT AND COPYRIGHT
+O2EM-NG development: Copyright (c) 2026 Bengt-Ove Peltz. Official source, releases and issue tracker: github.com/bengtovepeltz-design/O2EM-NG (link above).
+
+Original O2EM material retains its Clarified Artistic License and original notices. MAME-adapted portions retain the BSD-3-Clause notice. See Docs/COPYRIGHTS.txt, Docs/Licenses/, Docs/CREDITS.md and Docs/SOURCE_PROVENANCE.md. Credits and Special Thanks remain available on their own pages.)TXT";
 
 
-const char* kCredits = "ORIGINAL O2EM - Free Odyssey2 / Videopac+ Emulator\n\nCreated by Daniel Boris <dboris@comcast.net> - (c) 1997, 1998\nDeveloped by Andre de la Rocha <adlroc@users.sourceforge.net>\nArlindo M. de Oliveira <dgtec@users.sourceforge.net>\n\nOriginal O2EM project website:\nhttp://o2em.sourceforge.net\n\nO2EM-NG\n\nProject direction and Windows modernization:\nBengt-Ove Peltz\n\nTHIRD-PARTY TECHNOLOGY\n\nSDL3\nSQLite\nPDFium\nMicrosoft Visual Studio and Windows SDK";
+const char* kCredits = R"TXT(O2EM-NG DEVELOPMENT
 
-const char* kSpecialThanks = "Videopac and Odyssey2 communities\n\nCollectors and archivists\n\nMark Guttenbrunner (Manopac)\nFor his extensive work on the original O2EM emulator and his invaluable contributions to understanding and preserving the Philips Videopac/Odyssey\xC2""\xB2"" hardware. His research and emulation work remains an important technical reference for O2EM-NG.\n\nBrian Dehli \xE2""\x80""\x94"" Tvspil.dk\nFor his generous support of the O2EM-NG project, including assistance in locating rare Videopac documentation, sharing his extensive knowledge, and contributing original Videopac cartridges and other physical reference material for preservation and testing. His long-standing dedication to preserving Philips Videopac hardware, games and history through Tvspil.dk \xE2""\x80""\x94"" and his remarkable generosity and willingness to help \xE2""\x80""\x94"" are sincerely appreciated.\n\nS\xC3""\xB6""ren Gust\nFor his important technical contributions to O2EM and the wider Videopac community, including detailed hardware documentation, emulator patches, MegaCART bank-switching support, Videopac+ research and numerous improvements to compatibility and accuracy. Parts of his work remain part of the technical heritage inherited by O2EM-NG, and his documentation continues to be a valuable reference for understanding the Philips Videopac hardware.\n\n\n";
+Bengt-Ove Peltz
+O2EM-NG Project
+https://o2em-ng.eu
 
-const char* kRoadmap = "BETA 5\nNG emulation core\nG7000 / G7400 convergence\nC7010 special hardware\nCompatibility and regression testing\nDocumentation and release packaging\n\nFUTURE\nAdd planned features and priorities here.";
+Project direction and independently developed O2EM-NG work:
+- MCS48-NG Intel 8048 CPU implementation
+- NG machine scheduler, timebase and modular architecture
+- NG audio device
+- C7010 Chess Module and NSC800 implementation
+- NG cartridge mappers and bus integration
+- Windows frontend, settings, import centre, media viewer and controller support
+- Game Library, catalogue migration, My Real Collection, favorites, ratings and play history
+- Build, packaging, release engineering, testing and documentation
 
-const char* kReleaseNotes = "O2EM-NG Beta 5 \xE2""\x80""\x94"" v5.0.1 UI Update\n\nThis release is a UI and usability update to Beta 5. The NG emulation engines, C7010 support, audio and timing are unchanged.\n\nWhat's new in v5.0.1:\n\n\xE2""\x80""\xA2"" Edit Game Data: corrected mouse row activation; rendering and hit-testing now share the same row geometry.\n\xE2""\x80""\xA2"" Edit Game Data: Game Library input is locked while the editor is open, preventing accidental changes to the selected game.\n\xE2""\x80""\xA2"" Check Updates: improved JSON parsing and error handling; invalid responses and network failures are no longer reported as successful checks.\n\xE2""\x80""\xA2"" About: expanded project, O2EM heritage, NG architecture, hardware and preservation information.\n\xE2""\x80""\xA2"" Recently Played: the Game Library scrolls to the selected game.\n\xE2""\x80""\xA2"" Favorites: the Game Library scrolls to the selected favorite.\n\xE2""\x80""\xA2"" Cover / Media: added a START GAME button below DELETE.\n\xE2""\x80""\xA2"" My Collection is now named My Real Collection; the existing database and collection data are preserved.\n\xE2""\x80""\xA2"" Game Details can be edited directly without opening the separate Edit Entry dialog.\n\nKnown minor limitation: the mouse wheel does not scroll inside Edit Game Data. Game Library input is locked while the editor is open, preventing accidental changes to the selected game.\n\nBeta 5 is the largest technical update in O2EM-NG history.\n\nThe emulator now runs on the completely new NG emulation core, replacing the old O2EM machine architecture while preserving the familiar O2EM-NG frontend, Library, My Real Collection, controls and workflows.\n\nWhat's new in Beta 5:\n\n\xE2""\x80""\xA2"" Completely new NG emulation core\n\xE2""\x80""\xA2"" New Intel MCS-48 / 8048 CPU\n\xE2""\x80""\xA2"" New deterministic machine scheduler and timebase\n\xE2""\x80""\xA2"" New i8244 / i8245 video engine\n\xE2""\x80""\xA2"" Rebuilt G7000 / Odyssey\xC2""\xB2"" emulation\n\xE2""\x80""\xA2"" Rebuilt G7400 / Videopac+ emulation\n\xE2""\x80""\xA2"" New EF9340 / EF9341 / VPP implementation\n\xE2""\x80""\xA2"" New hardware-synchronized NG audio engine\n\xE2""\x80""\xA2"" C7010 Chess integrated as NG special hardware\n\xE2""\x80""\xA2"" Improved PAL and NTSC timing\n\xE2""\x80""\xA2"" Improved raster, sprite, grid and character rendering\n\xE2""\x80""\xA2"" Improved cartridge and memory handling\n\xE2""\x80""\xA2"" Improved Xbox controller support\n\xE2""\x80""\xA2"" Restored reset, return-to-menu and controller port-swap commands\n\xE2""\x80""\xA2"" Extensive compatibility testing against MAME and real Philips hardware\n\xE2""\x80""\xA2"" Many historical per-game timing and raster workarounds are no longer needed\n\nThe new audio engine is synchronized directly with the machine hardware and has been manually compared with a real Philips G7000.\n\nThe G7000, G7400/Videopac+ and C7010 now run as part of the new NG machine architecture.\n\nExisting O2EM-NG features remain, including:\n\n\xE2""\x80""\xA2"" Win95-inspired frontend\n\xE2""\x80""\xA2"" Library and Smart Database\n\xE2""\x80""\xA2"" My Real Collection\n\xE2""\x80""\xA2"" Favorites and personal ratings\n\xE2""\x80""\xA2"" Game metadata and media\n\xE2""\x80""\xA2"" Manuals\n\xE2""\x80""\xA2"" ROM importing\n\xE2""\x80""\xA2"" Existing keyboard and controller mappings\n\nBeta 5 represents a new generation of O2EM-NG rather than an incremental update to the old core.\n\nThe Future is finally running.";
+Additional O2EM-NG contributors are recorded in the project Git history.
+
+
+ORIGINAL O2EM PROJECT
+
+O2EM Free Odyssey2 / Videopac+ Emulator
+http://o2em.sourceforge.net/
+
+Original copyright notice:
+copyright 1996/1998 by Daniel Boris <dboris@comcast.net>
+Developed by Daniel Boris, Andre de la Rocha and Arlindo Oliveira
+Released under the Clarified Artistic License.
+
+Original developers:
+- Daniel Boris - creator of O2EM and original 8048/VDC emulation
+- Andre de la Rocha - O2EM development from version 0.80
+- Arlindo M. de Oliveira - O2EM development from version 1.16
+
+Historical contributors and technical references:
+- Mark Guttenbrunner (Manopac) - original O2EM work and Videopac/Odyssey2 hardware research
+- Soren Gust - hardware documentation, MegaCART, Videopac+ research and compatibility work
+- Heitor Barcellos - original O2EM Launcher frontend
+
+These contributors are acknowledged for their work and are not listed here as copyright holders unless separately established.
+
+
+MAME PROJECT AND CONTRIBUTORS
+
+MAME - Multiple Arcade Machine Emulator
+https://www.mamedev.org/
+
+Parts of the O2EM-NG Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP implementations have been adapted from MAME's BSD-3-Clause licensed source code. The surrounding O2EM-NG implementations are restructured; this is not a copy of the complete MAME files.
+
+Reference: MAME 0.289, commit 6512b9adc62a2458c412342268f500f8489edb95
+  src/devices/video/i8244.cpp / i8244.h
+  src/devices/video/ef9340_1.cpp / ef9340_1.h
+
+MAME copyright holders:
+- Peter Trauner - Intel 8244/8245 VDC
+- Wilbert Pol - Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP
+- hap - Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP
+
+Additional acknowledgement:
+- Kevin Horton - acknowledged in the MAME i8244 source
+
+MAME is a registered trademark of Gregory Ember. O2EM-NG is not affiliated with, endorsed by, or sponsored by MAME or its contributors.
+
+
+THIRD-PARTY SOFTWARE
+
+SDL3, SDL3_image, SDL3_ttf - Sam Lantinga and SDL contributors - zlib license
+PDFium - PDFium Authors - MIT and third-party notices
+Microsoft Visual C++ runtime - Microsoft Corporation - Microsoft license terms
+SQLite - public domain; Windows winsqlite3.dll is a system component and is not redistributed
+
+Complete notices: Docs/THIRD_PARTY_NOTICES.md and Docs/Licenses/
+
+
+COPYRIGHT, LICENSING AND SOURCE PROVENANCE
+
+O2EM-NG contains original O2EM heritage, independently developed O2EM-NG code, permitted MAME BSD-3-Clause adaptations and third-party libraries.
+
+Project documents:
+- Docs/COPYRIGHTS.txt
+- Docs/CREDITS.md
+- Docs/SOURCE_PROVENANCE.md
+- Docs/THIRD_PARTY_NOTICES.md
+- Docs/Licenses/
+
+Repository: https://github.com/bengtovepeltz-design/O2EM-NG
+Original O2EM: http://o2em.sourceforge.net/
+MAME: https://www.mamedev.org/
+
+Special Thanks are listed on their own page.)TXT";
+
+const char* kSpecialThanks = R"TXT(Videopac and Odyssey2 communities
+
+Collectors and archivists
+
+Mark Guttenbrunner (Manopac)
+For his extensive work on the original O2EM emulator and his invaluable contributions to understanding and preserving the Philips Videopac/Odyssey2 hardware. His research and emulation work remains an important technical reference for O2EM-NG.
+
+Brian Dehli - Tvspil.dk
+For his generous support of the O2EM-NG project, including assistance in locating rare Videopac documentation, sharing his extensive knowledge, and contributing original Videopac cartridges and other physical reference material for preservation and testing. His long-standing dedication to preserving Philips Videopac hardware, games and history through Tvspil.dk - and his remarkable generosity and willingness to help - are sincerely appreciated.
+
+Soren Gust
+For his important technical contributions to O2EM and the wider Videopac community, including detailed hardware documentation, emulator patches, MegaCART bank-switching support, Videopac+ research and numerous improvements to compatibility and accuracy. Parts of his work remain part of the technical heritage inherited by O2EM-NG, and his documentation continues to be a valuable reference for understanding the Philips Videopac hardware.
+
+Beta testers and community reporters
+For testing games, hardware configurations, controllers and edge cases, and for reporting reproducible issues.
+
+These acknowledgements recognise research, documentation, testing and technical assistance. They are not statements of copyright ownership unless a separate copyright notice establishes that status.)TXT";
+
+const char* kRoadmap = R"TXT(BETA 5
+NG emulation core
+G7000 / G7400 convergence
+C7010 special hardware
+Licensing, provenance and credits (v5.0.2)
+Compatibility and regression testing
+
+FUTURE
+Add planned features and priorities here.)TXT";
+
+const char* kReleaseNotes = "O2EM-NG Beta 5 - v" O2EM_VERSION_STRING " Licensing & Attribution Update\n\n"
+    R"TXT(This is a licensing, copyright, attribution and source-provenance update. The NG emulation engines, C7010 support, audio, video, timing, input, databases and collections are unchanged.
+
+What's new in v5.0.2:
+
+- Restored the original O2EM copyright notice and Clarified Artistic License section 3 modification notices.
+- Added the complete MAME BSD-3-Clause notice for the adapted Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP portions.
+- Added third-party notices and licence texts, including SDL3_ttf and the Microsoft Visual C++ runtime notice.
+- Added Docs/SOURCE_PROVENANCE.md with component-level provenance.
+- Added Docs/CREDITS.md as the canonical credits source.
+- Expanded the About, Credits and Special Thanks pages.
+- Added a root LICENSE index and a root README.
+- Added a dedicated Credits page on the official website.
+- Documented embedded character ROM provenance, including the identical original O2EM cset.c table.
+
+Compatibility:
+
+- Existing v5.0.0 and v5.0.1 installations upgrade in place.
+- User database, My Real Collection, favorites, ratings, play history, settings, ROMs, BIOS and media are preserved.
+
+Known unresolved questions:
+
+- Copyright status of original hardware character data.
+- Rights position for gameplay screenshots and videos in packages.
+- Microsoft Visual C++ redistributable notice requirements.
+
+These are documented in Docs/SOURCE_PROVENANCE.md. They do not change emulation behaviour.
+
+Older release history remains available in Docs/CHANGELOG.md.)TXT";
 
 } // namespace
 

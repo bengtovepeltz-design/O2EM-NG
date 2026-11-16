@@ -342,8 +342,9 @@ differential moves to NG-2 when the machine bus exists.
 - Intel 8243 I/O expander documentation (logical expander behavior).
 - MAME 0.289 `src/devices/cpu/mcs48/mcs48.cpp` and `mcs48.h`
   (BSD-3-Clause), used as behavioral/source reference for opcode semantics,
-  legality and cycle counts. No verbatim file copy; implementation is
-  independently written against this contract.
+  legality and cycle counts. No verbatim file copy was identified in the
+  v5.0.2 audit; the implementation is independently written against this
+  contract.
 - O2EM legacy `cpu.cpp` and the existing `tests/mcs48` harness: historical
   evidence only, not correctness authority.
 

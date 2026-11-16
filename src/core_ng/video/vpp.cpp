@@ -1,3 +1,20 @@
+// O2EM-NG Thomson EF9340 (VIN) / EF9341 (GEN) Videopac+ VPP.
+//
+// Copyright (c) 2026 Bengt-Ove Peltz / O2EM-NG.
+// Distributed under the Clarified Artistic License (see Docs/COPYRIGHTS.txt).
+//
+// Portions adapted from MAME 0.289 (BSD-3-Clause):
+//   src/devices/video/ef9340_1.cpp / ef9340_1.h
+//   Copyright holders: Wilbert Pol, hap
+// Adapted elements: scanline character drawing structure, including
+// vpos/zoom/slice, character data selection, double width/height,
+// underline, blink, cursor, invert and delimiter handling.
+// The surrounding VPP state, command protocol, composition and snapshot
+// model are O2EM-NG work.
+// See Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt and
+// Docs/THIRD_PARTY_NOTICES.md. O2EM-NG is not affiliated with or endorsed
+// by MAME.
+
 #include "vpp.h"
 
 #include <algorithm>

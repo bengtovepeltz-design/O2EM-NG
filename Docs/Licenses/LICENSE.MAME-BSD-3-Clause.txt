@@ -1,0 +1,70 @@
+MAME BSD-3-Clause License Notice
+================================
+
+O2EM-NG contains portions adapted from MAME source code that is
+individually licensed under the BSD 3-Clause License.
+
+Referenced MAME revision
+------------------------
+
+MAME 0.289
+Pinned commit: 6512b9adc62a2458c412342268f500f8489edb95
+
+Referenced MAME source files
+----------------------------
+
+  src/devices/video/i8244.cpp
+  src/devices/video/i8244.h
+
+    Copyright holders: Peter Trauner, Wilbert Pol, hap
+    Additional acknowledgement: Kevin Horton (thanks-to)
+
+  src/devices/video/ef9340_1.cpp
+  src/devices/video/ef9340_1.h
+
+    Copyright holders: Wilbert Pol, hap
+
+MAME as a whole is distributed under the GNU General Public License
+version 2 or later. The individual files listed above carry an explicit
+per-file BSD 3-Clause declaration in their source headers. That per-file
+declaration is the licence that applies to the adapted portions used by
+O2EM-NG.
+
+MAME is a registered trademark of Gregory Ember. O2EM-NG is not affiliated
+with, endorsed by, or sponsored by MAME or its contributors. The names of
+the copyright holders and contributors may not be used to endorse or
+promote O2EM-NG without specific prior written permission.
+
+BSD 3-Clause License text
+-------------------------
+
+Copyright (c) 1997-2026 MAMEdev and contributors
+Copyright holders for the referenced files:
+  Peter Trauner, Wilbert Pol, hap (i8244.cpp / i8244.h)
+  Wilbert Pol, hap (ef9340_1.cpp / ef9340_1.h)
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.

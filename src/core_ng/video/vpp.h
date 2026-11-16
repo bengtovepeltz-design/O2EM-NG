@@ -8,9 +8,11 @@
 // timeline (no independent clock). The layer uses MAME's bit3 marker: set for
 // normal cells, clear for "box"/opaque cells.
 //
-// Behavioural reference: MAME 0.289 src/devices/video/ef9340_1.cpp (BSD-3)
-// and the G7400 composition in src/mame/philips/odyssey2.cpp. Independent
-// implementation; see Docs/Development/NG-0_Provenance.md.
+// Mixed provenance: O2EM-NG owns the VPP state, command protocol, composition
+// and snapshot model. The scanline character drawing structure is adapted
+// from MAME 0.289 src/devices/video/ef9340_1.cpp (BSD-3-Clause; copyright
+// holders Wilbert Pol, hap). See Docs/SOURCE_PROVENANCE.md and
+// Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt.
 
 #include <cstdint>
 

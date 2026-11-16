@@ -1,16 +1,23 @@
 # NG provenance register
 
-Status: updated for NG-2. Update before any code/data is reused.
+Status: updated for v5.0.2 licensing and attribution review (2026-11-16).
+The public component-level overview is `Docs/SOURCE_PROVENANCE.md`. Update both
+files before any code/data is reused.
+
+**Important correction:** earlier revisions described the VDC and VPP as
+"independently implemented; no verbatim source copy". The v5.0.2 audit found
+near-verbatim/adapted MAME elements in both. Those statements are corrected
+below. Low token similarity alone is not proof of independence.
 
 | Item | Origin | License / status | Decision |
 |---|---|---|---|
-| MAME 0.289 `i8244.cpp`, `i8244.h` | MAME project | BSD-3-Clause | behavioral/source reference only |
+| MAME 0.289 `i8244.cpp`, `i8244.h` | MAME project | BSD-3-Clause | behavioural/source reference; later NG-3 register and palette elements are adapted (see NG-3 section) |
 | MAME 0.289 `mcs48.cpp`, `mcs48.h` | MAME project | BSD-3-Clause | behavioral/source reference only |
-| MAME 0.289 `src/mame/philips/odyssey2.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for program map, MOVX decode, P1/P2, IRQ/T1, reset/clock relations. Independently implemented; no verbatim copy. |
-| MAME 0.289 `src/devices/bus/odyssey2/{rom,rally,ktaa,slot}.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for standard/3K/Rally banking and cartridge windows. Independently implemented; no verbatim copy. |
-| MAME 0.289 `src/devices/video/i8244.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for A0/A1/A2/A4/A5 bus-visible behavior, write guards, VBL timer position and T1. Stub only; no renderer copied. |
+| MAME 0.289 `src/mame/philips/odyssey2.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for program map, MOVX decode, P1/P2, IRQ/T1, reset/clock relations. Independently implemented; no verbatim copy identified in the v5.0.2 audit. |
+| MAME 0.289 `src/devices/bus/odyssey2/{rom,rally,ktaa,slot}.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for standard/3K/Rally banking and cartridge windows. Independently implemented; no verbatim copy identified in the v5.0.2 audit. |
+| MAME 0.289 `src/devices/video/i8244.cpp` | MAME project, `mame0289` tag | BSD-3-Clause | NG-2 reference for A0/A1/A2/A4/A5 bus-visible behavior, write guards, VBL timer position and T1. NG-2 was stub-only; the later NG-3 renderer adapts register and palette elements (see NG-3 section). |
 | MAME 0.289 `src/emu/screen.cpp` (`time_until_pos`) | MAME project, `mame0289` tag | BSD-3-Clause | Used to derive the absolute VBL line `vblank_start + (vtotal - visible_h)`; behavior verified with a MAME breakpoint. |
-| MAME 0.289 `src/devices/cpu/mcs48/mcs48.cpp` / `.h` | MAME project, `mame0289` tag | BSD-3-Clause | NG-1 behavioral/source reference for opcode legality, semantics and cycle counts; independently written, no verbatim file copy. |
+| MAME 0.289 `src/devices/cpu/mcs48/mcs48.cpp` / `.h` | MAME project, `mame0289` tag | BSD-3-Clause | NG-1 behavioral/source reference for opcode legality, semantics and cycle counts; independently written; no verbatim file copy identified in the v5.0.2 audit. |
 | Intel MCS-48 Family User's Manual / 8048 instruction set | Intel | hardware documentation | primary NG-1 reference |
 | Intel 8243 I/O expander documentation | Intel | hardware documentation | NG-1 expander semantics |
 | Philips/Magnavox Videopac service/schematic material | Philips/Magnavox preservation sources | hardware documentation | primary reference for P1/P2, RAM/VDC decode and cartridge pinout |
@@ -40,8 +47,8 @@ Rules:
 
 | Source | Origin / version | License | Use |
 |---|---|---|---|
-| MAME 0.289 `src/devices/video/i8244.cpp` / `i8244.h` | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the complete register map, write masks/mirrors, A1/A2/A3/A4/A5 semantics, grid/major/quad/minor rendering, collision/priority maps, sound shift register and VBL timer. Re-implemented independently in `src/core_ng/video/vdc.cpp`; no verbatim source copy. |
-| `charset_i8244.bin` (512 bytes, CRC32 `b46a3f31`, SHA1 `415382715455b47b69401b3d60bd8f0036dd7fef`) | MAME 0.289 `i8244` ROM region | chip-internal hardware data; MAME BSD-3-Clause | Copied verbatim into `src/core_ng/video/character_rom.cpp` as the i8244/i8245 character generator ROM. This is silicon data, not creative content. |
+| MAME 0.289 `src/devices/video/i8244.cpp` / `i8244.h` | MAME project, `mame0289` tag | BSD-3-Clause | **Adapted, not clean-room.** The register mirror/read/write logic (`FixRegisterMirrors` and the matching masks/cases) and the 16-colour palette ordering are adapted from MAME. The tick-driven renderer, collision/priority maps, framebuffer and snapshot model are O2EM-NG work. See `Docs/SOURCE_PROVENANCE.md`. |
+| `charset_i8244.bin` (512 bytes, CRC32 `b46a3f31`, SHA1 `415382715455b47b69401b3d60bd8f0036dd7fef`) | Original O2EM `cset.c` (identical bytes/CRC) and MAME 0.289 `i8244` ROM region | O2EM Clarified Artistic License; MAME BSD-3-Clause | Copied verbatim into `src/core_ng/video/character_rom.cpp`. The same table is present in O2EM `cset.c` under the Clarified Artistic License and in MAME's dump under BSD-3-Clause. Underlying silicon-data copyright remains a legal question. |
 | Intel MCS-48 Family User's Manual (machine cycle = 15 oscillator periods) + MAME `odyssey2.cpp` CPU clocks (`17.734476/3` PAL, `7.15909*3/4` NTSC) | Intel / MAME | hardware documentation / BSD-3-Clause | Corrected the NG tick ratio to 180 ticks per 8048 machine cycle. The previous 12-tick value conflated the oscillator with the machine cycle and ran the CPU 15x too fast relative to video. |
 | MAME `src/emu/screen.cpp` `time_until_pos` | MAME 0.289 | BSD-3-Clause | Confirmed the absolute VBL line (`vblank_start + vtotal - visible_h`) and that the visible origin is offset from raw vpos. |
 | MAME 0.289 `hash/videopac.xml` + `src/devices/bus/odyssey2` | MAME project | BSD-3-Clause | Identified the dedicated `o2_4in1` cartridge slot used by VP40 "4-in-1 Row"; not yet implemented in NG (documented gap, not a VDC issue). |
@@ -60,15 +67,17 @@ Semantics confirmed against MAME and encoded in tests:
 - The VDC writes object registers only while display is disabled; grid
   registers only while the grid is disabled; registers >= 0xF0 are unmapped.
 
-NG-3 did not copy MAME source; the renderer is an independent C++ implementation
-of the documented semantics. The only verbatim data is the chip character ROM,
-recorded above.
+NG-3 is a mixed-provenance component. The register mirror/read/write logic and
+palette ordering are adapted from MAME 0.289 (BSD-3-Clause); the renderer,
+collision/priority handling, framebuffer and snapshot model are O2EM-NG work.
+The 512-byte character ROM is verbatim data with a dual O2EM/MAME provenance
+path. This corrects the earlier "independent, no verbatim copy" statement.
 
 ## NG-4 (machine convergence) additions
 
 | Source | Origin / version | License | Use |
 |---|---|---|---|
-| MAME 0.289 `src/devices/bus/odyssey2/4in1.cpp` / `4in1.h` | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the Videopac 31/40 cartridge PCB (`o2_4in1`): fixed upper-3KB program ROM, P2-banked lower-1KB data ROM read through MOVX while P1 bit1 is set. Re-implemented independently as `FourInOneMapper`; no source copy. |
+| MAME 0.289 `src/devices/bus/odyssey2/4in1.cpp` / `4in1.h` | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the Videopac 31/40 cartridge PCB (`o2_4in1`): fixed upper-3KB program ROM, P2-banked lower-1KB data ROM read through MOVX while P1 bit1 is set. Re-implemented independently as `FourInOneMapper`; no source copy identified in the v5.0.2 audit. |
 | MAME 0.289 `hash/videopac.xml` | MAME project | BSD-3-Clause (metadata) | Cartridge-class metadata: identified VP31/VP40 as `slot=o2_4in1` and supplied the local software-list CRC/name mapping used to create missing reference zips from the user library. Metadata only, never timing. |
 | MAME 0.289 `src/mame/philips/odyssey2.cpp` (`b_pin`, VPP composite) | MAME project | BSD-3-Clause | Identified that Flash Point (PAL conversion) is an Odyssey3 `b_pin` title whose decoder masking belongs to the G7400/VPP composite path. Deferred to NG-5; not forced into the standard G7000 core. |
 | Console keyboard matrix / 74156+74148 electrical wiring, MAME `KEY.0..KEY.5` port order | hardware documentation / MAME | hardware documentation / BSD-3-Clause | The NG input adapter maps the EXISTING O2EM-NG logical key ids onto the physical matrix. It does not copy MAME user bindings; the matrix order is hardware wiring. |
@@ -83,8 +92,8 @@ were downloaded or redistributed. The comparison matrix is generated test data
 
 | Source | Origin / version | License | Use |
 |---|---|---|---|
-| MAME 0.289 `src/devices/video/ef9340_1.cpp` / `.h` | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the Thomson EF9340 (VIN) + EF9341 (GEN) command protocol, 2x1KB A/B display RAM, cursor/row/slice semantics, 256x10 character generator, service row, double width/height, blink, R/M/X/Y/Y0 registers, and the `a<<12 | b<<4 | slice` extended-RAM address. Independently implemented in `src/core_ng/video/vpp.cpp`; no verbatim source copy. |
-| MAME 0.289 `src/mame/philips/odyssey2.cpp` (`vpp_state`, `g7400` machine) | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the G7400 machine wiring: i8245 clock, EF9340 offsets (15,5), 8243 P4-P7 colour-mix keys, B-pin decoder masking, EF934x-to-CX collision, VDC/VPP composition and LUM. Independently implemented; no source copy. |
+| MAME 0.289 `src/devices/video/ef9340_1.cpp` / `.h` | MAME project, `mame0289` tag | BSD-3-Clause | **Adapted, not clean-room.** The scanline character drawing structure (`vpos`/`zoom`/`slice`, character data selection, double width/height, underline, blink, cursor, invert and delimiter handling) follows MAME. The owned VPP state, command protocol, composition and snapshot model are O2EM-NG work. See `Docs/SOURCE_PROVENANCE.md`. |
+| MAME 0.289 `src/mame/philips/odyssey2.cpp` (`vpp_state`, `g7400` machine) | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the G7400 machine wiring: i8245 clock, EF9340 offsets (15,5), 8243 P4-P7 colour-mix keys, B-pin decoder masking, EF934x-to-CX collision, VDC/VPP composition and LUM. Independently implemented; no source copy identified in the v5.0.2 audit. |
 | MAME 0.289 `hash/videopac.xml` `b_pin=1` feature | MAME project | BSD-3-Clause (metadata) | Cartridge PCB metadata only. `HasBPin()` keys off the published CRC; it never selects timing or title behaviour. |
 | O2EM-NG `vpp_cset.cpp` Videopac+ character table | old O2EM 1.20/1.21, already in this repository | historical O2EM data | Verbatim 2560-byte EF9340 charset (`src/core_ng/video/ef9340_charset.cpp`), CRC32 `D557A7BF`. MAME's datasheet image is `BAD_DUMP` (expected `8DE85988`); the local legacy table is used because it is the project's existing Videopac+ table and renders the local + library correctly. This is the only verbatim data added in NG-5. |
 | `BIOS/G7400.bin` (CRC `E20A9F41`) | user-local BIOS image | user asset, not redistributed | G7400 BIOS execution and the MAME `videopacp` reference environment. Tests locate it locally and do not embed it. |
@@ -110,7 +119,7 @@ G7400 matrices.
 
 | Source | Origin / version | License | Use |
 |---|---|---|---|
-| MAME 0.289 `src/devices/video/i8244.cpp` (`sound_update`, `sound_stream_update`, A7-A9/AA write handling) | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the 24-bit shift register, HBLANK 4/16 prescaler, write latch, noise tap on bits 0/5, loop bit 23, 24-shift sound IRQ, volume/bit-7 output and 16-step duty. Independently implemented in `src/core_ng/audio/audio_device.cpp`; no source copy. |
+| MAME 0.289 `src/devices/video/i8244.cpp` (`sound_update`, `sound_stream_update`, A7-A9/AA write handling) | MAME project, `mame0289` tag | BSD-3-Clause | Behavioral reference for the 24-bit shift register, HBLANK 4/16 prescaler, write latch, noise tap on bits 0/5, loop bit 23, 24-shift sound IRQ, volume/bit-7 output and 16-step duty. Independently implemented in `src/core_ng/audio/audio_device.cpp`; no source copy identified in the v5.0.2 audit. |
 | MAME 0.289 `src/mame/philips/odyssey2.cpp` (`add_route(..., 0.25)`) | MAME project | BSD-3-Clause | Established that MAME's 0.25 route gain is a mixer/presentation choice, not the i824x logical output. NG keeps canonical 0.5 logical amplitude and applies 0.25 only in the SDL host adapter. |
 | Legacy O2EM-NG `audio_sdl.cpp`, `audio8245.cpp` | old O2EM-NG | project history | Historical reference only: U8 silence, block timing, `tweakedaudio`, shift/pending experiments. Not authority; no code copied into `core_ng`. |
 | Intel 8244/8245 documentation (sound shift register, HBLANK timing, SND pin) | Intel / Philips hardware documentation | hardware documentation | Primary semantic reference where available; used to interpret the MAME-derived register behavior. |

@@ -13,6 +13,15 @@
  *   Main O2 machine emulation
  */
 
+/*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This file is derived from the original O2EM source and has been modified
+ * for O2EM-NG. Changes include SDL3/Windows x64 porting, frontend and NG
+ * machine integration, C7010 support and bug fixes; see Docs/CHANGELOG.md
+ * for the dated history. O2EM-NG modifications:
+ * Copyright (c) 2026 Bengt-Ove Peltz. See Docs/COPYRIGHTS.txt.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>

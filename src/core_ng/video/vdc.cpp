@@ -1,3 +1,20 @@
+// O2EM-NG Intel 8244 (NTSC) / 8245 (PAL) VDC.
+//
+// Copyright (c) 2026 Bengt-Ove Peltz / O2EM-NG.
+// Distributed under the Clarified Artistic License (see Docs/COPYRIGHTS.txt).
+//
+// Portions adapted from MAME 0.289 (BSD-3-Clause):
+//   src/devices/video/i8244.cpp / i8244.h
+//   Copyright holders: Peter Trauner, Wilbert Pol, hap
+//   Additional acknowledgement: Kevin Horton
+// Adapted elements: register mirroring, register read/write masks and
+// grouping, VBL/timing behaviour, and the 16-colour palette ordering.
+// The surrounding tick-driven renderer, collision/priority handling,
+// framebuffer and snapshot model are O2EM-NG work.
+// See Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt and
+// Docs/THIRD_PARTY_NOTICES.md. O2EM-NG is not affiliated with or endorsed
+// by MAME.
+
 #include "vdc.h"
 
 #include <algorithm>

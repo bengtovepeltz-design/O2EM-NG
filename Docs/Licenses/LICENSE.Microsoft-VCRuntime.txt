@@ -1,0 +1,27 @@
+Microsoft Visual C++ Runtime Notice
+===================================
+
+The O2EM-NG Windows packages include the following Microsoft Visual C++
+Redistributable runtime files so that the application can run on systems
+without a pre-installed matching runtime:
+
+  msvcp140.dll
+  vcruntime140.dll
+  vcruntime140_1.dll
+
+File version in the O2EM-NG v5.0.2 package: 14.52.37028.0
+Product: Microsoft Visual Studio
+
+These files are Microsoft redistributable components. They are not part of
+O2EM-NG, are not covered by the O2EM-NG Clarified Artistic License, and are
+not licensed under the MAME BSD 3-Clause License.
+
+Their use and redistribution are governed by the Microsoft Visual Studio
+license terms that apply to the toolchain used to build O2EM-NG. The
+authoritative terms are supplied by Microsoft with the Visual Studio
+installation and at:
+
+  https://visualstudio.microsoft.com/license-terms/
+
+This notice is informational. It does not replace, extend, or modify
+Microsoft's license terms.

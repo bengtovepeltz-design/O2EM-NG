@@ -29,6 +29,15 @@ O2EM emulation core.
 ------------------------------------------------------------------------------
 */
 
+/*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This character table is inherited from the original O2EM cset.c and is
+ * preserved without value changes for O2EM-NG compatibility. It is the same
+ * 512-byte table used by the NG VDC (src/core_ng/video/character_rom.cpp,
+ * CRC32 b46a3f31). O2EM-NG modifications: Copyright (c) 2026 Bengt-Ove Peltz.
+ * See Docs/COPYRIGHTS.txt and Docs/SOURCE_PROVENANCE.md.
+ */
+
 #include "types.h"
 #include "cset.h"
 

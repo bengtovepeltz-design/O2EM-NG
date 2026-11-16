@@ -17,3 +17,22 @@ remains the active production CPU; the standalone conformance harness under
 `../Project.md` for the current status of that work).
 
 Current public documentation lives one level up in `Docs/`.
+
+## Licensing, provenance and credits maintenance rule
+
+Before any release:
+
+1. Update `Docs/SOURCE_PROVENANCE.md`, `Docs/THIRD_PARTY_NOTICES.md` and
+   `Docs/Development/NG-0_Provenance.md` for any new component, data table or
+   third-party dependency.
+2. Update `Docs/CREDITS.md` as the canonical credits source.
+3. Synchronise the application About/Credits/Special Thanks pages, the official
+   website Credits page, the GitHub README, the release notes and the
+   distribution documents.
+4. Verify `Docs/Licenses/` contains every applicable licence text and that
+   `tools/release-manifest.json` includes it in the installer and portable ZIP.
+5. Do not claim clean-room implementation or complete originality for
+   mixed-provenance components.
+
+User-friendly acknowledgements do not replace the exact copyright and licence
+notices.

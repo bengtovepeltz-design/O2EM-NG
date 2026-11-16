@@ -1,5 +1,5 @@
 {
-  "version": "5.0.1",
+  "version": "5.0.2",
   "release": "Beta 5",
   "seedSha256": "5E65DA91699232359ABA40D65ABBB39BFB792169591B29D656B2C05D59B209AC",
   "files": [
@@ -44,6 +44,26 @@
       "destination": "Docs/Licenses/LICENSE.SDL3_image.txt"
     },
     {
+      "source": "Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt",
+      "destination": "Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt"
+    },
+    {
+      "source": "Docs/Licenses/LICENSE.SDL3_ttf.txt",
+      "destination": "Docs/Licenses/LICENSE.SDL3_ttf.txt"
+    },
+    {
+      "source": "Docs/Licenses/LICENSE.Microsoft-VCRuntime.txt",
+      "destination": "Docs/Licenses/LICENSE.Microsoft-VCRuntime.txt"
+    },
+    {
+      "source": "Docs/Licenses/LICENSE.FreeType.txt",
+      "destination": "Docs/Licenses/LICENSE.FreeType.txt"
+    },
+    {
+      "source": "Docs/Licenses/LICENSE.HarfBuzz.txt",
+      "destination": "Docs/Licenses/LICENSE.HarfBuzz.txt"
+    },
+    {
       "source": "assets/O2EM-NG_Header.png",
       "destination": "assets/O2EM-NG_Header.png"
     },
@@ -60,6 +80,26 @@
       "destination": "Docs/COPYRIGHTS.txt"
     },
     {
+      "source": "Docs/CREDITS.md",
+      "destination": "Docs/CREDITS.md"
+    },
+    {
+      "source": "Docs/SOURCE_PROVENANCE.md",
+      "destination": "Docs/SOURCE_PROVENANCE.md"
+    },
+    {
+      "source": "Docs/THIRD_PARTY_NOTICES.md",
+      "destination": "Docs/THIRD_PARTY_NOTICES.md"
+    },
+    {
+      "source": "LICENSE",
+      "destination": "LICENSE.txt"
+    },
+    {
+      "source": "README.md",
+      "destination": "README.md"
+    },
+    {
       "source": "Docs/Project.md",
       "destination": "Docs/Project.md"
     },
@@ -68,8 +108,16 @@
       "destination": "Docs/CHANGELOG.md"
     },
     {
+      "source": "Docs/Beta_5_v5.0.2_Quick start guide.md",
+      "destination": "Docs/Beta_5_v5.0.2_Quick start guide.md"
+    },
+    {
       "source": "Docs/Beta_5_v5.0.1_Quick start guide.md",
       "destination": "Docs/Beta_5_v5.0.1_Quick start guide.md"
+    },
+    {
+      "source": "Docs/Release notes v5.0.2.md",
+      "destination": "Docs/Release notes v5.0.2.md"
     },
     {
       "source": "Docs/Release notes v5.0.1.md",
@@ -84,14 +132,7 @@
       "destination": "Docs/Release packaging.md"
     }
   ],
-  "contentFolders": [
-    {
-      "source": "x64/Release/SCREENSHOTS",
-      "destination": "SCREENSHOTS",
-      "extensions": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4"],
-      "required": true
-    }
-  ],
+  "contentFolders": [],
   "runtimeDlls": [
     "msvcp140.dll",
     "vcruntime140.dll",
@@ -102,6 +143,7 @@
     "ROMS",
     "MANUALS",
     "BOXART",
-    "CARTRIDGES"
+    "CARTRIDGES",
+    "SCREENSHOTS"
   ]
 }

@@ -73,9 +73,10 @@ constexpr std::uint8_t kCollisionExternal = 0x40;
 constexpr std::uint8_t kCollisionMajor = 0x80;
 
 // Logical hardware palette indices 0..15. Background uses 0..7 (low
-// intensity), objects/sprites use 8..15 (high intensity). The canonical RGB
-// values are MAME's pre-RF i8244 palette; presentation palette work is out of
-// NG-3 scope.
+// intensity), objects/sprites use 8..15 (high intensity). The RGB values use
+// MAME's pre-RF i8244 palette ordering; the same colour values are present in
+// original O2EM vdc.c colortable[1] in a different index order. See
+// Docs/SOURCE_PROVENANCE.md. Presentation palette work is out of NG-3 scope.
 struct VdcRgb {
     std::uint8_t r;
     std::uint8_t g;

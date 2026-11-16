@@ -1,10 +1,21 @@
 // O2EM-NG i8244/i8245 internal character generator ROM.
 //
-// 512 bytes, exactly the i8244 CGROM used by MAME 0.289 (`charset_i8244.bin`,
-// CRC32 b46a3f31, SHA1 415382715455b47b69401b3d60bd8f0036dd7fef).
-// The table is the chip's internal character ROM (hardware data),
-// not creative content. MAME is BSD-3-Clause; the copy is recorded in
-// Docs/Development/NG-0_Provenance.md. Do not edit the values.
+// 512 bytes, CRC32 b46a3f31, SHA1 415382715455b47b69401b3d60bd8f0036dd7fef.
+//
+// Provenance: the identical table is present in the original O2EM source
+// (cset.c, Byte cset[512]) under the Clarified Artistic License, and in
+// MAME 0.289 as the i8244 ROM region image charset_i8244.bin under
+// BSD-3-Clause. Copyright holders for the MAME file:
+// Peter Trauner, Wilbert Pol, hap (acknowledgement: Kevin Horton).
+//
+// The table is the chip's internal character ROM (hardware data). The
+// project's documented redistribution path is the original O2EM licence;
+// the MAME notice is preserved as well. The copyright status of the
+// underlying silicon data is a separate legal question recorded in
+// Docs/SOURCE_PROVENANCE.md. Do not edit the values.
+//
+// See Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt and
+// Docs/THIRD_PARTY_NOTICES.md.
 
 #include "character_rom.h"
 

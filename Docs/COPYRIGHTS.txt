@@ -1,3 +1,52 @@
+O2EM-NG COPYRIGHT NOTICES AND LICENSING
+=======================================
+
+Original O2EM work
+------------------
+
+O2EM Free Odyssey2 / Videopac+ Emulator
+
+copyright 1996/1998 by Daniel Boris <dboris@comcast.net>
+
+Developed by Daniel Boris, Andre de la Rocha and Arlindo Oliveira
+
+Original O2EM project website: http://o2em.sourceforge.net/
+
+The original O2EM package is released under the Clarified Artistic License.
+The full licence text follows below and is preserved without modification.
+
+O2EM-NG continuation
+--------------------
+
+O2EM-NG is a modified and continued work based on the original O2EM project.
+Modifications and new O2EM-NG code: Copyright (c) 2026 Bengt-Ove Peltz.
+
+O2EM-NG source and project code are distributed under the Clarified Artistic
+License. Modified O2EM-derived files carry a prominent modification notice as
+required by section 3 of that licence.
+
+MAME-adapted portions
+---------------------
+
+Portions of the Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP
+implementations are adapted from MAME source files licensed under the
+BSD 3-Clause License. Their copyright notices, conditions and disclaimer are
+preserved in Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt.
+
+Third-party libraries
+---------------------
+
+SDL3, SDL3_image, SDL3_ttf, PDFium and the Microsoft Visual C++ runtime are
+covered by their respective licences in Docs/Licenses/. They are not covered
+by the Clarified Artistic License.
+
+Component licensing index
+-------------------------
+
+See the repository root LICENSE file, Docs/THIRD_PARTY_NOTICES.md,
+Docs/SOURCE_PROVENANCE.md and Docs/CREDITS.md for the component-specific
+licensing map and credits. This file does not relicense third-party code.
+
 
 		     The Clarified Artistic License
 

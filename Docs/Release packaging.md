@@ -1,8 +1,8 @@
 # Release packaging
 
 Build **Release | x64** in Visual Studio. After a successful build, `PackageRelease`
-creates `dist/O2EM-NG-Beta-5-v5.0.1/` and a matching ZIP for the current
-UI update release.
+creates `dist/O2EM-NG-Beta-5-v5.0.2/` and a matching ZIP for the current
+licensing and attribution update release.
 
 Edit `tools/release-manifest.json` to choose files, destinations, empty user folders,
 the version number, release name and approved seed hash. Relative sources are relative to the project directory;
@@ -37,12 +37,32 @@ GAMEDATA/o2em-ng.db catalogue is included. No local configuration, ROMs, BIOS,
 firmware, PDB files or build logs are copied. The application uses the supplied
 catalogue and creates its own configuration.
 
-The approved O2EM-NG screenshots prepared in `x64/Release/SCREENSHOTS` are copied
-to the package `SCREENSHOTS` folder. Only media extensions (`.png`, `.jpg`,
-`.jpeg`, `.webp`, `.gif`, `.mp4`) are taken from that folder. Temporary frame
-dumps, MAME/test captures, diff images, probe output and debugger screenshots are
-not part of the packaging source and are never copied from `tests/` or local
-capture folders. Empty content folders include README files.
+The package must include the licensing and provenance documents:
+
+```text
+Docs/COPYRIGHTS.txt
+Docs/CREDITS.md
+Docs/SOURCE_PROVENANCE.md
+Docs/THIRD_PARTY_NOTICES.md
+Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt
+Docs/Licenses/LICENSE.SDL3.txt
+Docs/Licenses/LICENSE.SDL3_image.txt
+Docs/Licenses/LICENSE.SDL3_ttf.txt
+Docs/Licenses/LICENSE.pdfium.txt
+Docs/Licenses/LICENSE.Microsoft-VCRuntime.txt
+```
+
+`tools/package-release.ps1` fails if a listed required file is missing.
+
+Gameplay screenshots and videos are **not bundled** in v5.0.2 release packages.
+The package contains an empty `SCREENSHOTS` folder with a README; users supply
+their own media. This avoids redistributing captured game visuals. The official
+website uses separate, owner-approved promotional images and documents that game
+titles and visuals remain the property of their respective rights holders.
+
+Temporary frame dumps, MAME/test captures, diff images, probe output and debugger
+screenshots are not part of the packaging source and are never copied from
+`tests/` or local capture folders. Empty content folders include README files.
 Each package has VERSION.txt and SHA256SUMS.txt.
 
 A previous package/ZIP is preserved with a `.previous-<timestamp>` suffix.
@@ -53,7 +73,7 @@ Debug builds are unaffected. To build Release without packaging, pass
 After packaging, run `Installer/Build Installer.bat` with Inno Setup 7 or 6 installed.
 The installer reads `dist/release-info.iss`, generated from the same manifest version
 and release name, and consumes the prepared package. The current output is
-`O2EM-NG-Beta-5-v5.0.1-Setup.exe`. It does not copy your development configuration.
+`O2EM-NG-Beta-5-v5.0.2-Setup.exe`. It does not copy your development configuration.
 The installer uses the established `AppId` and default user installation directory, so
 an existing v5.0.0 installation is upgraded in place while the user catalogue,
 collection, settings, ROMs and media are preserved.
@@ -68,9 +88,9 @@ Packaging does not publish to GitHub. Test the package and installer on a clean
 Windows PC before distributing them.
 
 The installer installs for the current user in %LOCALAPPDATA%\Programs\O2EM-NG without administrator rights.
-The installer display name includes the Beta 5 release identity and the v5.0.1
+The installer display name includes the Beta 5 release identity and the v5.0.2
 application version; the installed executable carries Windows file/product version
-5.0.1.0.
+5.0.2.0.
 This is required because imports, the catalogue and settings are stored beside the executable.
 It does not reuse the earlier Program Files installation directory. Existing data in an old
 Program Files installation is not moved or removed automatically; copy any personal data

@@ -11,19 +11,19 @@ This file is organised so the present state is easy to separate from history:
 The current working tree is authoritative; older sections below use "current"
 as it applied to the version described there.
 
-## CURRENT STATE - 14 November 2026
+## CURRENT STATE - 16 November 2026
 
 | Item | Value |
 |------|-------|
-| Version | v5.0.1 |
+| Version | v5.0.2 |
 | Release name | Beta 5 |
-| Release state | UI update / release candidate |
-| Previous published version | v5.0.0 (Beta 5) |
+| Release state | Licensing and attribution update / release candidate |
+| Previous published version | v5.0.1 (Beta 5) |
 | Platform | Windows x64, C/C++, SDL3, Visual Studio 2026 |
 | Author | Bengt-Ove Peltz |
 
-The current working tree is the Beta 5 v5.0.1 UI update, built on the frozen NG
-core. The emulation engines are unchanged from v5.0.0:
+The current working tree is the Beta 5 v5.0.2 Licensing & Attribution Update,
+built on the frozen NG core. The emulation engines are unchanged from v5.0.1:
 
 - **NG machine**: MCS48-NG CPU, unified scheduler/timebase, machine bus,
   G7000/Odyssey² convergence and G7400/Videopac+ EF9340/EF9341/VPP support.
@@ -36,11 +36,31 @@ core. The emulation engines are unchanged from v5.0.0:
 - **Core policy**: Beta 5 Debug and Release both default to NG. `O2EM_CORE=legacy`
   remains an explicit A/B override.
 - **Version identity**: `src/version.h` is the single source for `Beta 5` /
-  `v5.0.1`; Windows numeric metadata is `5.0.1.0`.
-- **Safe upgrade**: existing Beta 4 / Beta 5 v5.0.0 databases are preserved and
+  `v5.0.2`; Windows numeric metadata is `5.0.2.0`.
+- **Safe upgrade**: existing Beta 4 / Beta 5 databases are preserved and
   migrated in place with automatic backups; personal data is preserved. System
   project pages are compiled into the application and are read-only in the
   public UI.
+
+### Source provenance summary
+
+O2EM-NG is a mixed-provenance project:
+
+- **Original O2EM heritage** — `cpu.cpp`, `vmachine.cpp`, legacy display/audio
+  files and character tables, under the Clarified Artistic License.
+- **Independent O2EM-NG development** — MCS48-NG CPU, NG scheduler/timebase,
+  machine and cartridge architecture, NG audio device, C7010/NSC800 module,
+  Windows frontend, Game Library, My Real Collection and release tooling.
+- **MAME-adapted portions** — register handling, palette ordering and parts of
+  the i8244/i8245 VDC renderer, and the EF9340/EF9341 scanline character
+  drawing logic, under the MAME BSD-3-Clause notice.
+- **Third-party libraries** — SDL3, SDL3_image, SDL3_ttf, PDFium and the
+  Microsoft Visual C++ runtime under their respective licences.
+- **Open questions** — underlying hardware character-ROM copyright, gameplay
+  screenshot/video rights and Microsoft runtime notice requirements.
+
+The full component register is `Docs/SOURCE_PROVENANCE.md`. Canonical credits
+are `Docs/CREDITS.md`; third-party notices are `Docs/THIRD_PARTY_NOTICES.md`.
 
 Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About,
 My Real Collection.
@@ -60,14 +80,18 @@ Beta 5 release-candidate status:
 - Beta testing continues for long C7010 games and broad title coverage.
 - The mouse wheel does not scroll inside Edit Game Data; Game Library input is
   locked while the editor is open, preventing accidental changes to the selected
-  game. This minor limitation is accepted for v5.0.1.
+  game. This minor limitation is accepted for v5.0.2.
+- The copyright status of original hardware character data, the rights position
+  for gameplay screenshots/videos and the Microsoft Visual C++ runtime notice
+  requirements remain documented open questions, not confirmed violations.
 
 ## CURRENT DEVELOPMENT
 
-- **Beta 5 / v5.0.1 is the current UI update release candidate**.
+- **Beta 5 / v5.0.2 is the current licensing and attribution update release
+  candidate**.
 - Beta 5 Debug and Release both default to the NG core. `O2EM_CORE=legacy`
   remains an explicit A/B override.
-- Beta 5 / v5.0.0 is the previous published public release; this update does
+- Beta 5 / v5.0.1 is the previous published public release; this update does
   not change the NG emulation engines, C7010, audio or timing.
 - Remaining work is documentation, packaging, installer verification and
   manual release acceptance.
@@ -2739,32 +2763,65 @@ The current working emulator must remain the stable foundation.
 
 # Credits
 
+The canonical credits source is `Docs/CREDITS.md`. The summary below is
+synchronised with the application and website credits.
+
 ## Original O2EM
 
-O2EM-NG is based on the original O2EM emulator.
+O2EM-NG is based on and continues the original O2EM emulator.
 
 Original O2EM authors:
 
-- Daniel Boris
-- Andre de la Rocha
-- Arlindo M. de Oliveira
+- Daniel Boris — creator of O2EM and original 8048/VDC emulation.
+- Andre de la Rocha — O2EM development from version 0.80.
+- Arlindo M. de Oliveira — O2EM development from version 1.16.
 
-Their work forms the foundation of the emulation core preserved and modernized by O2EM-NG.
+Original copyright notice:
+
+    copyright 1996/1998 by Daniel Boris <dboris@comcast.net>
+    Developed by Daniel Boris, Andre de la Rocha and Arlindo Oliveira
+    Released under the Clarified Artistic License
+
+Historical contributors and technical references include Mark Guttenbrunner
+(Manopac), Sören Gust and Heitor Barcellos. They are acknowledged for their
+work and are not listed as copyright holders unless separately established.
 
 Original copyright and attribution information is maintained in:
 
-    DOCS/COPYRIGHTS.txt
+    Docs/COPYRIGHTS.txt
 
 ---
 
 ## O2EM-NG
 
-Modern SDL3 modernization, frontend development, integration, testing,
-packaging, and project development:
+Independently developed O2EM-NG work — MCS48-NG CPU, NG machine architecture,
+NG audio device, C7010/NSC800 module, Windows frontend, Game Library,
+My Real Collection, testing and packaging:
 
 **Bengt-Ove Peltz**
 
 Copyright © 2026 Bengt-Ove Peltz
+
+---
+
+## MAME
+
+Parts of the Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP implementations
+are adapted from MAME 0.289 under the BSD-3-Clause License.
+
+Copyright holders: **Peter Trauner, Wilbert Pol, hap**
+Additional acknowledgement: **Kevin Horton**
+
+MAME is not affiliated with O2EM-NG and does not endorse it. The complete
+notice is in `Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt`.
+
+---
+
+## Third-party libraries
+
+SDL3, SDL3_image and SDL3_ttf (zlib), PDFium (MIT and third-party notices) and
+the Microsoft Visual C++ runtime (Microsoft license terms). See
+`Docs/THIRD_PARTY_NOTICES.md` and `Docs/Licenses/`.
 
 ---
 

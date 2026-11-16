@@ -1,4 +1,16 @@
-// Generated from the project's legacy vpp_cset.cpp Videopac+ table.
+// O2EM-NG Thomson EF9340/EF9341 character generator table.
+//
+// 2,560 bytes (256 characters x 10 scanlines), CRC32 d557a7bf.
+//
+// Provenance: generated from the original O2EM Videopac+ table in
+// vpp_cset.cpp (Byte vpp_cset[2][1280]), distributed under the Clarified
+// Artistic License. Original O2EM copyright:
+// copyright 1996/1998 by Daniel Boris; developed by Daniel Boris,
+// Andre de la Rocha and Arlindo Oliveira. See Docs/COPYRIGHTS.txt.
+//
+// This table is not MAME's charset_ef9340_1.rom image (MAME expects
+// CRC 8de85988 and marks it BAD_DUMP). Do not edit the values.
+
 #include "ef9340_charset.h"
 
 namespace o2em::ng {

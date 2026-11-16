@@ -1,4 +1,13 @@
 /*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This file is derived from the original O2EM Videopac+ VPP source (vpp.c)
+ * and has been rewritten and modified for O2EM-NG. Changes include the
+ * SDL-independent NG compatibility core and frontend integration; see
+ * Docs/CHANGELOG.md for the dated history. O2EM-NG modifications:
+ * Copyright (c) 2026 Bengt-Ove Peltz. See Docs/COPYRIGHTS.txt.
+ */
+
+/*
     O2EM-NG - Videopac+ G7400 VPP/EF934x compatibility core
     Patch 0029C
 

@@ -5,40 +5,41 @@
 A Windows x64, SDL3-based continuation of the original O2EM emulator for
 Philips Videopac G7000 / G7400 and Magnavox Odyssey².
 
-**Current release: Beta 5 / v5.0.1 UI update.** The previous published release
-is [v5.0.0 (Beta 5)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v5.0.0).
-This update focuses on the Windows frontend and collection usability; the NG
-emulation engines are unchanged.
+**Current release: Beta 5 / v5.0.2 Licensing & Attribution Update.** The
+previous published release is
+[v5.0.1 (Beta 5)](https://github.com/bengtovepeltz-design/O2EM-NG/releases/tag/v5.0.1).
+This update corrects copyright notices, licensing documentation, source
+provenance and credits; the NG emulation engines are unchanged.
 
 [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases) |
-[Quick start](Beta_5_v5.0.1_Quick%20start%20guide.md) |
+[Quick start](Beta_5_v5.0.2_Quick%20start%20guide.md) |
 [Changelog](CHANGELOG.md) |
+[Credits](CREDITS.md) |
+[Source provenance](SOURCE_PROVENANCE.md) |
+[Third-party notices](THIRD_PARTY_NOTICES.md) |
 [Project notes](Project.md)
 
-## What's new in v5.0.1
+## What's new in v5.0.2
 
-- **Edit Game Data:** corrected mouse row activation; rendering and hit-testing
-  now share the same row geometry.
-- **Edit Game Data input focus:** Game Library input is locked while the editor
-  is open, preventing accidental library scrolling or game changes.
-- **Check Updates:** improved JSON parsing and error handling; invalid responses
-  and network failures are no longer reported as successful checks.
-- **About:** expanded project, O2EM heritage, NG architecture, hardware and
-  preservation information.
-- **Recently Played and Favorites:** the Game Library scrolls to the selected
-  entry when needed.
-- **START GAME:** added below DELETE in Cover / Media, using the existing launch
-  function.
-- **My Real Collection:** the collection page has been renamed; existing data is
-  preserved.
-- **Direct collection editing:** Game Details can be edited without opening the
-  separate Edit Entry dialog.
+- **Original O2EM notices:** restored the exact O2EM copyright notice and added
+  the Clarified Artistic License section 3 modification notices to modified
+  O2EM-derived files.
+- **MAME notices:** added the complete BSD 3-Clause notice, copyright holders
+  and disclaimer for the adapted i8244/i8245 VDC and EF9340/EF9341 VPP
+  portions.
+- **Third-party notices:** added the SDL3_ttf licence, a Microsoft Visual C++
+  runtime notice and a consolidated `THIRD_PARTY_NOTICES.md`.
+- **Source provenance:** added `SOURCE_PROVENANCE.md` with component-level
+  origins, licences, upstream revisions and open questions.
+- **Credits:** added `CREDITS.md` as the canonical credits source and expanded
+  the application About, Credits and Special Thanks pages.
+- **Website:** added a dedicated Credits page to the official website.
+- **Packaging:** the installer and portable package now include the notices,
+  provenance and credits documents.
 
-Known minor limitation: the mouse wheel does not scroll inside Edit Game Data;
-the Game Library remains locked while the editor is open.
-
-The NG emulation engines, C7010 support, audio and timing are unchanged in this
-UI update.
+The NG emulation engines, C7010 support, audio, video, timing, input, databases
+and collections are unchanged in this licensing update. Existing v5.0.0 and
+v5.0.1 installations upgrade in place and preserve user data.
 
 ## What's new in Beta 5
 
@@ -52,9 +53,9 @@ UI update.
 - Existing frontend, library, database, settings and controller workflows are
   preserved.
 
-Beta 5 v5.0.0 remains the previous public release. Its Windows 95-style window,
-UTF-8 media paths and C7010 support are retained in v5.0.1, along with the
-renamed My Real Collection page.
+Beta 5 v5.0.0 introduced the NG architecture. Its Windows 95-style window,
+UTF-8 media paths and C7010 support are retained in v5.0.2, along with the
+renamed My Real Collection page and the v5.0.1 UI improvements.
 
 ## Features
 
@@ -80,7 +81,9 @@ Navigation: Library, Edit Game Data, Import Center, Manual, Settings, About and
 My Real Collection.
 
 The catalogue is included; game ROMs, BIOS/firmware and cover/media files are not.
-Media appears when the user supplies matching files.
+Media appears when the user supplies matching files. The v5.0.2 packages do not
+bundle gameplay screenshots or videos; the `SCREENSHOTS` folder is created for
+your own media.
 
 ## Getting started
 
@@ -147,9 +150,31 @@ with the build definition `O2EM_C7010_TRACE=1`.
 ## Credits and licensing
 
 O2EM-NG builds on the original O2EM work by **Daniel Boris, Andre de la Rocha and
-Arlindo M. de Oliveira**. SDL3 modernization, frontend integration and ongoing
-O2EM-NG development: **Bengt-Ove Peltz**.
+Arlindo M. de Oliveira**, with historical contributions and technical references
+from **Mark Guttenbrunner (Manopac)**, **Sören Gust** and others.
 
-See [COPYRIGHTS.txt](COPYRIGHTS.txt) for the project licence and retained notices.
+O2EM-NG project direction, independently developed NG components, frontend,
+library, collection management, C7010 support, testing and packaging:
+**Bengt-Ove Peltz**.
+
+Parts of the Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP implementations
+are adapted from MAME's BSD-3-Clause source code. MAME copyright holders for the
+referenced files: **Peter Trauner, Wilbert Pol and hap**, with additional
+acknowledgement to **Kevin Horton**. MAME is not affiliated with O2EM-NG and
+does not endorse it.
+
+Canonical documents:
+
+- [Credits](CREDITS.md)
+- [Source provenance](SOURCE_PROVENANCE.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [COPYRIGHTS.txt](COPYRIGHTS.txt) — Clarified Artistic License and original
+  O2EM notice
+- [Licences](Licenses/) — full third-party licence texts
+
+O2EM-NG is not a single-licence repository: original O2EM/O2EM-NG code, adapted
+MAME portions and third-party libraries have different applicable terms. See the
+repository root `LICENSE` index.
+
 BIOS files, C7010 firmware, commercial ROMs, commercial manuals and copyrighted
 artwork are not distributed. Users supply their own legally obtained files.

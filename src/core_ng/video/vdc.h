@@ -13,9 +13,13 @@
 // AdvanceTo(Tick); register writes are applied only after the raster has been
 // advanced to the write's beam position (update-on-write).
 //
-// Behavioural reference: MAME 0.289 i8244/i8245 (BSD-3-Clause). The
-// implementation is an independent C++ port of the documented semantics, not a
-// source copy; see Docs/Development/NG-0_Provenance.md.
+// Mixed provenance: O2EM-NG owns the tick-driven renderer, collision/priority
+// handling, framebuffer and snapshot model. Register mirroring, register
+// read/write masks and grouping, VBL/timing behaviour and the 16-colour
+// palette ordering are adapted from MAME 0.289 i8244.cpp/i8244.h
+// (BSD-3-Clause; copyright holders Peter Trauner, Wilbert Pol, hap;
+// acknowledgement Kevin Horton). See Docs/SOURCE_PROVENANCE.md and
+// Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt.
 
 #include <cstdint>
 

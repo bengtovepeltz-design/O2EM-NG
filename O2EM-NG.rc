@@ -1,7 +1,7 @@
 // O2EM-NG.rc - application resources
 //
 // VERSIONINFO is generated from src/version.h (single authoritative version
-// source). Windows numeric FILEVERSION/PRODUCTVERSION carry 5.0.1.0; the
+// source). Windows numeric FILEVERSION/PRODUCTVERSION carry 5.0.2.0; the
 // descriptive release name ("Beta 5") lives in the string block only.
 
 #include "src/version.h"
@@ -28,7 +28,7 @@ BEGIN
             VALUE "FileDescription",  "O2EM-NG " O2EM_RELEASE_NAME " - Videopac / Magnavox Odyssey 2 emulator frontend"
             VALUE "FileVersion",      O2EM_VERSION_TEXT
             VALUE "InternalName",     "O2EM-NG"
-            VALUE "LegalCopyright",   "Copyright (C) 2026 Bengt-Ove Peltz"
+            VALUE "LegalCopyright",   "O2EM-NG: Copyright (C) 2026 Bengt-Ove Peltz. Original O2EM: copyright 1996/1998 Daniel Boris; developed by Daniel Boris, Andre de la Rocha and Arlindo Oliveira. Portions adapted from MAME under BSD-3-Clause."
             VALUE "OriginalFilename", "O2EM-NG.exe"
             VALUE "ProductName",      "O2EM-NG"
             VALUE "ProductVersion",   O2EM_VERSION_TEXT

@@ -271,6 +271,18 @@ VPP control `R` bits:
 - This is the only verbatim data added in NG-5. The i8244 CGROM remains the
   only other verbatim chip table (NG-3).
 
+### MAME adaptation and provenance
+
+The EF9340/EF9341 device state, command protocol, A/B RAM, extended memory,
+composition and snapshot model are O2EM-NG work. The scanline character drawing
+structure is adapted from MAME 0.289 `ef9340_1.cpp`/`ef9340_1.h`
+(BSD-3-Clause; copyright holders Wilbert Pol, hap). The earlier
+"independently implemented; no verbatim source copy" wording in the NG-0
+register is corrected.
+
+See `Docs/SOURCE_PROVENANCE.md`, `Docs/THIRD_PARTY_NOTICES.md` and
+`Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt`.
+
 ---
 
 ## J. Dynamic characters

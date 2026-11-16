@@ -1,0 +1,91 @@
+O2EM-NG — Component-Specific Licensing Index
+============================================
+
+O2EM-NG is not governed by a single licence for the whole repository.
+Different components have different origins and different applicable terms.
+This file is an index, not a replacement for the full licence texts.
+
+1. Original O2EM and O2EM-NG project code
+-----------------------------------------
+
+The original O2EM emulator and O2EM-NG project code are distributed under the
+Clarified Artistic License.
+
+  Full text:        Docs/COPYRIGHTS.txt
+  Original notice:  Docs/COPYRIGHTS.txt (top of file)
+  Credits:          Docs/CREDITS.md
+
+Original O2EM copyright notice:
+
+  copyright 1996/1998 by Daniel Boris <dboris@comcast.net>
+  Developed by Daniel Boris, Andre de la Rocha and Arlindo Oliveira
+
+O2EM-NG modifications and new code: Copyright (c) 2026 Bengt-Ove Peltz.
+
+2. MAME-adapted portions
+------------------------
+
+Portions of the Intel 8244/8245 VDC and Thomson EF9340/EF9341 VPP
+implementations are adapted from MAME source files that carry an explicit
+per-file BSD 3-Clause declaration.
+
+  Full text:        Docs/Licenses/LICENSE.MAME-BSD-3-Clause.txt
+  Mapping:          Docs/THIRD_PARTY_NOTICES.md
+  Provenance:       Docs/SOURCE_PROVENANCE.md
+
+  MAME 0.289, commit 6512b9adc62a2458c412342268f500f8489edb95
+    src/devices/video/i8244.cpp / i8244.h
+      Copyright holders: Peter Trauner, Wilbert Pol, hap
+      Acknowledgement: Kevin Horton
+    src/devices/video/ef9340_1.cpp / ef9340_1.h
+      Copyright holders: Wilbert Pol, hap
+
+MAME as a whole is GPL-2.0-or-later, but the referenced files are individually
+BSD-3-Clause. O2EM-NG is not affiliated with or endorsed by MAME.
+
+3. Third-party libraries
+------------------------
+
+  SDL3             zlib      Docs/Licenses/LICENSE.SDL3.txt
+  SDL3_image       zlib      Docs/Licenses/LICENSE.SDL3_image.txt
+  SDL3_ttf         zlib      Docs/Licenses/LICENSE.SDL3_ttf.txt
+  PDFium           MIT and   Docs/Licenses/LICENSE.pdfium.txt
+                   third-party notices
+  Microsoft VC++   Microsoft Docs/Licenses/LICENSE.Microsoft-VCRuntime.txt
+  runtime          terms
+  SQLite           public    Windows system component; not redistributed
+                   domain
+
+4. Embedded data
+----------------
+
+  i8244/i8245 CGROM     Original O2EM cset.c (Clarified Artistic License);
+                         identical to MAME charset_i8244.bin (BSD-3-Clause).
+                         See Docs/SOURCE_PROVENANCE.md section 4.
+
+  EF9340/EF9341 charset Original O2EM vpp_cset.cpp (Clarified Artistic
+                         License). See Docs/SOURCE_PROVENANCE.md section 4.
+
+5. Assets not distributed
+-------------------------
+
+BIOS files, game ROMs, C7010 firmware, commercial manuals and commercial
+artwork are not distributed with O2EM-NG. Users supply their own legally
+obtained files.
+
+6. Open questions
+-----------------
+
+The copyright status of original hardware character data, the rights position
+for gameplay screenshots/videos and the Microsoft runtime notice requirements
+are recorded in Docs/SOURCE_PROVENANCE.md section 7. Those items are not
+presented as confirmed violations.
+
+7. Canonical documents
+----------------------
+
+  Docs/COPYRIGHTS.txt
+  Docs/CREDITS.md
+  Docs/THIRD_PARTY_NOTICES.md
+  Docs/SOURCE_PROVENANCE.md
+  Docs/Licenses/

@@ -14,6 +14,13 @@
  *   Videopac+ character table
  */
 
+/*
+ * O2EM-NG modification notice (Clarified Artistic License, section 3):
+ * This file is derived from the original O2EM source and is retained for
+ * O2EM-NG compatibility. The NG VPP charset is generated from this table;
+ * see Docs/SOURCE_PROVENANCE.md. O2EM-NG modifications:
+ * Copyright (c) 2026 Bengt-Ove Peltz. See Docs/COPYRIGHTS.txt.
+ */
 
 #include "types.h"
 #include "vpp_cset.h"
