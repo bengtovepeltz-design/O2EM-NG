@@ -1,5 +1,10 @@
 # Release packaging
 
+> **Repository scope:** `Installer/` and `tests/` are maintained privately and
+> are not published in the public repository. This document describes the
+> owner's local release workflow. The public source still builds the application;
+> the private installer and conformance projects remain local-only.
+
 Build **Release | x64** in Visual Studio. After a successful build, `PackageRelease`
 creates `dist/O2EM-NG-Beta-5-v5.0.2/` and a matching ZIP for the current
 licensing and attribution update release.

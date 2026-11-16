@@ -123,3 +123,119 @@ __pycache__/
 
 # Local database backups / preservation snapshots
 /Backups/
+
+# --------------------------------------------------------------------
+# Public repository scope / private development directories
+# --------------------------------------------------------------------
+# These directories are private or local-only. They must remain fully
+# functional on the owner's machine but must never be tracked publicly.
+/Installer/
+/tests/
+/Backups/
+/Docs/Archive/
+/.freebuff/
+/.opencode/
+/.vscode/
+/.idea/
+/dist/
+
+# Local development helpers and credentials
+/Docs/cf-token.txt
+/wp-pass.txt
+/parse_mame_3d.py
+
+# --------------------------------------------------------------------
+# Case-safe content folders and protected user media
+# --------------------------------------------------------------------
+# Git ignore matching is case-sensitive on non-Windows hosts. Cover both
+# capitalisations used by the working tree and the release package.
+BoxArt/*.png
+BoxArt/*.jpg
+BoxArt/*.jpeg
+BoxArt/*.webp
+BoxArt/*.bmp
+!BoxArt/readme.txt
+!BoxArt/README.txt
+
+Manuals/*
+!Manuals/readme.txt
+!Manuals/README.txt
+!Manuals/README.md
+
+Screenshots/*
+!Screenshots/readme.txt
+!Screenshots/README.txt
+!Screenshots/README.md
+
+Roms/*.bin
+Roms/*.rom
+Roms/*.zip
+Roms/*.7z
+!Roms/Gamelist.txt
+!Roms/highscore.txt
+
+ROMS/*.bin
+ROMS/*.rom
+ROMS/*.zip
+ROMS/*.7z
+!ROMS/readme.txt
+!ROMS/README.txt
+
+BIOS/*.bin
+BIOS/*.rom
+BIOS/*.zip
+BIOS/*.7z
+BIOS/**/*.bin
+BIOS/**/*.rom
+BIOS/**/*.zip
+BIOS/**/*.7z
+!BIOS/readme.txt
+!BIOS/README.txt
+
+# --------------------------------------------------------------------
+# Personal databases and SQLite transient files
+# --------------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+!Gamedata/o2em-ng.db
+
+# --------------------------------------------------------------------
+# Diagnostic output, crash dumps and local archives
+# --------------------------------------------------------------------
+*.dmp
+*.mdmp
+*.etl
+*.trace
+*.raw
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.previous-*
+*.backup-*
+
+# --------------------------------------------------------------------
+# Credentials, tokens and private keys
+# --------------------------------------------------------------------
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.ppk
+id_rsa*
+*_token.txt
+*token*.txt
+*secret*.txt
+*credentials*.txt
+

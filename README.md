@@ -19,6 +19,18 @@ engines.
 - [Downloads](https://github.com/bengtovepeltz-design/O2EM-NG/releases)
 - [Official website](https://o2em-ng.eu)
 
+## Repository scope
+
+The public repository contains the application source, legacy O2EM source, NG
+emulation engines, Visual Studio files, required assets, build tools, licensing
+information, public documentation and the official game catalogue.
+
+The private local `Installer/` and `tests/` directories, `Backups/`,
+`Docs/Archive/`, `dist/` and local workspace state are not published. They remain
+fully functional on the owner's machine. See
+[Docs/Development/README.md](Docs/Development/README.md) for the public-source
+build dependencies.
+
 ## Licensing summary
 
 O2EM-NG is not a single-licence repository:
